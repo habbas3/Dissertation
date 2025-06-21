@@ -126,15 +126,19 @@ def load_battery_dataset(
     X_val, y_val = build_sequences(val_df, feature_cols, label_col, seq_len=sequence_length)
     
     if len(X_train) == 0:
-        raise ValueError(
-            "No training sequences could be generated. "
-            f"Reduce sequence_length (current {sequence_length}) or check dataset."
-        )
+        max_len = train_df.groupby("filename").size().max()
+        if max_len and max_len < sequence_length:
+            print(
+                f"⚠️ No sequences with length {sequence_length}. Reducing to {max_len}."
+            )
+            sequence_length = max_len
+            X_train, y_train = build_sequences(train_df, feature_cols, label_col, seq_len=sequence_length)
+            X_val, y_val = build_sequences(val_df, feature_cols, label_col, seq_len=sequence_length)
         
     if len(X_train) == 0:
         raise ValueError(
-            "No training sequences could be generated. "
-            f"Reduce sequence_length (current {sequence_length}) or check dataset."
+            "No training sequences could be generated even after adjusting sequence_length. "
+            f"Please check the dataset."
         )
 
     transform = Compose([Reshape()])  
@@ -168,9 +172,20 @@ def load_battery_dataset(
         X_tgt_val, y_tgt_val = build_sequences(tgt_val_df, feature_cols, label_col, seq_len=sequence_length)
         
         if len(X_tgt_train) == 0:
+            max_len = tgt_train_df.groupby("filename").size().max()
+            if max_len and max_len < sequence_length:
+                print(
+                    f"⚠️ No target sequences with length {sequence_length}. Reducing to {max_len}."
+                )
+                sequence_length = max_len
+                X_tgt_train, y_tgt_train = build_sequences(tgt_train_df, feature_cols, label_col, seq_len=sequence_length)
+                X_tgt_val, y_tgt_val = build_sequences(tgt_val_df, feature_cols, label_col, seq_len=sequence_length)
+
+        
+        if len(X_tgt_train) == 0:
             raise ValueError(
-                "No target training sequences could be generated. "
-                f"Reduce sequence_length (current {sequence_length}) or check dataset."
+                "No target training sequences could be generated even after adjusting sequence_length. "
+                "Please check the dataset."
             )
         
 
