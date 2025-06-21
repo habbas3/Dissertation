@@ -1,0 +1,18 @@
+# Ignore system files
+.DS_Store
+*.icloud
+
+# Ignore outputs
+*.mat
+*.png
+*.pth
+__pycache__/
+checkpoint/
+.idea/
+*.spydata
+
+# Ignore datasets
+my_datasets/Battery/
+my_datasets/CWRU_dataset/
+my_datasets/UoC_GearData/
+

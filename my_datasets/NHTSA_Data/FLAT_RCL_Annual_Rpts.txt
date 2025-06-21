@@ -1,0 +1,320 @@
+Daimler Trucks North America LLC	18V877000	FL-801	Incorrectly Installed Roof Header Adhesive	20200325	20200325	1	2023	6031	5010	0	3	20230425
+Daimler Trucks North America LLC	18V878000	FL-801	Incorrectly Installed Roof Header Adhesive	20200325	20200325	1	2023	32	20	0	0	20230425
+Suzuki Motor of America, Inc.	19V187000	4011, 4012	Passenger Seat Occupant Detection System may Fail 	20200221	20200410	1	2023	31302	4470	684	6885	20230421
+Autocar, LLC	19V456000	ACX-1906	Drive Shaft Support Cross Member May Fail	20201013	20201014	1	2023	275	168	0	4	20231010
+Daimler Vans USA, LLC	19V666000	VS2KOPFSTU	Incorrectly Mounted Spring Pins in Head Restraint 	20200420	20200420	1	2023	29	14	0	0	20230614
+Daimler Trucks North America LLC	19V712000	FL-832	Insufficient Impact Absorption/FMVSS 222	20200622	20200623	1	2023	53528	36994	0	0	20230427
+Daimler Trucks North America LLC	19V722000	FL834	Baggage/Sleeper Side Door May Separate from Hinge	20200921	20200921	1	2023	2547	1858	0	6	20230724
+Chrysler (FCA US LLC)	19V757000	VB1	EGR Cooler May Crack and Cause Fire	20200416	20200416	1	2023	107980	92597	818	2071	20230426
+Ford Motor Company	19V767000	19S38	Driveshaft Coupling May Fail	20200401	20210322	1	2023	293558	174233	0	0	20230424
+Indian Motorcycle Company	19V776000	I-19-03	Gear Position Display May Be Inaccurate	20200416	20200416	1	2023	52745	36126	0	0	20230424
+Daimler Trucks North America LLC	19V792000	FL-836	Vent Windows May Detach 	20200921	20200921	1	2023	2725	1980	0	0	20230725
+Ford Motor Company	19V809000	19S41	Battery Cable May Chafe and Cause Electrical Short	20200428	20200428	1	2023	54411	47863	0	0	20230424
+Chrysler (FCA US LLC)	19V818000	VB2	Engine Cooling Fan May Seize and Cause Fire	20200707	20200709	1	2023	99128	71385	1530	2258	20230724
+BMW of North America, LLC	19V823000		Lower Child Seat Anchor Bars May become Damaged 	20200423	20200423	1	2023	32760	22606	0	264	20230428
+Daimler Trucks North America LLC	19V831000	FL-839	Flex Plate Fasteners Improperly Torqued 	20200807	20200807	1	2023	30	23	0	0	20230725
+Volvo Car USA LLC	19V849000	R89978	Doors may Unexpectedly Open	20200409	20200409	1	2023	144937	103711	6459	2942	20230412
+BMW of North America, LLC	19V851000		Air Bag Inflators May Rupture or Underinflate Bag	20200601	20200601	1	2023	7910	679	0	107	20230430
+BMW of North America, LLC	19V852000		Air Bag Inflators May Rupture or Underinflate Bag	20200727	20200727	1	2023	34396	2269	0	541	20230727
+Daimler Trucks North America LLC	19V869000	FL-841	Fan Hub Bolts Improperly Torqued 	20200116	20200116	1	2023	145	142	0	0	20230425
+Mercedes-Benz USA, LLC.	19V892000	2020060012	Improperly Calibrated OCS	20200731	20200731	1	2023	129	82	0	0	20230721
+Daimler Vans USA, LLC	19V908000	VS3ZUSCHI	Lashing Rails May Detach	20200415	20200415	1	2023	183	88	0	1	20230712
+Mercedes-Benz USA, LLC.	19V915000	2020030020	Brake Components Are Incorrect Size/FMVSS 135	20200508	20200508	1	2023	75	72	0	0	20230421
+Daimler Trucks North America LLC	19V916000	FL-842	Battery Support Module Can Cause Fire	20200130	20200130	1	2023	1852	1851	0	0	20230427
+Mercedes-Benz USA, LLC.	19V918000	2020040011	Glass Panel May Detach From Vehicle	20200710	20200930	1	2023	747928	156406	0	3137	20230721
+Autocar, LLC	19V922000	ACTT-2002	Headlamp Relay May Disconnect from Fuse Box	20200827	20200828	1	2023	3448	1138	0	3	20231010
+Autocar, LLC	19V923000	ACTT-2001	Transmission Shift Pad May Fail/FMVSS 102	20200622	20200623	1	2023	156	52	0	0	20231010
+Freedman Seating Company	20E004000		Improperly Assembled Retractor/FMVSS 209 	20200406		1	2023	2500	567	0	0	20230626
+Harbor Freight Tools	20E016000		Jack Stands May Fail	20200518	20200519	1	2023	454000	93285	501	0	20230421
+Jaguar Land Rover North America, LLC	20E017000	N454	Improperly Manufactured Headliner/FMVSS 201	20200616	20200616	1	2023	3	1	0	0	20230426
+Cummins Inc.	20E018000	C2302, C2507	Fuel Heater May Overheat and Cause Fire	20200529	20201202	1	2023	68605	38159	58	17337	20230420
+General Motors LLC	20E024000	N192285070	Tonneau Cover May Detach From Pickup Bed	20200707	20200707	1	2023	14876	11792	5	3	20230714
+Ford Motor Company	20E025000	20C10	Headlamps May Not Function Properly/FMVSS 108	20200603	20200603	1	2023	130	27	0	0	20230424
+Harbor Freight Tools	20E027000		Jack Stand May Collapse Under Load	20200518	20200519	1	2023	1254000	180675	2364	0	20230421
+Horizon Global	20E033000		Bluetooth Brake Control Functionality	20200617	20200617	1	2023	2285	766	0	538	20230731
+Chrysler (FCA US LLC)	20E037000	W48	Power Transfer Input Splines May Break	20200714	20200714	1	2023	2669	157	0	0	20230724
+Dometic Corporation	20E040000		Cooler may Backfeed Current and Damage Appliances	20200901	20200930	1	2023	6048	1127	127	290	20230727
+Brake Parts Inc.	20E042000		Insufficiently Crimped Brake Master Cylinder	20200813	20200818	1	2023	1339	255	10	77	20230731
+Chrysler (FCA US LLC)	20E043000	W49	Steering Linkage May Separate	20200723	20200723	1	2023	32972	30	0	0	20230724
+Tenneco Automotive	20E044000		Rear Suspension Lower Control Rod Failure	20200731	20200731	1	2023	996	70	0	0	20230731
+Harbor Freight Tools	20E046000		Jack Stand May Collapse Under Load	20200803	20200803	1	2023	118000	18017	40	0	20230728
+Allison Transmission, Inc.	20E049000		Loss of Drive from Fractured Pressure Switch	20200810	20200817	1	2023	262	6	0	250	20230731
+Chrysler (FCA US LLC)	20E060000	W64	All Weather Floor Mats may Interfere with Pedals	20200910	20201201	1	2023	34034	491	0	0	20230724
+American Pacific Industries, Inc.	20T011000		Sidewall Separation/ FMVSS 139	20200630	20200630	1	2023	1226	276	5	0	20230516
+Bridgestone Americas Tire Operations,LLC	20T012000		Incorrectly Labeled Sidewalls/FMVSS 119	20200728	20200814	1	2023	203	70	47	0	20230725
+Continental Tire the Americas, LLC.	20T018000		Tire Carcass may Break Causing Sudden Air Loss	20201130	20201130	1	2023	11728	1171	33	0	20231009
+Subaru of America, Inc.	20V001000	TKA-20	Passenger Frontal Air Bag Inflator May Explode	20200107	20200217	1	2023	258813	210933	0	16709	20230428
+Subaru of America, Inc.	20V002000	TKB-20	Passenger Frontal Air Bag Inflator May Explode	20200107	20200217	1	2023	127547	92691	0	13211	20230428
+Subaru of America, Inc.	20V003000	TKC-20	Passenger Frontal Air Bag Inflator May Explode	20200107	20200219	1	2023	111562	76069	0	15299	20230428
+Toyota Motor Engineering & Manufacturing	20V012000	20TB02/20TA02/20LB01	Fuel Pump May Fail	20200501	20200729	1	2023	1830752	1595973	39311	43809	20230421
+Autocar, LLC	20V013000	ACX-2001	Ignition Relay May Fail	20200603	20200604	1	2023	5613	3022	0	49	20231010
+Toyota Motor Engineering & Manufacturing	20V024000	20TB03 / 20TA03	Air Bags/Seat Belt Pretensioners may not Deploy	20200316	20200627	1	2023	2891976	1798870	80844	322729	20230421
+Toyota Motor Engineering & Manufacturing	20V033000	20TB01/20TA01	Air Bag Inflators May Rupture or Underinflate Bag	20200828	20201125	1	2023	138842	12048	16745	43296	20230720
+Chrysler (FCA US LLC)	20V036000	W00	Shifter Cable May Disconnect from Transmission 	20200526	20200529	1	2023	222207	158874	2853	4167	20230426
+General Motors LLC	20V038000	N192279370	Axle Roll Pins May Fracture 	20200501	20200501	1	2023	2866	2516	13	8	20230419
+Jaguar Land Rover North America, LLC	20V053000	N422	Second Row Seat Fasteners May be Missing	20200420	20200420	1	2023	34	34	0	0	20230426
+Triple E Recreational Vehicles	20V054000	CA#9599-1	Propane Hose May Leak 	20200211	20200213	1	2023	237	145	0	0	20230417
+Hyundai Motor America	20V061000	188	ABS Module May Short Circuit	20200402	20200402	1	2023	476111	155658	23179	98998	20230424
+Toyota Motor Engineering & Manufacturing	20V064000	See report	Engine may Leak Coolant	20200403	20200403	1	2023	44191	43169	783	156	20230421
+Mercedes-Benz USA, LLC.	20V068000	2020030016	Inaccurate Vehicle Location for Emergency Services	20200414	20200414	1	2023	239	231	0	0	20230421
+Porsche Cars North America, Inc.	20V077000	ALA2	Possible Fuel Leak	20200410	20200410	1	2023	70117	63595	0	638	20230614
+Daimler Vans USA, LLC	20V078000	VS3AGROHR	Possible Exhaust Leak May cause Fire	20200504	20200504	1	2023	4424	4242	0	0	20230712
+Jaguar Land Rover North America, LLC	20V081000	H283	Fuel Tank Outlet Flange May Leak	20200629	20210427	1	2023	2907	1162	214	0	20230426
+Kia Motors America	20V088000	SC186	ABS Module May Short Circuit	20200605	20220121	1	2023	228829	58978	43332	33104	20230720
+Mercedes-Benz USA, LLC.	20V090000	2020070005	Loss of Stability Control and Anti-Lock Brakes	20200821	20200821	1	2023	6300	5813	0	0	20230721
+Jayco, Inc.	20V091000	9901506	Underrated Axles	20200311	20200311	1	2023	146	52	0	0	20230428
+BMW of North America, LLC	20V094000		Third Brake Light May Loosen and Detach 	20200417	20200417	1	2023	2728	1990	0	58	20230428
+BMW of North America, LLC	20V095000		Rear Spoiler May Detach 	20200416	20200416	1	2023	550	543	0	0	20230428
+Ford Motor Company	20V098000	20S08	Damage To Block Heater Cable May Cause Fire	20200409	20200624	1	2023	13854	13617	0	0	20230428
+Kia Motors America	20V100000	SC187	Low Pressure Fuel Hose May Crack and Leak	20200612	20200612	1	2023	141774	87806	14740	15010	20230720
+Kia Motors America	20V101000	SC188	Fuel Rail May Crack and Cause Fire	20200616	20220204	1	2023	51465	23053	5519	4740	20230720
+Terex South Dakota, Inc.	20V103000	SN681	Limit Switch Improperly Installed	20200414	20200626	1	2023	523	302	0	0	20230419
+Daimler Vans USA, LLC	20V109000	VS3SCHLENK	Loose Connection at Steering Spindle	20200413	20200413	1	2023	8595	8068	0	0	20230712
+Daimler Trucks North America LLC	20V113000	FL-844	Warning Systems May Deactivate	20200415	20200415	1	2023	6010	5022	0	0	20230427
+Altec Industries Inc.	20V115000	CSN 750	Fastener Failure may Cause Pedestal Separation	20200422	20200423	1	2023	238	187	0	0	20230410
+Forest River, Inc.	20V119000	53-1144	Tire may Contact Wheel Well	20200325	20200325	1	2023	38	17	0	0	20230428
+Hyundai Motor America	20V122000	190	Incorrect Tire Size Information/FMVSS 110	20200422	20200422	1	2023	5044	4767	89	19	20230424
+Chrysler (FCA US LLC)	20V124000	W12	Clutch Pressure Plate May Overheat 	20200430	20200430	1	2023	33237	29733	215	94	20230426
+Daimler Trucks North America LLC	20V126000	FL-845	Insufficiently Tightened Brake Caliper Bolts	20200502	20200708	1	2023	581	406	0	0	20230425
+Daimler Trucks North America LLC	20V127000	FL-845	Insufficiently Tightened Brake Caliper Bolts	20200501	20200708	1	2023	2585	2301	0	3	20230425
+PACCAR Incorporated	20V130000	20PBA	Underhood Battery Jumper Cable May Short Circuit	20200430	20200430	1	2023	35671	28486	1134	0	20230710
+Halcore Group, Inc.	20V131000		Undersized A/C Input Power Cord May Cause Short	20200427	20200430	1	2023	8	8	0	0	20230629
+Triple E Recreational Vehicles	20V134000	CA#9643-1	Unprotected Ceiling Pot Light Wires May Cause Fire	20200313	20200313	1	2023	10	4	0	0	20230412
+Volkswagen Group of America, Inc.	20V135000	47P8	Brake Booster Pressure Rod Incorrectly Installed	20200403	20200403	1	2023	732	718	0	0	20230427
+Ford Motor Company	20V137000	20S12	Replacement Blower Motor May Short	20200406	20200406	1	2023	5384	4911	0	0	20230425
+General Motors LLC	20V142000	N192284960	Hood May Open Unexpectedly	20200413	20200507	1	2023	1909	1637	2	1	20230418
+Jaguar Land Rover North America, LLC	20V143000	N428	Trailer Lights may not Function	20200413	20200413	1	2023	1553	1433	62	0	20230426
+Volvo Car USA LLC	20V144000	R29998	Automatic Emergency Braking May Not Engage	20200409	20200409	1	2023	121605	120598	0	22	20230403
+BMW of North America, LLC	20V146000		Brake Lights Flash During Braking/FMVSS 108	20200511	20200511	1	2023	4026	3963	0	0	20230428
+Triumph Motorcycles America, LTD	20V150000	SRAN574	Front Brake Hose may be Improperly Routed	20200413	20200413	1	2023	1585	869	0	0	20230714
+Lamborghini (Automobili Lamborghini)	20V151000	L73X-R.02.20	Doors May Not Open From The Inside	20200429	20200529	1	2023	26	25	0	0	20230710
+BMW of North America, LLC	20V152000		Improperly Tightened Instrument Panel Casing	20200515	20200515	1	2023	15	14	0	0	20230428
+Volkswagen Group of America, Inc.	20V153000	27H2	Moisture May Enter Starter Generator	20200522	20200522	1	2023	5471	5381	1	0	20230427
+Bentley Motors, Inc.	20V154000	RE20/06	Seat Belt May Not Secure Occupant/FMVSS 210	20200520	20200520	1	2023	281	267	0	0	20230414
+Daimler Vans USA, LLC	20V155000	VS3BEGRESS	Incorrect Spare Tire Label	20200515	20200515	1	2023	289	253	0	1	20230712
+Daimler Vans USA, LLC	20V156000	VS3BEGREPP	Missing Spare Tire Maximum Speed Label 	20200515	20200515	1	2023	332	303	0	0	20230712
+Daimler Vans USA, LLC	20V157000	VS3LAUFRI	Tires May be Improperly Installed 	20200515	20200515	1	2023	65	61	0	0	20230712
+Toyota Motor Engineering & Manufacturing	20V162000	20TA06	ECU Error May Cause Vehicle Stall	20200515	20200515	1	2023	38810	38368	395	47	20230421
+BMW of North America, LLC	20V164000		Seat Belt Sensors May Not Detect Belted Condition	20200518	20200518	1	2023	3316	3293	0	0	20230428
+Thor Motor Coach	20V169000	RC000187	Missing Seat Belt Reinforcing Brackets/FMVSS 210 	20200519	20200519	1	2023	25	24	0	0	20230421
+KTM North America, Inc.	20V170000	HTB2012	Possible Fuel Leak	20200707	20200707	1	2023	1500	1281	0	0	20230725
+Newmar Corporation	20V171000	#20V-127	Insufficiently Tightened Brake Caliper Bolts	20200506	20200508	1	2023	129	118	0	0	20230720
+Mercedes-Benz USA, LLC.	20V172000	2020060013	Rear Crossmember May Detach 	20200717	20200911	1	2023	224	208	0	0	20230721
+Mercedes-Benz USA, LLC.	20V173000	2020060018	Engine Oil Plugs May Leak	20200811	20200811	1	2023	9791	9322	0	0	20230721
+Altec Industries Inc.	20V174000	CSN 754	Pole Guide may be Opened Unintentionally 	20200505	20200505	1	2023	60	52	0	0	20230410
+Ford Motor Company	20V175000	20S13	Wire Harness May Chafe and Damage Circuits	20200518	20200518	1	2023	2871	2108	0	0	20230424
+Daimler Trucks North America LLC	20V176000	FL-846	Axles Insufficiently Lubricated	20200512	20200512	1	2023	1532	724	0	0	20230427
+Ford Motor Company	20V177000	20S15	Doors May Open While Driving	20200921	20220527	1	2023	288110	161348	21003	0	20230728
+Gillig LLC	20V179000		Incorrect Circuit Breaker can Result in Short	20200424	20200424	1	2023	8224	6609	0	0	20230615
+Daimler Vans USA, LLC	20V180000	VS3BAUTOP	Incorrect Information in Operator's Manual	20200518	20200518	1	2023	52127	48102	0	0	20230712
+Daimler Vans USA, LLC	20V181000	VS3BRADVER	Fender Liner may Damage Brake Line	20200522	20200522	1	2023	48791	44946	0	2	20230712
+Indian Motorcycle Company	20V182000	I-20-02	Output Shaft Bearing May Fail	20200409	20200409	1	2023	616	578	0	0	20230424
+Chrysler (FCA US LLC)	20V183000	W22	Front Differential Pinion Gears May Wear	20200521	20200521	1	2023	515	456	6	5	20230426
+General Motors LLC	20V184000	A202298320	Rear Doors May Open While Driving 	20200417	20200417	1	2023	897	828	0	0	20230419
+BMW of North America, LLC	20V185000		Constant-Velocity Joint May Become Damaged 	20200522	20200522	1	2023	8536	7708	0	87	20230428
+Bombardier Recreational Products Inc.	20V186000	Bulletin 2020-5	Possible Loss of Braking 	20200401	20200401	1	2023	1424	1361	0	0	20230725
+Altec Industries Inc.	20V187000	CSN 756	Incorrect Rear Tire Size and Load Rating 	20200522	20200522	1	2023	16	8	0	0	20230410
+Subaru of America, Inc.	20V189000	WRC-20	Rear Seat Belt Assemblies May Not Lock As Intended	20200415	20200415	1	2023	4862	4362	24	0	20230428
+Chrysler (FCA US LLC)	20V191000	W30-W37	Rearview Image Can Remain on Display/FMVSS 111	20200427	20200429	1	2023	319610	315018	182	212	20230426
+Kovatch Mobile Equipment Corp.	20V192000		Corrosion on Battery Studs 	20200518	20200518	1	2023	678	277	3	0	20230804
+Isuzu Technical Center of America, Inc.	20V193000	V2002	Rear Brake Line Clips Incorrectly Installed 	20200515	20200529	1	2023	157	116	2	0	20230425
+Keystone RV Company	20V194000	20-376	Incorrectly Labeled Federal Identification Tag 	20200529	20200529	1	2023	94	50	5	36	20230419
+Isuzu Technical Center of America, Inc.	20V195000	V2003	Improperly Routed Chassis Wire Harness	20200515	20200527	1	2023	2399	2269	13	1	20230425
+Ford Motor Company	20V197000	20S18	Gear Position Display May Be Inaccurate	20200427	20200427	1	2023	55158	54873	0	0	20230424
+KTM North America, Inc.	20V198000	TB2011	Rear Brakes May Fail	20200428	20200428	1	2023	3164	2959	0	0	20230725
+Vac-Tron Equipment, LLC	20V201000		Improper Lamps and Missing Reflectors/FMVSS 108	20200605	20230228	1	2023	43	29	2	1	20230418
+Toyota Motor Engineering & Manufacturing	20V205000	See attached report	Back-Up Lights May Fail	20200630	20200630	1	2023	960	891	7	0	20230421
+Vac-Tron Equipment, LLC	20V206000	VVK0006	Insufficient Rear Impact Protection/FMVSS 224	20200605	20210608	1	2023	50	31	7	1	20230418
+Chrysler (FCA US LLC)	20V207000	W24, W44	Bed Step May Unexpectedly Fail	20200709	20201002	1	2023	37580	12999	121	36	20230724
+Chrysler (FCA US LLC)	20V208000	W25	Windshield Wipers May Not Operate Properly	20200427	20200429	1	2023	425599	381009	1523	845	20230426
+Daimler Trucks North America LLC	20V211000	FL847	Incorrect GAWR on Certification Label/FMVSS 120	20200528	20200528	1	2023	89	77	0	0	20230427
+Hyundai Motor America	20V213000	191	Possible Unintended Vehicle Movement	20200603	20200603	1	2023	11870	11708	7	2	20230427
+Daimler Trucks North America LLC	20V214000	FL848	Reflective Tape May be Partially Covered/FMVSS 108	20200529	20200529	1	2023	63175	33131	0	0	20230427
+Ford Motor Company	20V217000	20S17	Belt Tension Sensor Malfunction 	20200511	20200511	1	2023	1355	1256	0	0	20230424
+Subaru of America, Inc.	20V218000	WRD-20	Fuel Pump May Become Inoperative/Engine Stall	20200604	20200604	1	2023	188207	182264	153	633	20230428
+Forest River, Inc.	20V221000	10D-1159	Front Tire May Contact Slide Out Bracket	20200511	20200511	1	2023	83	38	2	0	20230614
+TransitWorks	20V222000		Seat Belts may not Restrain Occupant/FMVSS 209 	20200513	20200513	1	2023	205	35	1	0	20230605
+Altec Industries Inc.	20V225000	CSN 758	Battery Fuse Holder Improperly Mounted 	20200608	20200608	1	2023	92	28	0	0	20230410
+Mercedes-Benz USA, LLC.	20V226000	2020050009	Rear Seat Wiring Harness May Be Routed Incorrectly	20200604	20200604	1	2023	120	118	0	0	20230421
+Mercedes-Benz USA, LLC.	20V227000	2020060010	Inaccurate Vehicle Location for Emergency Services	20200702	20200702	1	2023	149	147	0	0	20230721
+Mercedes-Benz USA, LLC.	20V228000	2020050001	Front Left Seatbelt Improperly Installed 	20200522	20200522	1	2023	6	5	0	0	20230421
+Navistar, Inc.	20V229000	20503	Axles Insufficiently Lubricated	20200501	20200501	1	2023	130	94	0	0	20230417
+McLaren Automotive Incorporated	20V231000		Foam Pad May Retain Moisture and Corrode Fuel Tank	20200617	20200617	1	2023	2763	2435	0	0	20230626
+Ducati North America	20V232000	SRV-RCL-20-001	Brake Pads May Corrode/Detach From Backing Plate	20200601	20200603	1	2023	97	57	15	0	20231003
+Triumph Motorcycles America, LTD	20V236000	SRAN 579	Brake Pads May Corrode/Detach From Backing Plate	20200626	20200626	1	2023	3709	2970	0	0	20230714
+Forest River, Inc.	20V237000	05-1158	Improperly Assembled SeatBelt Retractors/FMVSS 209	20200607		1	2023	2	0	0	0	20230428
+Jayco, Inc.	20V238000	9901509	Loose Propane Supply Hose to Refrigerator	20200513	20200513	1	2023	1641	924	0	0	20230428
+Gillig LLC	20V239000		Pressure Relief Devices May Not Vent/FMVSS 304	20200515	20200515	1	2023	275	116	0	0	20230615
+Terex South Dakota, Inc.	20V240000	SN685	Incorrect Slope Indicator and Decals	20200512	20200512	1	2023	43	40	0	0	20230419
+Volvo Trucks North America	20V241000	RVXX2001	Loose Steering Gear Fasteners	20200520	20200520	1	2023	23	19	0	0	20230410
+BMW of North America, LLC	20V243000		Head Air Bag Inflator Humidity Exceeds Specs	20200624	20200624	1	2023	33	28	0	0	20230428
+Hino Motors Sales U.S.A., Inc.	20V244000	AAHT0	Insufficient Battery Ground Cable Length	20200626	20200630	1	2023	12470	10763	0	0	20230714
+Mercedes-Benz USA, LLC.	20V247000	2020050034	Incorrect Child Safety Lock Label	20200626	20200626	1	2023	6659	6122	0	0	20230421
+Hyundai Motor America	20V248000	192	Driver's Air Bag May Be Insufficiently Tightened	20200622	20200622	1	2023	1295	853	33	149	20230424
+General Motors LLC	20V254000	N192285350	Loss of Electric Power Steering Assist	20200526	20201006	1	2023	2281	1771	4	84	20230419
+Navistar, Inc.	20V255000	20504	Engine Wrist Pin Bushing May Fail	20200708	20200820	1	2023	5192	5131	0	42	20230706
+Autocar, LLC	20V257000	ACX-2002	Automatic Traction Control May Malfunction	20200706	20200707	1	2023	80	54	0	0	20231010
+Ford Motor Company	20V260000	20S22	Panoramic Roof Panel may Separate from Vehicle	20200825	20200825	1	2023	5088	2104	132	6	20230727
+Ford Motor Company	20V262000	20S20	Pre-Collison Assist can't be Enabled	20200526	20200526	1	2023	25081	24205	0	0	20230425
+Ford Motor Company	20V263000	20S21	Out Of Park Warning Message and Chime Too Short	20200526	20200526	1	2023	10460	8507	0	0	20230425
+Forest River, Inc.	20V269000	22-1166	Refrigerator Vent May Be Missing	20200601	20200601	1	2023	22	17	0	0	20230428
+Porsche Cars North America, Inc.	20V270000	ALA4	Fuel Line Quick Connector May Leak	20200908	20200908	1	2023	2253	2220	0	0	20230728
+Porsche Cars North America, Inc.	20V271000	ALA5	Transmission Oil Pipe May Leak	20200908	20200908	1	2023	1805	1755	0	0	20230728
+Volkswagen Group of America, Inc.	20V272000	38C7	Transmission Oil Pipe May Leak	20200612	20200612	1	2023	531	523	0	0	20230427
+Volkswagen Group of America, Inc.	20V274000	70H6	Improper deployment of Passenger Air Bag	20200624	20200624	1	2023	153	149	0	0	20230427
+Heartland Recreational Vehicles, LLC	20V275000		U-Bolts for Spare Tire Carrier May Break	20200707	20200707	1	2023	392	131	0	0	20230717
+Forest River, Inc.	20V276000	79-1161	Ramp Door May Come Loose	20200601	20200601	1	2023	223	92	2	0	20230614
+Vantage Mobility International, LLC	20V278000		Fuel Pump Gasket Fuel Leak	20200519	20200529	1	2023	122	62	2	0	20230614
+Mitsubishi Motors North America, Inc.	20V279000	SR-20-003	Lower Control Arm May Detach Due to Corrosion	20200807	20200807	1	2023	141200	58439	16291	3751	20230731
+Mitsubishi Motors North America, Inc.	20V280000	SR-20-002	Incorrectly Assembled Rear Seat Belt Assembly 	20200617	20210622	1	2023	3241	2908	46	2	20230425
+Daimler Trucks North America LLC	20V281000	FL-852	Undersized Ground Wire May Cause Engine Stall	20200623	20200623	1	2023	2987	2772	0	0	20230427
+Altec Industries Inc.	20V282000	CSN 760	Fastener Failure may Cause Pedestal Separation	20200702	20200702	1	2023	157	142	0	0	20230712
+Navistar, Inc.	20V285000	20505	ABS Malfunction Indicator May Not Light/FMVSS 105	20200720	20200720	1	2023	2805	2357	0	2	20230706
+Toyota Motor Engineering & Manufacturing	20V286000	20TB08 / 20TA08	Front Lower Suspension Arms May Separate 	20200810	20200810	1	2023	9502	9127	173	48	20230720
+General Motors LLC	20V295000	A202304070	Missing Tire Pressure Information/FMVSS 110	20200701	20200701	1	2023	20	18	0	0	20230714
+Forest River, Inc.	20V297000	37-1170	Safety Chains Rated for Incorrect GVW May Break	20200608	20200609	1	2023	88	43	2	0	20230614
+Mercedes-Benz USA, LLC.	20V298000	2020060011	Incorrect Replacement Passenger Air Bag Installed	20200710	20200710	1	2023	640	554	0	0	20230721
+Triple E Recreational Vehicles	20V299000	CA#9681-1	Utility Compartment Door Latch May Become Locked	20200602	20200602	1	2023	61	29	0	0	20230412
+Halcore Group, Inc.	20V300000		Brake Line Routing May Cause Wear and Fluid Leak	20200623	20200623	1	2023	39	29	0	0	20230630
+Altec Industries Inc.	20V301000	CSN 761	Tow Hitch May Have Incorrect Load Rating Markings	20200724	20200724	1	2023	396	108	0	0	20230712
+Keystone RV Company	20V302000	20-377	Cooktop Burner Flames May Invert	20200717	20200717	1	2023	192	121	3	35	20230721
+Forest River, Inc.	20V304000	310-1168	Gasoline Generator Fuel Supply Hose May Leak	20200608	20200609	1	2023	1140	696	2	0	20230614
+Ford Motor Company	20V305000	20S25	Front Seat Belt Pretensioners May Not Deploy	20200807	20200807	1	2023	1616	961	23	3	20230727
+Ford Motor Company	20V306000	20S26	Front Facing Camera Improperly Calibrated	20200617	20200617	1	2023	24	22	0	0	20230425
+Kawasaki Motors Corp., U.S.A.	20V307000	MC20-02	Damaged Air Suction Valves May Cause Fire	20200608	20200608	1	2023	1529	1032	0	0	20230417
+Bentley Motors, Inc.	20V309000	RE 20/15 (RB57)	Sunroof Glass Panel May Separate from Vehicle	20200622	20200622	1	2023	3	3	0	0	20230414
+Frazer	20V313000		Brake Line Routing May Cause Wear and Fluid Leak	20200610	20200610	1	2023	76	39	2	0	20230630
+Honda (American Honda Motor Co.)	20V314000		Fuel Pump May Fail	20200722	20201030	1	2023	135995	127425	239	1972	20230713
+Forest River, Inc.	20V317000	24-1167	Underrated Safety Chains May Break	20200615	20200615	1	2023	122	12	0	0	20230428
+General Motors LLC	20V319000	N202305070	ABS Malfunction Indicator May Not Light/FMVSS 108	20200629	20200629	1	2023	12200	11024	5	2	20230419
+Keystone RV Company	20V320000	20-379	Axles and Tires have Incorrect Load Rating	20200707	20200707	1	2023	41	31	2	6	20230721
+Bentley Motors, Inc.	20V321000	RE20/14	Fuel Line Quick Connector May Leak	20200731	20200909	1	2023	1892	1699	117	0	20230724
+Daimler Vans USA, LLC	20V322000	VS3DREHSIK	Front Seat Wiring Harnesses Routed Incorrectly	20200824	20200824	1	2023	11013	10327	0	0	20230712
+General Motors LLC	20V324000	N202306490	Hood May Open Unexpectedly	20200707	20200707	1	2023	272	190	0	0	20230714
+Jaguar Land Rover North America, LLC	20V325000	N459	Left Side Door May Remain Unlatched and Open	20200717	20200717	1	2023	785	645	70	0	20230728
+Honda (American Honda Motor Co.)	20V326000	Z7L	Rear Seat Belt Assemblies May Not Lock as Intended	20200724	20200724	1	2023	128	109	1	0	20230713
+Mercedes-Benz USA, LLC.	20V328000	2020070004	Left Rear Seat Back Electric Latch May Fail	20200817	20200817	1	2023	1352	1297	0	0	20230721
+Forest River, Inc.	20V330000	51-1163	Safety Chains May Have Incorrect Hardware	20200616	20200617	1	2023	73	29	0	0	20230428
+Ford Motor Company	20V331000	20S30	Doors May Open While Driving	20200727	20210525	1	2023	2147323	1071590	147298	610	20230727
+Chrysler (FCA US LLC)	20V334000	W46	12V Connector Post May Overheat Causing Fire	20200730	20200730	1	2023	23079	21253	60	230	20230724
+Jayco, Inc.	20V336000	9901508	Frameless Window Glass Panels May Detach	20200615	20200615	1	2023	1105	575	0	0	20230428
+Jayco, Inc.	20V337000	9901508	Frameless Window Glass May Detach	20200615	20200615	1	2023	449	247	0	0	20230428
+Highland Ridge RV	20V338000	9901508	Frameless Window Glass Panels May Detach	20200615	20200615	1	2023	80	54	0	0	20230428
+Daimler Vans USA, LLC	20V340000	VS2DREIGE	Driveshaft Vibrations may cause Air bag Deployment	20200811	20200817	1	2023	12	2	0	0	20230712
+Kovatch Mobile Equipment Corp.	20V341000		Telma Braking Mechanism May Separate from Vehicle	20200731	20200731	1	2023	107	67	0	0	20230804
+Gillig LLC	20V342000		Rear Suspension Lower Control Rod Failure	20200626	20200626	1	2023	3728	2120	0	0	20230615
+Chrysler (FCA US LLC)	20V343000	W47	Power Transfer Unit Input Splines May Break	20200714	20200717	1	2023	67248	53615	920	1031	20230724
+Vermeer Manufacturing Company	20V344000	IK966	Wheel Lug Nuts May Loosen	20200730	20200730	1	2023	55	48	0	7	20230730
+Mazda North American Operations	20V346000	4420F	Front Brake Caliper Bolts May Loosen and Fall Off	20200724	20200729	1	2023	24037	23547	0	3	20230725
+Mazda North American Operations	20V347000	4520F	Disconnected Vent Hose May Cause Fuel Leak	20200729	20200729	1	2023	12097	11926	0	1	20230725
+KYMCO USA	20V350000	Like150-2020-Recall	ABS Magnetic Sensor Ring May Wear Prematurely	20200722	20200730	1	2023	1786	840	0	0	20230727
+Keystone RV Company	20V351000	20-375	Frameless Window Glass Panels May Detach	20200724	20200724	1	2023	428	337	7	25	20230721
+Motor Coach Industries	20V352000	SB 479	Overvoltage Alternator May Cause Engine Shutdown	20200723	20200723	1	2023	1067	889	0	1	20230726
+Nova Bus	20V354000	CR4916E	Rear Passenger Door May not Re-open if Obstructed	20200709	20200709	1	2023	55	0	0	0	20230713
+BMW of North America, LLC	20V355000	Toyota:  20TA09	Steering Gear Tie Rods May Become Damaged	20200814	20200814	1	2023	2779	2731	0	0	20230727
+Forest River, Inc.	20V360000	47-1175	Furnace May Not Be Properly Secured Inside Cabinet	20200701	20200701	1	2023	176	44	1	0	20230725
+Forest River, Inc.	20V361000	68-1178	Leveling Jacks May Deploy Unexpectedly	20200626	20200626	1	2023	62	48	0	0	20230428
+Grand Design RV, LLC	20V362000	910020	Underbody Wiring Harness Connector May Short	20200629	20200727	1	2023	22797	9132	0	0	20230719
+Mercedes-Benz USA, LLC.	20V364000	2020070017	Turbocharger Oil Feed and Return Lines May Leak 	20200817	20201009	1	2023	90	89	0	0	20230721
+Ford Motor Company	20V366000	20C12	Middle Row Seat Headrest May Be Improperly Welded	20200708	20200708	1	2023	2620	2371	0	0	20230727
+Toyota Motor Engineering & Manufacturing	20V369000	20TB10 / 20TA10	Hybrid System may Shutdown and cause Stall	20200724	20200819	1	2023	266638	222595	6896	13897	20230720
+Triple E Recreational Vehicles	20V370000	CA#9711-1	Loose Wiring Connector May Short and Cause Fire	20200626	20200626	1	2023	10	1	0	0	20230412
+Forest River, Inc.	20V371000	51-1150	Frameless Window Glass Panels May Detach	20200715	20200721	1	2023	732	293	0	0	20230725
+Toyota Motor Engineering & Manufacturing	20V373000	20TB11 / 20TA11	Loss of Electric Power Steering Assist	20200817	20200817	1	2023	46	45	1	0	20230720
+Chrysler (FCA US LLC)	20V374000	W52	Side Curtain Air Bag May Not Properly Inflate 	20200716	20200716	1	2023	114	99	1	0	20230724
+Forest River, Inc.	20V375000	410-1187	Furnace Exhaust is Improperly Vented	20200728	20200728	1	2023	9	6	0	0	20230725
+Forest River, Inc.	20V377000	73-1182	Propane Gas Line may be Damaged by Sharp Edges	20200716	20200721	1	2023	59	36	0	0	20230725
+Volvo Car USA LLC	20V378000	R10029	Seat Belts May Not Restrain Occupant	20201210	20201210	1	2023	308260	213721	7772	4548	20231002
+BMW of North America, LLC	20V379000		Inaccessible Child Seat Tether Anchor/FMVSS 225	20200820	20200820	1	2023	16	16	0	0	20230727
+Forest River, Inc.	20V380000	24-1191	Drawbar and Coupler may Fracture	20200728	20200728	1	2023	2	0	0	0	20230725
+Forest River, Inc.	20V382000	81-1180	Improperly Spaced Landing Legs May Collapse	20200813	20200814	1	2023	370	212	0	0	20230725
+Volvo Trucks North America	20V384000	RVXX2002	Incorrectly Labeled Rear Axle Rating/Part 567	20200818	20200818	1	2023	89	87	0	0	20230713
+Jayco, Inc.	20V385000	9901513	Leaf Springs Provide Inadequate Suspension Support	20200727	20200727	1	2023	1409	429	0	0	20230720
+Forest River, Inc.	20V386000	51-1189	Cooler may Backfeed Current and Damage Appliances	20200824	20200824	1	2023	47	23	0	0	20230725
+Kia Motors America	20V389000	SC191	Unintended Movement Due to Damaged Park Mechanism	20200807	20200807	1	2023	3714	2363	295	131	20230720
+Daimler Trucks North America LLC	20V390000	FL-855	Corroded Modulator Valve May Cause Brake Pull	20200828	20211011	1	2023	164326	149053	0	0	20230725
+Hyundai Motor America	20V393000	193	Accessory Power Outlet May Overheat	20200928	20200928	1	2023	272126	91498	11556	55405	20230727
+Mercedes-Benz USA, LLC.	20V395000	2020080016	ESP System Software Programmed Incorrectly	20200828	20210115	1	2023	5399	5203	0	0	20230721
+Volkswagen Group of America, Inc.	20V397000	51G6	Engine Compartment Seal May Detach	20200904	20200904	1	2023	12964	11197	24	0	20230727
+Keystone RV Company	20V398000	20-381	Antenna Wing May Separate From Mounting Base 	20200827	20200831	1	2023	8313	4729	290	700	20230721
+Kia Motors America	20V399000	SC192	Alternator Terminal Nut May Loosen	20200814	20200814	1	2023	5385	4347	54	23	20230720
+Forest River, Inc.	20V400000	70-1194	Generator Prep May Be Incorrectly Wired 	20200728	20200728	1	2023	62	43	0	0	20230725
+Altec Industries Inc.	20V401000	CSN 767	Oil Leak from PTO May Cause Fire	20200908	20200909	1	2023	2550	2036	0	0	20230712
+Mitsubishi Motors North America, Inc.	20V403000	SR-20-004	Inoperative Right Rear Seat Belt Buckle	20200901	20210622	1	2023	177000	88344	7318	2789	20230731
+Toyota Motor Engineering & Manufacturing	20V410000	20TB12/20TA12	Turn Signals are not Bright Enough/FMVSS 108	20200817	20200907	1	2023	183397	164714	3924	1649	20230720
+Ford Motor Company	20V413000	20S36	Missing Heat Protection Components	20200928	20200928	1	2023	1229	979	12	0	20230727
+Ford Motor Company	20V414000	20S37	Damaged Wiring May Cause Air Bag Malfunction	20200812	20200812	1	2023	19299	17774	38	1	20230727
+Mercedes-Benz USA, LLC.	20V416000	2020070013	A/C Drain may Result in Water in Passenger Cabin	20200831	20200831	1	2023	3615	3526	0	0	20230721
+Thor Motor Coach	20V419000	RC000197	Loose Battery Cables May Cause Fire	20200911	20200911	1	2023	63	50	0	0	20230725
+Altec Industries Inc.	20V420000	MAB 770	Uncontrolled Boom Movement	20200914	20200914	1	2023	141	10	0	0	20230712
+Kia Motors America	20V422000	SC193	Potential Loss of Steering Control	20200828	20200828	1	2023	104	99	0	0	20230720
+Thor Motor Coach	20V423000	RC000199	Converter Breaker May Cause Fire	20200918	20200918	1	2023	934	585	0	0	20230725
+Thor Motor Coach	20V424000	RC000198	Dinette Seat Belts too Short/FMVSS 208, 209	20200916	20200916	1	2023	49	29	0	0	20230725
+Daimler Vans USA, LLC	20V426000	VS3LEFSPRI	Incorrect Rear Leaf Spring Shims/FMVSS 126	20201001	20201001	1	2023	26	21	0	0	20231005
+Daimler Vans USA, LLC	20V427000	VS3FAHRBA	Chassis Missing Additional Stabilization/FMVSS 126	20201001	20201001	1	2023	4	1	0	0	20231005
+Keystone RV Company	20V428000	20-382	Generator Transfer Switch may be Improperly Wired	20200827	20200827	1	2023	594	427	18	16	20230721
+PACCAR Incorporated	20V429000	20PBD	Power Steering Assist Cylinder Bracket May Break	20200817	20200817	1	2023	239	169	1	0	20230727
+Tiffin Motorhomes, Inc.	20V433000		Wiper Control Module may be Wired Improperly	20200813	20200818	1	2023	643	502	0	0	20230718
+Kia Motors America	20V436000	SC194	Inoperative Trailer Brake Lights/FMVSS 108	20200910	20200910	1	2023	86921	72776	1220	430	20230720
+Honda (American Honda Motor Co.)	20V437000	A88	Power Sliding Doors May Open While Moving	20200923	20200923	1	2023	324196	305128	160	1484	20230713
+Honda (American Honda Motor Co.)	20V439000	T89	Instrument Panel Software Incorrect/FMVSS 101/111	20200923	20200923	1	2023	607786	581069	399	2100	20230713
+Honda (American Honda Motor Co.)	20V440000	Y7Y	Delayed or Inoperative Rearview Camera/FMVSS 111	20200923	20200923	1	2023	499344	487423	192	770	20230713
+REV Recreation Group	20V442000	200728REV	Battery Hold Down Improperly Secured	20200917	20200917	1	2023	155	91	6	1	20230726
+General Motors LLC	20V446000	N202305380	Roof Rail Air Bag May Not Deploy	20200903	20200903	1	2023	769	676	2	0	20230714
+Mercedes-Benz USA, LLC.	20V449000	2020080015	Seat Belt Warning System Not Operating Properly	20200908	20200908	1	2023	56	35	0	0	20230721
+Autocar, LLC	20V450000	ACX-2004	Parking Brake Valve Pump Improperly Assembled	20200928	20200929	1	2023	1086	821	0	0	20231010
+Triumph Motorcycles America, LTD	20V451000	SRAN 582	Reflex Reflector May Detach/FMVSS 108	20200819	20200819	1	2023	603	504	0	0	20230714
+Bentley Motors, Inc.	20V452000	RE 20/21	Top View Rear Camera Holder Malfunction/FMVSS 111	20200929	20200929	1	2023	102	93	0	0	20230724
+Daimler Vans USA, LLC	20V453000	VS3KRASTUF	Possible Fuel Pump Leak	20200918	20200925	1	2023	46	24	0	0	20230712
+Indian Motorcycle Company	20V454000	I-18-07	Possible Reduction in Brake Performance 	20200819	20200819	1	2023	2742	1670	0	0	20230718
+Nova Bus	20V457000	CR4943	Loss of Drive from Fractured Pressure Switch	20200915	20200915	1	2023	34	25	0	0	20230714
+Thor Motor Coach	20V458000	RC000202	Incorrect Diameter Bolts Installed/FMVSS 207, 210	20200914	20200914	1	2023	248	79	0	0	20230725
+Kia Motors America	20V459000	SC195	Left Front Axle Driveshaft May Break	20200902	20200902	1	2023	834	603	20	32	20230720
+Ducati North America	20V460000	SRV-RCL-20-002	Flywheel May Break Causing Engine Oil Leak	20200812	20200812	1	2023	156	154	0	0	20230719
+General Motors LLC	20V461000	N202309350	Front Trunk Release May not Work/FMVSS 401	20200903	20200903	1	2023	5141	4962	10	2	20230714
+New Flyer of America Inc.	20V462000	R20-007	Loss of Drive from Fractured Pressure Switch	20200817	20200819	1	2023	152	137	0	0	20230724
+Ford Motor Company	20V467000	20S40	Power Supply Cable Incorrectly Attached to Starter	20200825	20200825	1	2023	431	430	0	0	20230727
+Triumph Motorcycles America, LTD	20V472000	SRAN 584	Misrouted Wiring Harness May Become Damaged	20200828	20200828	1	2023	2224	1679	0	0	20230714
+Forest River, Inc.	20V479000	225-1217	Awning May Deploy While Vehicle is Moving	20200923	20200923	1	2023	1427	387	0	0	20230725
+Forest River, Inc.	20V482000	22-1219	Fresh Water Tank May Detach	20200923	20200923	1	2023	643	282	1	0	20230725
+General Motors LLC	20V489000	N202311160	Hood May Inadvertently Open	20200924	20201001	1	2023	7071	6853	12	2	20230714
+Keystone RV Company	20V491000	20-384	Federal Indentification Tag Incorrect/Part 567	20200825	20200825	1	2023	27	24	3	0	20230721
+Navistar, Inc.	20V494000	20507	Axle Hardware may be too Short	20201008	20201123	1	2023	80	67	0	0	20231012
+Ford Motor Company	20V497000	20S48	Side Air Bag may be Loose in Seat Back	20200910	20200910	1	2023	488	446	3	0	20230727
+Volvo Car USA LLC	20V503000	R10044	Wipers may Loosen	20200929	20200929	1	2023	87226	85135	1513	77	20230705
+Volkswagen Group of America, Inc.	20V505000	72L1, 72K8, 72K9	Front Seat Backrest Frame Not Welded Properly	20200911	20201207	1	2023	5376	5211	1	0	20230731
+PACCAR Incorporated	20V506000	20PBE and 20KWC	Lower Rear Pivot Bolts Improperly Sized	20200929	20201006	1	2023	1097	1051	46	0	20230727
+Chrysler (FCA US LLC)	20V511000	W57	Inadequate Warmup Protection 	20200910	20200914	1	2023	32318	28289	126	62	20230724
+Chrysler (FCA US LLC)	20V513000	W63	All Weather Floor Mats may Interfere with Pedals	20200910	20201127	1	2023	160229	128331	1423	570	20230724
+General Motors LLC	20V515000	N202306620	Loss of Electric Power Steering Assist	20200923	20200923	1	2023	95	53	2	0	20230714
+Jaguar Land Rover North America, LLC	20V517000	N486	Tire Pressure Monitoring System Software/FMVSS 138	20200924	20200924	1	2023	1285	1194	28	0	20230728
+Grand Design RV, LLC	20V523000	910021	Supply Line To Refrigerator Compartment may Melt	20200917	20200930	1	2023	8161	3578	0	0	20230719
+Volvo Trucks North America	20V536000	RVXX2004	Die Cast Pedal Plate Casting Issue/FMVSS 121	20201007	20201007	1	2023	11127	9804	0	0	20231011
+General Motors LLC	20V537000	A202304380	Front Seat Rear Attachment Bolts May Be Missing	20201001	20201001	1	2023	105	105	0	0	20231011
+Forest River, Inc.	20V540000	40-1225	Inverter Allows Too Much Current To 10 Gauge Wire	20200924	20200925	1	2023	22	15	0	0	20230725
+Forest River, Inc.	20V544000	103-1227	Hose Too Long For Exterior Griddle	20200908		1	2023	8	7	0	0	20230725
+Autocar, LLC	20V545000	ACX-2006	Methane Detector Wiring Harness may Overheat	20201106	20201106	1	2023	170	164	0	0	20231010
+E-One Incorporated	20V546000		Suspension Bolts may Break	20200921	20201007	1	2023	15	6	0	0	20230721
+Ford Motor Company	20V550000	20S49	Missing or Loose Bolts on Start/Stop Accumulator	20200923	20200923	1	2023	97	80	1	0	20230727
+Wabash National Corporation	20V551000	B20012	Aerodynamic Skirts May Detach from Trailer	20200921	20200921	1	2023	218	62	0	0	20230711
+General Motors LLC	20V581000	N202307690	Seat Belt Retractor May Not Lock	20201015	20201015	1	2023	5	5	0	0	20231011
+Navistar, Inc.	20V584000	20508	Reflective Tape Missing/FMVSS 108	20201021	20201021	1	2023	14	12	0	0	20231012
+General Motors LLC	20V588000	A202307260	Sensor Contamination in Electronic Brake Boost	20201209	20210318	1	2023	3677	3529	3	1	20231011
+General Motors LLC	20V603000	N202300860	Vacuum Pump May Decrease Power Brake Assist 	20201111	20201111	1	2023	14620	13278	36	4	20231011
+Volvo Trucks North America	20V613000	RVXX2005	Sleeper Bunk Window May Detach From the Vehicle	20201029	20201029	1	2023	8456	6497	0	0	20231011
+Daimler Vans USA, LLC	20V631000	VS3MONTLAU	Damaged Brake Hose may Result in a Leak	20201124	20201124	1	2023	463	438	0	0	20231005
+General Motors LLC	20V638000	N202312100	Driver's Seat Belt Tensioner Cable May Separate	20201117	20201117	1	2023	1788	980	15	7	20231011
+General Motors LLC	20V639000	N202314760	Insufficient Fuel Supply may Cause Engine Stall	20201116	20201116	1	2023	2781	2661	1	0	20231011
+General Motors LLC	20V650000	N202314870	Driveshaft May Separate	20201210	20201210	1	2023	42	38	0	0	20231011
+Daimler Vans USA, LLC	20V663000	NV3LETULPE	Hydraulic Power Steering Hose May Detach	20201223	20201223	1	2023	47667	40945	0	0	20231005
+General Motors LLC	20V668000	N202313440	Missing Bolts on Start/Stop Accumulator	20201215	20201221	1	2023	194105	154829	147	252	20231011
+Triple E Recreational Vehicles	20V669000	CA#9822-1	Incorrect Connector Used On Propane Connection	20201117	20201124	1	2023	832	484	9	0	20231012
+Kawasaki Motors Corp., U.S.A.	20V676000	MC20-10	Gear Misengagement may cause Transmission Damage	20201116	20201116	1	2023	799	529	0	0	20231002
+Triple E Recreational Vehicles	20V677000	CA#9830-1	Electronic Control Center Circuit Board may Short	20201126	20201127	1	2023	143	70	0	0	20231012
+General Motors LLC	20V684000	N202319030	Tires may have been Overcured	20201217	20201221	1	2023	7516	7046	7	3	20231011
+Lamborghini (Automobili Lamborghini)	20V713000	L636-R.02.20	Fuel May Leak From Fuel Line Quick Connector	20201218	20201218	1	2023	2831	2652	0	0	20231006
+Triple E Recreational Vehicles	20V722000	CA#9835-1	Wire Harness may Chafe, Causing Tail Light Failure	20201207	20201215	1	2023	1149	565	8	0	20231012
+Daimler Vans USA, LLC	20V729000	VS2BREMPOS	Brake Hose/Brake Line Connection may Leak	20201210	20201210	1	2023	562	510	0	0	20231005
+General Motors LLC	20V735000	N202312720	Bolts for Front Seats Incorrectly Installed	20201221	20201221	1	2023	94	93	0	0	20231011
+Triumph Motorcycles America, LTD	20V740000	SRAN 587	Air In ABS Modulator Reduces Braking Efficiency	20201218	20201218	1	2023	1241	1105	0	0	20231011
+Kawasaki Motors Corp., U.S.A.	20V774000	MC20-13	Camshaft Chain Tensioner Improperly Heat-Treated	20201221	20201221	1	2023	1770	1615	0	0	20231002

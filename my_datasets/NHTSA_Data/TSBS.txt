@@ -1,0 +1,36 @@
+
+TECHNICAL SERVICE BULLETINS  
+
+The SERVICE BULLETIN file contains manufacturer technical notices received 
+by NHTSA since January 1, 1995.
+
+File characteristics:
+
+-  All the records are TAB delimited.
+-  All dates are in YYYYMMDD format
+
+-  Maximum Record length: 710
+
+Change log:
+1. Changed flat file extension from .lst to .txt as of Sept. 14, 2007
+2. Field 1 was changed from CHAR(12) to CHAR(16) on Aug. 22, 2008
+3. Field 2 was changed from CHAR(12) to CHAR(16) on Sep. 18, 2008
+
+Last Updated September 18, 2008
+
+FIELDS:
+=======
+
+Field#   Name                Type/Size   Description
+---      ----------          ----------  -------------------------------------
+1        BULNO               CHAR(16)    SERVICE BULLETIN NUMBER
+2        BULREP              CHAR(16)    REPLACEMENT SERVICE BULLETIN NUMBER
+3        ID                  NUMBER(9)   NHTSA ITEM NUMBER
+4        BULDTE              CHAR(8)     DATE OF BULLETIN
+5        COMPNAME            CHAR(128)   CODE FOR FAILING COMPONENT
+6        MAKETXT             CHAR(25)    VEHICLE/EQUIPMENT MAKE
+7        MODELTXT            CHAR(256)   VEHICLE/EQUIPMENT MODEL
+8        YEARTXT             CHAR(4)     MODEL YEAR, 9999 IF UNKNOWN or N/A
+9        DATEA               CHAR(8)     DATE ADDED TO FILE
+10       SUMMARY             CHAR(240)   DESCRIPTION OF SUMMARY
+ 

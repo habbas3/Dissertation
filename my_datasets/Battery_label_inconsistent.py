@@ -79,14 +79,19 @@ def load_battery_dataset(
 
     print("🔢 Class distribution:\n", df[classification_label + "_encoded"].value_counts())
     print("🔬 Cathode distribution:\n", df["cathode"].value_counts())
+    df["cathode"] = df["cathode"].astype(str).str.strip()
 
     # ✅ Handle both pretraining and transfer modes
     source_df = df[df["cathode"].isin(source_cathodes)].reset_index(drop=True)
+    if source_df.empty:
+        raise ValueError(f"❌ No rows found for source cathodes: {source_cathodes}")
     if target_cathodes is None or len(target_cathodes) == 0:
         print("🛠 Loading pretraining mode (source only, no target)")
         target_df = pd.DataFrame(columns=df.columns)
     else:
         target_df = df[df["cathode"].isin(target_cathodes)].reset_index(drop=True)
+        if target_df.empty:
+            print(f"⚠️ No rows found for target cathodes: {target_cathodes}")
 
     feature_cols = ['cycle_number', 'energy_charge', 'capacity_charge', 'energy_discharge',
                     'capacity_discharge', 'cycle_start', 'cycle_duration']
@@ -98,21 +103,39 @@ def load_battery_dataset(
 
     # --- Source split ---
     label_col = classification_label + "_encoded"
-    if len(np.unique(source_df[label_col])) == 1 or np.min(np.bincount(source_df[label_col])) < 2:
-        print("⚠️ Not enough samples to stratify source data. Using full data for training.")
-        train_df = source_df
-        val_df = source_df.iloc[:0]
+    file_labels = source_df.groupby("filename")[label_col].first()
+    files = file_labels.index.to_numpy()
+    labels = file_labels.values
+
+    if len(np.unique(labels)) == 1 or np.min(np.bincount(labels)) < 2:
+        print("⚠️ Not enough samples to stratify source files. Using all files for training.")
+        train_files = files
+        val_files = []
 
     else:
-        train_df, val_df = train_test_split(
-            source_df,
+        train_files, val_files = train_test_split(
+            files,
             test_size=0.2,
-            stratify=source_df[label_col],
+            stratify=labels,
             random_state=42,
         )
 
+    train_df = source_df[source_df["filename"].isin(train_files)].reset_index(drop=True)
+    val_df = source_df[source_df["filename"].isin(val_files)].reset_index(drop=True)
     X_train, y_train = build_sequences(train_df, feature_cols, label_col, seq_len=sequence_length)
     X_val, y_val = build_sequences(val_df, feature_cols, label_col, seq_len=sequence_length)
+    
+    if len(X_train) == 0:
+        raise ValueError(
+            "No training sequences could be generated. "
+            f"Reduce sequence_length (current {sequence_length}) or check dataset."
+        )
+        
+    if len(X_train) == 0:
+        raise ValueError(
+            "No training sequences could be generated. "
+            f"Reduce sequence_length (current {sequence_length}) or check dataset."
+        )
 
     transform = Compose([Reshape()])  
 
@@ -122,20 +145,34 @@ def load_battery_dataset(
     # --- Target split ---
     if not target_df.empty:
         label_col = classification_label + "_encoded"
-        if len(np.unique(target_df[label_col])) == 1 or np.min(np.bincount(target_df[label_col])) < 2:
+        tgt_file_labels = target_df.groupby("filename")[label_col].first()
+        tgt_files = tgt_file_labels.index.to_numpy()
+        tgt_labels = tgt_file_labels.values
+
+        if len(np.unique(tgt_labels)) == 1 or np.min(np.bincount(tgt_labels)) < 2:
             print(f"⚠️ Not enough target samples to stratify. Using full data for training.")
-            tgt_train_df = target_df
-            tgt_val_df = target_df.iloc[:0]
+            tgt_train_files = tgt_files
+            tgt_val_files = []
         else:
-            tgt_train_df, tgt_val_df = train_test_split(
-                target_df,
+            tgt_train_files, tgt_val_files = train_test_split(
+                tgt_files,
                 test_size=0.2,
-                stratify=target_df[label_col],
+                stratify=tgt_labels,
                 random_state=42,
             )
 
+        tgt_train_df = target_df[target_df["filename"].isin(tgt_train_files)].reset_index(drop=True)
+        tgt_val_df = target_df[target_df["filename"].isin(tgt_val_files)].reset_index(drop=True)
+
         X_tgt_train, y_tgt_train = build_sequences(tgt_train_df, feature_cols, label_col, seq_len=sequence_length)
         X_tgt_val, y_tgt_val = build_sequences(tgt_val_df, feature_cols, label_col, seq_len=sequence_length)
+        
+        if len(X_tgt_train) == 0:
+            raise ValueError(
+                "No target training sequences could be generated. "
+                f"Reduce sequence_length (current {sequence_length}) or check dataset."
+            )
+        
 
         target_train = DataLoader(BatteryDataset(X_tgt_train, y_tgt_train, transform), batch_size=batch_size, shuffle=True)
         target_val   = DataLoader(BatteryDataset(X_tgt_val, y_tgt_val, transform), batch_size=batch_size, shuffle=False)
