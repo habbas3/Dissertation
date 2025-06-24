@@ -21,16 +21,28 @@ class Compose:
 
 # --- Sequence generation ---
 def build_sequences(df, feature_cols, label_col, seq_len=32):
+    """Return fixed length sequences, padding short files if necessary."""
     sequences, labels = [], []
     for _, group in df.groupby("filename"):
         group = group.sort_values("cycle_number")
         features = group[feature_cols].values
         labels_all = group[label_col].values
-        for i in range(len(features) - seq_len + 1):   # fix: +1 to get last window
-            seq = features[i:i+seq_len]                # shape [seq_len, features]
-            label = labels_all[i+seq_len-1]            # fix: last label in the window
+
+        if len(features) < seq_len:
+            # Pad by repeating the last row so CNNs still receive a minimum length
+            pad_len = seq_len - len(features)
+            pad = np.repeat(features[-1:], pad_len, axis=0)
+            seq = np.concatenate([features, pad], axis=0)
+            label = labels_all[-1]
             sequences.append(seq)
             labels.append(label)
+        else:
+            for i in range(len(features) - seq_len + 1):  # +1 to get last window
+                seq = features[i:i + seq_len]
+                label = labels_all[i + seq_len - 1]
+                sequences.append(seq)
+                labels.append(label)
+
     return np.array(sequences), np.array(labels)
 
 
@@ -44,14 +56,15 @@ class BatteryDataset(Dataset):
         return len(self.sequences)
 
     def __getitem__(self, idx):
-        x = self.sequences[idx]  # shape: (seq_len, n_features) or (n_features,)
+        x = self.sequences[idx]  # shape: (seq_len, n_features)
         y = self.labels[idx]
-        
+
         if x.ndim == 1:
-            x = np.expand_dims(x, axis=1)  
-        if x.ndim == 2:
-            x = x.T  
-        
+            x = np.expand_dims(x, axis=0)
+
+        if self.transform:
+            x = self.transform(x)
+
         x = torch.from_numpy(x).float()
         y = torch.tensor(y).long()
         return x, y
@@ -124,27 +137,9 @@ def load_battery_dataset(
     val_df = source_df[source_df["filename"].isin(val_files)].reset_index(drop=True)
     X_train, y_train = build_sequences(train_df, feature_cols, label_col, seq_len=sequence_length)
     X_val, y_val = build_sequences(val_df, feature_cols, label_col, seq_len=sequence_length)
-    
-    if len(X_train) == 0:
-        max_len = train_df.groupby("filename").size().max()
-        if max_len and max_len < sequence_length:
-            print(
-                f"⚠️ No sequences with length {sequence_length}. Reducing to {max_len}."
-            )
-            sequence_length = max_len
-            X_train, y_train = build_sequences(train_df, feature_cols, label_col, seq_len=sequence_length)
-            X_val, y_val = build_sequences(val_df, feature_cols, label_col, seq_len=sequence_length)
-        
-    if len(X_train) == 0:
-        raise ValueError(
-            "No training sequences could be generated even after adjusting sequence_length. "
-            f"Please check the dataset."
-        )
 
-    transform = Compose([Reshape()])  
-
-    source_train = DataLoader(BatteryDataset(X_train, y_train, transform), batch_size=batch_size, shuffle=True)
-    source_val   = DataLoader(BatteryDataset(X_val, y_val, transform), batch_size=batch_size, shuffle=False)
+    source_train = DataLoader(BatteryDataset(X_train, y_train), batch_size=batch_size, shuffle=True)
+    source_val   = DataLoader(BatteryDataset(X_val, y_val), batch_size=batch_size, shuffle=False)
 
     # --- Target split ---
     if not target_df.empty:
@@ -171,26 +166,9 @@ def load_battery_dataset(
         X_tgt_train, y_tgt_train = build_sequences(tgt_train_df, feature_cols, label_col, seq_len=sequence_length)
         X_tgt_val, y_tgt_val = build_sequences(tgt_val_df, feature_cols, label_col, seq_len=sequence_length)
         
-        if len(X_tgt_train) == 0:
-            max_len = tgt_train_df.groupby("filename").size().max()
-            if max_len and max_len < sequence_length:
-                print(
-                    f"⚠️ No target sequences with length {sequence_length}. Reducing to {max_len}."
-                )
-                sequence_length = max_len
-                X_tgt_train, y_tgt_train = build_sequences(tgt_train_df, feature_cols, label_col, seq_len=sequence_length)
-                X_tgt_val, y_tgt_val = build_sequences(tgt_val_df, feature_cols, label_col, seq_len=sequence_length)
 
-        
-        if len(X_tgt_train) == 0:
-            raise ValueError(
-                "No target training sequences could be generated even after adjusting sequence_length. "
-                "Please check the dataset."
-            )
-        
-
-        target_train = DataLoader(BatteryDataset(X_tgt_train, y_tgt_train, transform), batch_size=batch_size, shuffle=True)
-        target_val   = DataLoader(BatteryDataset(X_tgt_val, y_tgt_val, transform), batch_size=batch_size, shuffle=False)
+        target_train = DataLoader(BatteryDataset(X_tgt_train, y_tgt_train), batch_size=batch_size, shuffle=True)
+        target_val   = DataLoader(BatteryDataset(X_tgt_val, y_tgt_val), batch_size=batch_size, shuffle=False)
     else:
         target_train, target_val = None, None
 
