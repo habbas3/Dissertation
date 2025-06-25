@@ -8,10 +8,10 @@ import torch.nn.functional as F
 import torch
 
 class CNN(nn.Module):
-    def __init__(self, pretrained=False, in_channel=1):
+    def __init__(self, pretrained=False, in_channels=1):
         super(CNN, self).__init__()
         
-        self.conv1 = nn.Conv1d(in_channel, 32, kernel_size=3, stride=1, padding=1)
+        self.conv1 = nn.Conv1d(in_channels, 32, kernel_size=3, stride=1, padding=1)
         self.conv2 = nn.Conv1d(32, 64, kernel_size=3, stride=1, padding=1)
         self.pool = nn.AdaptiveAvgPool1d(1)  # compress to (B, 64, 1)
         
@@ -46,9 +46,9 @@ class CNN(nn.Module):
 
 
 class cnn_features(nn.Module):
-    def __init__(self, pretrained=False):
+    def __init__(self, pretrained=False, in_channels=1):
         super(cnn_features, self).__init__()
-        self.model_cnn = CNN(pretrained, in_channel=1)
+        self.model_cnn = CNN(pretrained, in_channels=in_channels)
         self.__in_features = 256
 
     def forward(self, x):

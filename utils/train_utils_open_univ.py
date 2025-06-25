@@ -8,7 +8,7 @@ import warnings
 from torch import optim
 import my_datasets.global_habbas3
 import models
-from models.cnn_1d_original import CNN
+# from models.cnn_1d_original import CNN
 # from models.cnn_1d_habbas import CNN
 # from models.cnn_1d_habbas_hyperparstudy import CNN as cnn_features_1d_hyperparstudy
 from models.wideresnet_habbas import WideResNet
@@ -224,7 +224,7 @@ class train_utils_open_univ(object):
             elif args.model_name == "cnn_openmax":
                 self.model = cnn_openmax(args, self.num_classes)
             elif args.model_name == "cnn_features_1d":
-                from models.cnn_1d_original import cnn_features
+                from models.cnn_1d import cnn_features
                 self.model = cnn_features(pretrained=args.pretrained, in_channels=args.input_channels)
             elif args.model_name == "cnn_features_1d_sa":
                 from models.cnn_1d_selfattention_habbas import cnn_features
@@ -263,7 +263,11 @@ class train_utils_open_univ(object):
         
         else:
             # generic model loader
-            self.model = getattr(models, args.model_name)(args.pretrained)
+            model_cls = getattr(models, args.model_name)
+            try:
+                self.model = model_cls(args.pretrained, in_channel=args.input_channels)
+            except TypeError:
+                self.model = model_cls(args.pretrained)
             first_conv = next((m for m in self.model.modules() if isinstance(m, nn.Conv1d)), None)
             if first_conv is not None:
                 kernel = first_conv.kernel_size[0] if isinstance(first_conv.kernel_size, tuple) else first_conv.kernel_size
@@ -493,7 +497,8 @@ class train_utils_open_univ(object):
     
                     if inputs.dim() == 2:
                         inputs = inputs.unsqueeze(1)
-                    if inputs.shape[1] != 1:
+                    if inputs.shape[1] != self.args.input_channels and \
+                       inputs.shape[-1] == self.args.input_channels:
                         inputs = inputs.permute(0, 2, 1)
     
                     self.optimizer.zero_grad()
