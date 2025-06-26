@@ -56,10 +56,13 @@ class BatteryDataset(Dataset):
         x = self.sequences[idx]  # shape: (seq_len, n_features) or (n_features,)
         y = self.labels[idx]
         
-        if x.ndim == 1:
-            x = np.expand_dims(x, axis=1)  
-        if x.ndim == 2:
-            x = x.T  
+        if self.transform is not None:
+            x = self.transform(x)
+        else:
+            if x.ndim == 1:
+                x = np.expand_dims(x, axis=1)
+            if x.ndim == 2:
+                x = x.T
         
         x = torch.from_numpy(x).float()
         y = torch.tensor(y).long()

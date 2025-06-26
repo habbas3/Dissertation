@@ -21,7 +21,7 @@ import warnings
 class CNN_OpenMax(nn.Module):
     def __init__(self, args, num_classes):
         super(CNN_OpenMax, self).__init__()
-        self.cnn = CNN(in_channel=args.input_channels) # Initialize the CNN model
+        self.cnn = CNN(pretrained=False, in_channel=args.input_channels)
         # self.attn = attention_sa(128)  # Self-attention layer after the CNN
         # self.attn_outliers = attention_outliers(128) 
         self.fc_input_size = 256

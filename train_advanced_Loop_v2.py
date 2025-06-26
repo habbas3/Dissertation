@@ -85,7 +85,7 @@ def parse_args():
     parser.add_argument('--print_step', type=int, default=50) #50
     parser.add_argument('--inconsistent', type=str, default='UAN')
     parser.add_argument('--th', type=float, default=0.5)
-    parser.add_argument('--input_channels', type=int, default=1)
+    parser.add_argument('--input_channels', type=int, default=7)
     parser.add_argument('--classification_label', type=str, default='eol_class')
     parser.add_argument('--sequence_length', type=int, default=32)
     parser.add_argument('--source_cathode', nargs='+', default=["NMC532", "NMC811", "HE5050", "NMC111"])
@@ -162,8 +162,8 @@ def main():
     transfer_cathodes = all_cathodes
 
     model_architectures = [
-        "cnn_features_1d",
-        "cnn_features_1d_sa",
+        # "cnn_features_1d",
+        # "cnn_features_1d_sa",
         "cnn_openmax",
         # "WideResNet",
         # "WideResNet_sa",

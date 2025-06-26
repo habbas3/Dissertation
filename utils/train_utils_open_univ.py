@@ -503,6 +503,7 @@ class train_utils_open_univ(object):
     
                     self.optimizer.zero_grad()
                     with torch.set_grad_enabled(phase == 'source_train'):
+                        # inputs = inputs.view(inputs.size(0), 1, -1)
                         outputs = self.model(inputs)
                         if isinstance(outputs, tuple):
                             if len(outputs) == 2:
