@@ -60,7 +60,7 @@ class CNN_OpenMax(nn.Module):
         return self.fc.out_features
     
 class CNN(nn.Module):
-    def __init__(self, pretrained=False, in_channel=1, out_channel=10):
+    def __init__(self, pretrained=False, in_channel=7, out_channel=10):
         super(CNN, self).__init__()
         if pretrained == True:
             warnings.warn("Pretrained model is not available")

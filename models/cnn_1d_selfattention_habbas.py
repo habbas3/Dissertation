@@ -11,7 +11,7 @@ from models.Self_Attention import OutlierAttention as attention_outliers
 
 # ----------------------------inputsize >=28-------------------------------------------------------------------------
 class CNN(nn.Module):
-    def __init__(self, pretrained=False, in_channels=6, out_features=10, conv_layers=None):
+    def __init__(self, pretrained=False, in_channels=7, out_features=10, conv_layers=None):
         super(CNN, self).__init__()
         if pretrained:
             warnings.warn("Pretrained model is not available")
@@ -66,7 +66,7 @@ class CNN(nn.Module):
 
 # convnet without the last layer
 class cnn_features(nn.Module):
-    def __init__(self, pretrained=False, in_channels=6):
+    def __init__(self, pretrained=False, in_channels=7):
         super(cnn_features, self).__init__()
         self.model_cnn = CNN(pretrained=pretrained, in_channels=in_channels)
         self.__in_features = 256

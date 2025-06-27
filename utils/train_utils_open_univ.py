@@ -15,7 +15,7 @@ from models.wideresnet_habbas import WideResNet
 from models.wideresnet_self_attention_habbas import WideResNet_sa
 from models.wideresnet_multihead_attention import WideResNet_mh
 from models.wideresnet_edited_habbas import WideResNet_edited
-from models.cnn_1d_selfattention_habbas import cnn_features as cnn_features_1d_sa
+# from models.cnn_1d_selfattention_habbas import cnn_features as cnn_features_1d_sa
 from models.cnn_sa_openmax_habbas import CNN_OpenMax as cnn_openmax
 import datasets
 from utils.counter import AccuracyCounter
@@ -214,7 +214,7 @@ class train_utils_open_univ(object):
         
         # Define the model
         self.max_iter = len(self.dataloaders['source_train']) * args.max_epoch
-        if args.model_name in ["cnn_openmax", "WideResNet", "WideResNet_sa", "WideResNet_mh", "WideResNet_edited"]:
+        if args.model_name in ["cnn_openmax", "cnn_features_1d_sa", "cnn_features_1d","WideResNet", "WideResNet_sa", "WideResNet_mh", "WideResNet_edited"]:
             if args.model_name == "WideResNet":
                 self.model = WideResNet(args.layers, args.widen_factor, args.droprate, self.num_classes)
             elif args.model_name == "WideResNet_sa":
@@ -615,6 +615,7 @@ class train_utils_open_univ(object):
                         self.optimizer.step()
     
                     running_loss += loss.item() * inputs.size(0)
+                    print(f"🔍 outputs shape: {outputs.shape}, labels shape: {labels.shape}")
                     _, preds = torch.max(logits, 1)
                     if preds.numel() == 0:
                         continue

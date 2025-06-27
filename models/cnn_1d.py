@@ -8,7 +8,7 @@ import torch.nn.functional as F
 import torch
 
 class CNN(nn.Module):
-    def __init__(self, pretrained=False, in_channels=1):
+    def __init__(self, pretrained=False, in_channels=7):
         super(CNN, self).__init__()
         
         self.conv1 = nn.Conv1d(in_channels, 32, kernel_size=3, stride=1, padding=1)
@@ -46,7 +46,7 @@ class CNN(nn.Module):
 
 
 class cnn_features(nn.Module):
-    def __init__(self, pretrained=False, in_channels=1):
+    def __init__(self, pretrained=False, in_channels=7):
         super(cnn_features, self).__init__()
         self.model_cnn = CNN(pretrained, in_channels=in_channels)
         self.__in_features = 256
