@@ -13,7 +13,8 @@ class CNN_OpenMax(nn.Module):
     def __init__(self, args, num_classes):
         super(CNN_OpenMax, self).__init__()
         self.num_classes = num_classes
-        self.cnn = CNN()  # Base CNN model with self-attention and flattening
+        in_channels = getattr(args, "input_channels", 1)
+        self.cnn = CNN(in_channel=in_channels)  # Base CNN model
         self.fc_input_size = 256  # Output of CNN
         self.fc = nn.utils.parametrizations.spectral_norm(nn.Linear(self.fc_input_size, self.num_classes))
         self.openmax = OpenMaxLayer(num_features=self.fc_input_size, num_classes=self.num_classes)

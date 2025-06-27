@@ -17,6 +17,7 @@ from models.wideresnet_edited import WideResNet_edited
 from models.attention import MultiHeadAttention as attention
 from models.Self_Attention import SelfAttention as attention_sa
 from models.Self_Attention import OutlierAttention as attention_outliers
-from models.cnn_sa_openmax import CNN_OpenMax as cnn_openmax
+# from models.cnn_sa_openmax import CNN_OpenMax as cnn_openmax
+from models.cnn_sa_openmax_habbas import CNN_OpenMax as cnn_openmax
 from models.cnn_1d_habbas_hyperparstudy import CNN as cnn_features_1d_hyperparstudy
 # from models.AttentionCNN import AttentionCNN as attention

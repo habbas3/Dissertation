@@ -66,9 +66,9 @@ class CNN(nn.Module):
 
 
 class cnn_features(nn.Module):
-    def __init__(self, pretrained=False, num_classes=3):
+    def __init__(self, pretrained=False, num_classes=3, in_channel=1):
         super(cnn_features, self).__init__()
-        self.model_cnn = CNN(num_classes=num_classes, pretrained=pretrained, in_channel=1)
+        self.model_cnn = CNN(num_classes=num_classes, pretrained=pretrained, in_channel=in_channel)
         self.__in_features = 256
 
     def forward(self, x):
