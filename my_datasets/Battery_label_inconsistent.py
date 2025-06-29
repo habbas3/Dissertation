@@ -120,9 +120,15 @@ def load_battery_dataset(
     labels = file_labels.values
 
     if len(np.unique(labels)) == 1 or np.min(np.bincount(labels)) < 2:
-        print("⚠️ Not enough samples to stratify source files. Using all files for training.")
-        train_files = files
-        val_files = []
+        print("⚠️ Not enough samples to stratify source files. Using random split.")
+        if len(files) < 2:
+            train_files, val_files = files, []
+        else:
+            train_files, val_files = train_test_split(
+                files,
+                test_size=0.2,
+                random_state=42,
+            )
 
     else:
         train_files, val_files = train_test_split(
@@ -151,9 +157,15 @@ def load_battery_dataset(
         tgt_labels = tgt_file_labels.values
 
         if len(np.unique(tgt_labels)) == 1 or np.min(np.bincount(tgt_labels)) < 2:
-            print(f"⚠️ Not enough target samples to stratify. Using full data for training.")
-            tgt_train_files = tgt_files
-            tgt_val_files = []
+            print(f"⚠️ Not enough target samples to stratify. Using random split.")
+            if len(tgt_files) < 2:
+                tgt_train_files, tgt_val_files = tgt_files, []
+            else:
+                tgt_train_files, tgt_val_files = train_test_split(
+                    tgt_files,
+                    test_size=0.2,
+                    random_state=42,
+                )
         else:
             tgt_train_files, tgt_val_files = train_test_split(
                 tgt_files,

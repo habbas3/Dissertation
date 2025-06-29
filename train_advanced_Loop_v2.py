@@ -163,8 +163,8 @@ def main():
 
     model_architectures = [
         "cnn_features_1d",
-        "cnn_features_1d_sa",
-        "cnn_openmax",
+        # "cnn_features_1d_sa",
+        # "cnn_openmax",
         # "WideResNet",
         # "WideResNet_sa",
         # "WideResNet_edited",
@@ -201,7 +201,7 @@ def main():
     print("\n📊 Baseline training (target only)")
     for cathode in transfer_cathodes:
         args.source_cathode = [cathode]
-        args.target_cathode = []
+        args.target_cathode = [cathode]
         for model_name in model_architectures:
             global_habbas3.init()
             args.model_name = model_name
