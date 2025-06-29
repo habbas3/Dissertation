@@ -28,7 +28,7 @@ class CNN(nn.Module):
         x = self.conv1(x)
         x = F.relu(x)
         x = self.pool(self.conv2(x))
-        x = self.flatten(x)
+        x = x.squeeze(-1) 
         x = self.fc1(x)
         x = self.relu(x)
         logits = self.classifier(x)
