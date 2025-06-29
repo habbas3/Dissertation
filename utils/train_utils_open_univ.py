@@ -244,7 +244,13 @@ class train_utils_open_univ(object):
             pretrained_path = getattr(args, "pretrained_model_path", None)
             if pretrained_path and os.path.isfile(pretrained_path):
                 print(f"🔁 Loading pretrained model from: {pretrained_path}")
-                self.model.load_state_dict(torch.load(pretrained_path, map_location=self.device))
+                state_dict = torch.load(pretrained_path, map_location=self.device)
+                incompatible = self.model.load_state_dict(state_dict, strict=False)
+                if incompatible.missing_keys:
+                    print(f"⚠️ Missing keys when loading pretrained model: {incompatible.missing_keys}")
+                if incompatible.unexpected_keys:
+                    print(f"⚠️ Unexpected keys when loading pretrained model: {incompatible.unexpected_keys}")
+                # self.model.load_state_dict(torch.load(pretrained_path, map_location=self.device))
             
             # if getattr(self.args, "transfer", False) and getattr(self.args, "pretrained_model_path", None):
             #     print(f"🔁 Loading pretrained model from {self.args.pretrained_model_path}")
@@ -281,7 +287,13 @@ class train_utils_open_univ(object):
             pretrained_path = getattr(args, "pretrained_model_path", None)
             if pretrained_path and os.path.isfile(pretrained_path):
                 print(f"🔁 Loading pretrained model from: {pretrained_path}")
-                self.model.load_state_dict(torch.load(pretrained_path, map_location=self.device))
+                state_dict = torch.load(pretrained_path, map_location=self.device)
+                incompatible = self.model.load_state_dict(state_dict, strict=False)
+                if incompatible.missing_keys:
+                    print(f"⚠️ Missing keys when loading pretrained model: {incompatible.missing_keys}")
+                if incompatible.unexpected_keys:
+                    print(f"⚠️ Unexpected keys when loading pretrained model: {incompatible.unexpected_keys}")
+                # self.model.load_state_dict(torch.load(pretrained_path, map_location=self.device))
                 
             if args.bottleneck:
                 self.bottleneck_layer = nn.Sequential(
