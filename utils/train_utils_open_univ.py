@@ -617,15 +617,24 @@ class train_utils_open_univ(object):
                     running_loss += loss.item() * inputs.size(0)
                     print(f"🔍 outputs shape: {outputs.shape}, labels shape: {labels.shape}")
                     _, preds = torch.max(logits, 1)
+                    if phase == 'source_train' and target_iter is not None:
+                        preds = preds[:source_size]
+                        logits_for_log = logits[:source_size]
+                        inputs_for_log = inputs[:source_size]
+                    else:
+                        logits_for_log = logits
+                        inputs_for_log = inputs
+                        
                     if preds.numel() == 0:
                         continue
+                    
                     running_corrects += torch.sum(preds == labels.data)
                     running_total += labels.size(0)
     
                     preds_all.extend(preds.detach().cpu().numpy())
                     labels_all.extend(labels.detach().cpu().numpy())
-                    logits_all.append(logits.detach().cpu())
-                    inputs_all.append(inputs.detach().cpu())
+                    logits_all.append(logits_for_log.detach().cpu())
+                    inputs_all.append(inputs_for_log.detach().cpu())
     
                 epoch_loss = running_loss / running_total if running_total > 0 else 0.0
                 epoch_acc = running_corrects.double() / running_total if running_total > 0 else 0.0

@@ -162,8 +162,8 @@ def main():
     transfer_cathodes = all_cathodes
 
     model_architectures = [
-        # "cnn_features_1d",
-        # "cnn_features_1d_sa",
+        "cnn_features_1d",
+        "cnn_features_1d_sa",
         "cnn_openmax",
         # "WideResNet",
         # "WideResNet_sa",
