@@ -1,5 +1,5 @@
 
-def forward(self, x):import math
+import math
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -177,7 +177,7 @@ class NetworkBlock(nn.Module):
 
 
 class WideResNet_edited(nn.Module):
-    def __init__(self, depth=16, widen_factor=1, drop_rate=0.3, num_classes=10, input_channels=6):
+    def __init__(self, depth=16, widen_factor=1, drop_rate=0.3, num_classes=10, input_channels=7):
         super(WideResNet_edited, self).__init__()
         self.num_classes = num_classes
         nChannels = [16, 16 * widen_factor, 32 * widen_factor, 64 * widen_factor]

@@ -158,16 +158,28 @@ def main():
     # Define cathodes
     # pretrain_cathodes = ["HE5050", "NMC111", "NMC532", "FCG", "NMC811"]
     # transfer_cathodes = ["NMC622", "Li1.2Ni0.3Mn0.6O2", "Li1.35Ni0.33Mn0.67O2.35"]
-    pretrain_cathodes = all_cathodes
-    transfer_cathodes = all_cathodes
+    pretrain_cathodes = [
+        "HE5050",
+        "NMC111",
+        "NMC532",
+        "FCG",
+        "NMC811",
+        "Li1.2Ni0.3Mn0.6O2",
+    ]
+
+    transfer_cathodes = [
+        "NMC622",
+        "5Vspinel",
+        "Li1.35Ni0.33Mn0.67O2.35",
+    ]
 
     model_architectures = [
         "cnn_features_1d",
-        # "cnn_features_1d_sa",
-        # "cnn_openmax",
-        # "WideResNet",
-        # "WideResNet_sa",
-        # "WideResNet_edited",
+        "cnn_features_1d_sa",
+        "cnn_openmax",
+        "WideResNet",
+        "WideResNet_sa",
+        "WideResNet_edited",
     ]
 
     # skip_pretraining = False
@@ -201,7 +213,7 @@ def main():
     print("\n📊 Baseline training (target only)")
     for cathode in transfer_cathodes:
         args.source_cathode = [cathode]
-        args.target_cathode = [cathode]
+        args.target_cathode = []
         for model_name in model_architectures:
             global_habbas3.init()
             args.model_name = model_name
@@ -210,6 +222,7 @@ def main():
             # args.source_cathode = [c for c in pretrain_cathodes if c != target_cathode]
             # args.target_cathode = [target_cathode]
             args.pretrained = False
+            args.pretrained_model_path = None
             os.environ["CUDA_VISIBLE_DEVICES"] = args.cuda_device.strip()
 
             # print(f"\n🚀 Running Optuna for {model_name} → {target_cathode}")
@@ -253,8 +266,8 @@ def main():
             # Fine-tune on target cathode
             args.pretrained = True
             args.pretrained_model_path = os.path.join(pre_dir, "best_model.pth")
-            args.source_cathode = other_cathodes
-            args.target_cathode = [cathode]
+            args.source_cathode = [cathode]
+            args.target_cathode = []
             ft_dir = os.path.join(args.checkpoint_dir, f"transfer_{model_name}_{cathode}_{datetime.now().strftime('%m%d')}")
             os.makedirs(ft_dir, exist_ok=True)
             _, transfer_acc = run_experiment(args, ft_dir)
