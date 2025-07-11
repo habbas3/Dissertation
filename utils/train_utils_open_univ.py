@@ -474,6 +474,7 @@ class train_utils_open_univ(object):
         best_accuracy = 0.0
         best_model_wts = copy.deepcopy(self.model.state_dict())
         best_hscore = 0.0
+        best_common_acc = 0.0
     
         for epoch in range(self.args.max_epoch):
             print(f"{datetime.now().strftime('%m-%d %H:%M:%S')} ----- Epoch {epoch + 1}/{self.args.max_epoch} -----")
@@ -675,6 +676,9 @@ class train_utils_open_univ(object):
                         2 * common_acc * outlier_acc / (common_acc + outlier_acc)
                         if (common_acc + outlier_acc) > 0 else 0.0
                     )
+                    
+                    if common_acc > best_common_acc:
+                        best_common_acc = common_acc
 
                     print(
                         f"{datetime.now().strftime('%m-%d %H:%M:%S')} Epoch: {epoch} {phase}-hscore: {hscore:.4f}"
@@ -687,7 +691,8 @@ class train_utils_open_univ(object):
     
         print("Training complete.")
         self.model.load_state_dict(best_model_wts)
-        self.best_val_acc_class = best_hscore
+        self.best_val_acc_class = best_common_acc if best_common_acc > 0 else best_hscore
+        
         torch.save(
             self.model.state_dict(),
             os.path.join(self.save_dir, "best_model.pth")
