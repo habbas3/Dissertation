@@ -658,12 +658,30 @@ class train_utils_open_univ(object):
                     print("✓ Best model updated based on source_val accuracy.")
     
                 if phase == 'target_val':
-                    acc_class = accuracy_score(labels_all, preds_all)
-                    
-                    print(f"{datetime.now().strftime('%m-%d %H:%M:%S')} Epoch: {epoch} {phase}-acc_class: {acc_class:.4f}")
-                    if acc_class > best_hscore:
-                        best_hscore = acc_class
-                        print("✓ Best target acc_class updated.")
+                    preds_np = np.array(preds_all)
+                    labels_np = np.array(labels_all)
+                    known_mask = labels_np < self.num_classes
+                    out_mask = labels_np >= self.num_classes
+
+                    common_acc = (
+                        np.mean(preds_np[known_mask] == labels_np[known_mask])
+                        if known_mask.any() else 0.0
+                    )
+                    outlier_acc = (
+                        np.mean(preds_np[out_mask] == labels_np[out_mask])
+                        if out_mask.any() else 0.0
+                    )
+                    hscore = (
+                        2 * common_acc * outlier_acc / (common_acc + outlier_acc)
+                        if (common_acc + outlier_acc) > 0 else 0.0
+                    )
+
+                    print(
+                        f"{datetime.now().strftime('%m-%d %H:%M:%S')} Epoch: {epoch} {phase}-hscore: {hscore:.4f}"
+                    )
+                    if hscore > best_hscore:
+                        best_hscore = hscore
+                        print("✓ Best target hscore updated.")
     
             self.lr_scheduler.step()
     
