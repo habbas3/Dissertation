@@ -471,7 +471,7 @@ class train_utils_open_univ(object):
             #                                 num_classes=self.num_classes)
 
     def train(self):
-        best_accuracy = 0.0
+        best_source_val_acc = 0.0
         best_model_wts = copy.deepcopy(self.model.state_dict())
         best_hscore = 0.0
         best_common_acc = 0.0
@@ -653,8 +653,8 @@ class train_utils_open_univ(object):
                 epoch_acc = running_corrects.double() / running_total if running_total > 0 else 0.0
                 print(f"{datetime.now().strftime('%m-%d %H:%M:%S')} Epoch: {epoch} {phase}-Loss: {epoch_loss:.4f} {phase}-Acc: {epoch_acc:.4f}")
     
-                if phase == 'source_val' and epoch_acc > best_accuracy:
-                    best_accuracy = epoch_acc
+                if phase == 'source_val' and epoch_acc > best_source_val_acc:
+                    best_source_val_acc = epoch_acc
                     best_model_wts = copy.deepcopy(self.model.state_dict())
                     print("✓ Best model updated based on source_val accuracy.")
     
@@ -691,7 +691,11 @@ class train_utils_open_univ(object):
     
         print("Training complete.")
         self.model.load_state_dict(best_model_wts)
-        self.best_val_acc_class = best_common_acc if best_common_acc > 0 else best_hscore
+        self.best_source_val_acc = float(best_source_val_acc)
+        if self.dataloaders.get('target_val') is None:
+            self.best_val_acc_class = self.best_source_val_acc
+        else:
+            self.best_val_acc_class = best_common_acc if best_common_acc > 0 else best_hscore
         
         torch.save(
             self.model.state_dict(),

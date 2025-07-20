@@ -213,7 +213,7 @@ def main():
     print("\n📊 Baseline training (target only)")
     for cathode in transfer_cathodes:
         args.source_cathode = [cathode]
-        args.target_cathode = []
+        args.target_cathode = [cathode]
         for model_name in model_architectures:
             global_habbas3.init()
             args.model_name = model_name
@@ -267,7 +267,7 @@ def main():
             args.pretrained = True
             args.pretrained_model_path = os.path.join(pre_dir, "best_model.pth")
             args.source_cathode = [cathode]
-            args.target_cathode = []
+            args.target_cathode = [cathode]
             ft_dir = os.path.join(args.checkpoint_dir, f"transfer_{model_name}_{cathode}_{datetime.now().strftime('%m%d')}")
             os.makedirs(ft_dir, exist_ok=True)
             _, transfer_acc = run_experiment(args, ft_dir)
