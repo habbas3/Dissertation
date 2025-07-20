@@ -226,42 +226,60 @@ def main():
     # Transfer Learning Stage
     # for target_cathode in transfer_cathodes:
         # ---- Baseline Training on each cathode independently ----
-    print("\n📊 Baseline training (target only)")
+    # ---------------- Baseline ----------------
+    print("\n📊 Baseline training (cnn_features_1d)")
+    baseline_results = {}
+    args.model_name = "cnn_features_1d"
+    args.pretrained = False
+    args.pretrained_model_path = None
+    args.source_cathode = pretrain_cathodes
     for cathode in transfer_cathodes:
-        args.source_cathode = [cathode]
+        # args.source_cathode = [cathode]
+        global_habbas3.init()
         args.target_cathode = [cathode]
-        for model_name in model_architectures:
-            global_habbas3.init()
-            args.model_name = model_name
+        # for model_name in model_architectures:
+        #     global_habbas3.init()
+        #     args.model_name = model_name
 
-            # Use all pretrain_cathodes except target as source_cathodes
-            # args.source_cathode = [c for c in pretrain_cathodes if c != target_cathode]
-            # args.target_cathode = [target_cathode]
-            args.pretrained = False
-            args.pretrained_model_path = None
-            os.environ["CUDA_VISIBLE_DEVICES"] = args.cuda_device.strip()
+        #     # Use all pretrain_cathodes except target as source_cathodes
+        #     # args.source_cathode = [c for c in pretrain_cathodes if c != target_cathode]
+        #     # args.target_cathode = [target_cathode]
+        #     args.pretrained = False
+        #     args.pretrained_model_path = None
+        #     os.environ["CUDA_VISIBLE_DEVICES"] = args.cuda_device.strip()
 
-            # print(f"\n🚀 Running Optuna for {model_name} → {target_cathode}")
+        #     # print(f"\n🚀 Running Optuna for {model_name} → {target_cathode}")
 
-            # # Define pretrained checkpoint directory for this model
-            # # (here we simply use the first source cathode pretrained file for simplicity)
-            # pretrained_cathode = args.source_cathode[0]
-            # pretrained_dir = os.path.join(args.checkpoint_dir, f"Pretrain_{model_name}_{pretrained_cathode}_{datetime.now().strftime('%m%d')}")
-            # args.pretrained_model_path = os.path.join(pretrained_dir, "best_model.pth")
-            # args.transfer = True
+        #     # # Define pretrained checkpoint directory for this model
+        #     # # (here we simply use the first source cathode pretrained file for simplicity)
+        #     # pretrained_cathode = args.source_cathode[0]
+        #     # pretrained_dir = os.path.join(args.checkpoint_dir, f"Pretrain_{model_name}_{pretrained_cathode}_{datetime.now().strftime('%m%d')}")
+        #     # args.pretrained_model_path = os.path.join(pretrained_dir, "best_model.pth")
+        #     # args.transfer = True
             
-            base_dir = os.path.join(args.checkpoint_dir, f"baseline_{model_name}_{cathode}_{datetime.now().strftime('%m%d')}")
-            os.makedirs(base_dir, exist_ok=True)
-            _, base_acc, base_time = run_experiment(args, base_dir)
-            results.append({"cathode": cathode, "model": model_name, "baseline": base_acc, "baseline_time": base_time})
-            print(f"✅ Baseline {model_name} on {cathode}: {base_acc:.4f} ({base_time:.1f}s)")
+        #     base_dir = os.path.join(args.checkpoint_dir, f"baseline_{model_name}_{cathode}_{datetime.now().strftime('%m%d')}")
+        #     os.makedirs(base_dir, exist_ok=True)
+        #     _, base_acc, base_time = run_experiment(args, base_dir)
+        #     results.append({"cathode": cathode, "model": model_name, "baseline": base_acc, "baseline_time": base_time})
+        #     print(f"✅ Baseline {model_name} on {cathode}: {base_acc:.4f} ({base_time:.1f}s)")
 
-            # run_optuna_search(args, model_name, n_trials=25)
+        #     # run_optuna_search(args, model_name, n_trials=25)
             
-            # ---- Pretrain on other cathodes then fine-tune on target ----
+        #     # ---- Pretrain on other cathodes then fine-tune on target ----
+        os.environ["CUDA_VISIBLE_DEVICES"] = args.cuda_device.strip()
+        base_dir = os.path.join(
+            args.checkpoint_dir,
+            f"baseline_cnn1d_{cathode}_{datetime.now().strftime('%m%d')}"
+        )
+        os.makedirs(base_dir, exist_ok=True)
+        _, base_acc, base_time = run_experiment(args, base_dir)
+        baseline_results[cathode] = (base_acc, base_time)
+        print(f"✅ Baseline cnn_features_1d -> {cathode}: {base_acc:.4f} ({base_time:.1f}s)")
+
+    # --------------- Transfer Learning -----------------
     print("\n🔧 Transfer learning per cathode")
     for cathode in transfer_cathodes:
-        other_cathodes = [c for c in pretrain_cathodes if c != cathode]
+        # other_cathodes = [c for c in pretrain_cathodes if c != cathode]
         for model_name in model_architectures:
             global_habbas3.init()
             args.model_name = model_name
@@ -274,9 +292,16 @@ def main():
             # print(f"✅  Fine-tuned {model_name} → {target_cathode}: tgt_val_acc={tgt_acc:.4f}")
             
             # Pretrain on all other cathodes
-            args.source_cathode = other_cathodes
+            # args.source_cathode = other_cathodes
+            # Pretrain on all source cathodes
+            args.pretrained = False
+            args.source_cathode = pretrain_cathodes
             args.target_cathode = []
-            pre_dir = os.path.join(args.checkpoint_dir, f"pretrain_{model_name}_{cathode}_{datetime.now().strftime('%m%d')}")
+            # pre_dir = os.path.join(args.checkpoint_dir, f"pretrain_{model_name}_{cathode}_{datetime.now().strftime('%m%d')}")
+            pre_dir = os.path.join(
+                args.checkpoint_dir,
+                f"pretrain_{model_name}_{cathode}_{datetime.now().strftime('%m%d')}"
+            )
             os.makedirs(pre_dir, exist_ok=True)
             _, _ = run_experiment(args, pre_dir)
 
@@ -285,29 +310,48 @@ def main():
             args.pretrained_model_path = os.path.join(pre_dir, "best_model.pth")
             args.source_cathode = [cathode]
             args.target_cathode = [cathode]
-            ft_dir = os.path.join(args.checkpoint_dir, f"transfer_{model_name}_{cathode}_{datetime.now().strftime('%m%d')}")
+            # ft_dir = os.path.join(args.checkpoint_dir, f"transfer_{model_name}_{cathode}_{datetime.now().strftime('%m%d')}")
+            ft_dir = os.path.join(
+                args.checkpoint_dir,
+                f"transfer_{model_name}_{cathode}_{datetime.now().strftime('%m%d')}"
+            )
             os.makedirs(ft_dir, exist_ok=True)
             _, transfer_acc, transfer_time = run_experiment(args, ft_dir)
 
             # Update results list with transfer accuracy
-            base_value = 0
-            for r in results:
-                if r["cathode"] == cathode and r["model"] == model_name:
-                    base_value = r["baseline"]
-                    base_time = r.get("baseline_time", 0)
-                    r["transfer"] = transfer_acc
-                    r["transfer_time"] = transfer_time
-                    break
-            print(f"✅ {model_name} on {cathode}: baseline -> {base_value:.4f} ({base_time:.1f}s) | transfer -> {transfer_acc:.4f} ({transfer_time:.1f}s)")
+            # base_value = 0
+            # for r in results:
+            #     if r["cathode"] == cathode and r["model"] == model_name:
+            #         base_value = r["baseline"]
+            #         base_time = r.get("baseline_time", 0)
+            #         r["transfer"] = transfer_acc
+            #         r["transfer_time"] = transfer_time
+            #         break
+            # print(f"✅ {model_name} on {cathode}: baseline -> {base_value:.4f} ({base_time:.1f}s) | transfer -> {transfer_acc:.4f} ({transfer_time:.1f}s)")
+            base_acc, base_time = baseline_results[cathode]
+            results.append({
+                "cathode": cathode,
+                "model": model_name,
+                "baseline": base_acc,
+                "baseline_time": base_time,
+                "transfer": transfer_acc,
+                "transfer_time": transfer_time,
+            })
+            print(
+                f"✅ {model_name} on {cathode}: baseline -> {base_acc:.4f} ({base_time:.1f}s) | transfer -> {transfer_acc:.4f} ({transfer_time:.1f}s)"
+            )
 
     # Print final summary
     print("\n===== Summary =====")
     for r in results:
-        b = r.get("baseline", 0)
-        t = r.get("transfer", 0)
-        bt = r.get("baseline_time", 0)
-        tt = r.get("transfer_time", 0)
-        print(f"{r['model']} {r['cathode']}: baseline {b:.4f} ({bt:.1f}s) → transfer {t:.4f} ({tt:.1f}s)")
+        print(
+            f"{r['model']} {r['cathode']}: baseline {r['baseline']:.4f} ({r['baseline_time']:.1f}s) → transfer {r['transfer']:.4f} ({r['transfer_time']:.1f}s)"
+        )
+        # b = r.get("baseline", 0)
+        # t = r.get("transfer", 0)
+        # bt = r.get("baseline_time", 0)
+        # tt = r.get("transfer_time", 0)
+        # print(f"{r['model']} {r['cathode']}: baseline {b:.4f} ({bt:.1f}s) → transfer {t:.4f} ({tt:.1f}s)")
 
 
 if __name__ == '__main__':
