@@ -29,6 +29,7 @@ from collections import Counter
 from models.optuna_search import run_optuna_search
 import pandas as pd
 from torch.utils.data import Dataset, DataLoader
+import time
 
 
 import sys
@@ -46,6 +47,16 @@ if torch.cuda.is_available():
     torch.cuda.manual_seed_all(SEED)
 torch.backends.cudnn.deterministic = True
 torch.backends.cudnn.benchmark = False
+
+
+def reset_seed(seed=SEED):
+    torch.manual_seed(seed)
+    np.random.seed(seed)
+    random.seed(seed)
+    if torch.cuda.is_available():
+        torch.cuda.manual_seed(seed)
+        torch.cuda.manual_seed_all(seed)
+
 
 def parse_args():
     parser = argparse.ArgumentParser(description='Train')
@@ -97,9 +108,12 @@ def parse_args():
     return parser.parse_args()
 
 def run_experiment(args, save_dir, trial=None):
+    reset_seed()
     setlogger(os.path.join(save_dir, 'train.log'))
     for k, v in vars(args).items():
         logging.info(f"{k}: {v}")
+        
+    start_time = time.time()
 
     # ✅ Load dataset using cathode filters
     source_train_dataset, source_val_dataset, target_train_dataset, target_val_dataset, label_names, df = load_battery_dataset(
@@ -143,7 +157,9 @@ def run_experiment(args, save_dir, trial=None):
     )
 
     trainer.setup()
-    return trainer.train()
+    model, acc = trainer.train()
+    elapsed = time.time() - start_time
+    return model, acc, elapsed
 
 
 
@@ -236,8 +252,9 @@ def main():
             
             base_dir = os.path.join(args.checkpoint_dir, f"baseline_{model_name}_{cathode}_{datetime.now().strftime('%m%d')}")
             os.makedirs(base_dir, exist_ok=True)
-            _, base_acc = run_experiment(args, base_dir)
-            results.append({"cathode": cathode, "model": model_name, "baseline": base_acc})
+            _, base_acc, base_time = run_experiment(args, base_dir)
+            results.append({"cathode": cathode, "model": model_name, "baseline": base_acc, "baseline_time": base_time})
+            print(f"✅ Baseline {model_name} on {cathode}: {base_acc:.4f} ({base_time:.1f}s)")
 
             # run_optuna_search(args, model_name, n_trials=25)
             
@@ -270,23 +287,27 @@ def main():
             args.target_cathode = [cathode]
             ft_dir = os.path.join(args.checkpoint_dir, f"transfer_{model_name}_{cathode}_{datetime.now().strftime('%m%d')}")
             os.makedirs(ft_dir, exist_ok=True)
-            _, transfer_acc = run_experiment(args, ft_dir)
+            _, transfer_acc, transfer_time = run_experiment(args, ft_dir)
 
             # Update results list with transfer accuracy
             base_value = 0
             for r in results:
                 if r["cathode"] == cathode and r["model"] == model_name:
                     base_value = r["baseline"]
+                    base_time = r.get("baseline_time", 0)
                     r["transfer"] = transfer_acc
+                    r["transfer_time"] = transfer_time
                     break
-            print(f"✅ {model_name} on {cathode}: baseline -> {base_value:.4f} | transfer -> {transfer_acc:.4f}")
+            print(f"✅ {model_name} on {cathode}: baseline -> {base_value:.4f} ({base_time:.1f}s) | transfer -> {transfer_acc:.4f} ({transfer_time:.1f}s)")
 
     # Print final summary
     print("\n===== Summary =====")
     for r in results:
         b = r.get("baseline", 0)
         t = r.get("transfer", 0)
-        print(f"{r['model']} {r['cathode']}: baseline {b:.4f} → transfer {t:.4f}")
+        bt = r.get("baseline_time", 0)
+        tt = r.get("transfer_time", 0)
+        print(f"{r['model']} {r['cathode']}: baseline {b:.4f} ({bt:.1f}s) → transfer {t:.4f} ({tt:.1f}s)")
 
 
 if __name__ == '__main__':

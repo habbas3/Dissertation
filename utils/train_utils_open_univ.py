@@ -672,10 +672,13 @@ class train_utils_open_univ(object):
                         np.mean(preds_np[out_mask] == labels_np[out_mask])
                         if out_mask.any() else 0.0
                     )
-                    hscore = (
-                        2 * common_acc * outlier_acc / (common_acc + outlier_acc)
-                        if (common_acc + outlier_acc) > 0 else 0.0
-                    )
+                    if not out_mask.any() and known_mask.any():
+                        hscore = common_acc
+                    elif not known_mask.any() and out_mask.any():
+                        hscore = outlier_acc
+                    else:
+                        denom = common_acc + outlier_acc
+                        hscore = (2 * common_acc * outlier_acc / denom) if denom > 0 else 0.0
                     
                     if common_acc > best_common_acc:
                         best_common_acc = common_acc
