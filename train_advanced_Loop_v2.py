@@ -303,7 +303,8 @@ def main():
                 f"pretrain_{model_name}_{cathode}_{datetime.now().strftime('%m%d')}"
             )
             os.makedirs(pre_dir, exist_ok=True)
-            _, _ = run_experiment(args, pre_dir)
+            _, _, _ = run_experiment(args, pre_dir)
+            # _, _ = run_experiment(args, pre_dir)
 
             # Fine-tune on target cathode
             args.pretrained = True
