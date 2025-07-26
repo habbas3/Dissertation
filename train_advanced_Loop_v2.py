@@ -18,7 +18,7 @@ import torch
 import numpy as np
 import sklearn
 import warnings
-from sklearn.metrics import accuracy_score, roc_auc_score, precision_recall_curve, auc
+from sklearn.metrics import accuracy_score, roc_auc_score, precision_recall_curve, auc, ConfusionMatrixDisplay, confusion_matrix
 import faulthandler; faulthandler.enable()
 import random
 import optuna
@@ -162,6 +162,36 @@ def run_experiment(args, save_dir, trial=None):
     return model, acc, elapsed
 
 
+def evaluate_model(model, args):
+    """Run inference on the target validation set and return labels and predictions."""
+    _, _, _, target_val_loader, _, _ = load_battery_dataset(
+        csv_path=args.csv,
+        source_cathodes=args.source_cathode,
+        target_cathodes=args.target_cathode,
+        classification_label=args.classification_label,
+        batch_size=args.batch_size,
+        sequence_length=args.sequence_length,
+    )
+
+    if target_val_loader is None:
+        return np.array([]), np.array([])
+
+    device = next(model.parameters()).device
+    model.eval()
+    all_labels, all_preds = [], []
+    with torch.no_grad():
+        for inputs, labels in target_val_loader:
+            inputs = inputs.to(device)
+            labels = labels.to(device)
+            outputs = model(inputs)
+            if isinstance(outputs, tuple):
+                outputs = outputs[0]
+            preds = outputs.argmax(dim=1)
+            all_labels.extend(labels.cpu().numpy())
+            all_preds.extend(preds.cpu().numpy())
+
+    return np.array(all_labels), np.array(all_preds)
+
 
 def main():
     args = parse_args()
@@ -229,6 +259,10 @@ def main():
     # ---------------- Baseline ----------------
     print("\n📊 Baseline training (cnn_features_1d)")
     baseline_results = {}
+    baseline_conf_matrices = {}
+    baseline_eval_counts = {}
+    transfer_conf_matrices = {}
+    transfer_eval_counts = {}
     args.model_name = "cnn_features_1d"
     args.pretrained = False
     args.pretrained_model_path = None
@@ -272,8 +306,17 @@ def main():
             f"baseline_cnn1d_{cathode}_{datetime.now().strftime('%m%d')}"
         )
         os.makedirs(base_dir, exist_ok=True)
-        _, base_acc, base_time = run_experiment(args, base_dir)
+        model_bl, base_acc, base_time = run_experiment(args, base_dir)
         baseline_results[cathode] = (base_acc, base_time)
+
+        # Collect baseline evaluation metrics using the trained model
+        bl_labels, bl_preds = evaluate_model(model_bl, args)
+        baseline_eval_counts[cathode] = len(bl_labels)
+        if len(bl_labels) > 0:
+            baseline_conf_matrices[cathode] = confusion_matrix(bl_labels, bl_preds)
+        else:
+            baseline_conf_matrices[cathode] = None
+
         print(f"✅ Baseline cnn_features_1d -> {cathode}: {base_acc:.4f} ({base_time:.1f}s)")
 
     # --------------- Transfer Learning -----------------
@@ -317,7 +360,16 @@ def main():
                 f"transfer_{model_name}_{cathode}_{datetime.now().strftime('%m%d')}"
             )
             os.makedirs(ft_dir, exist_ok=True)
-            _, transfer_acc, transfer_time = run_experiment(args, ft_dir)
+            model_ft, transfer_acc, transfer_time = run_experiment(args, ft_dir)
+
+            # Collect transfer evaluation metrics using the fine-tuned model
+            tr_labels, tr_preds = evaluate_model(model_ft, args)
+            transfer_key = (cathode, model_name)
+            transfer_eval_counts[transfer_key] = len(tr_labels)
+            if len(tr_labels) > 0:
+                transfer_conf_matrices[transfer_key] = confusion_matrix(tr_labels, tr_preds)
+            else:
+                transfer_conf_matrices[transfer_key] = None
 
             # Update results list with transfer accuracy
             # base_value = 0
@@ -345,14 +397,31 @@ def main():
     # Print final summary
     print("\n===== Summary =====")
     for r in results:
-        print(
-            f"{r['model']} {r['cathode']}: baseline {r['baseline']:.4f} ({r['baseline_time']:.1f}s) → transfer {r['transfer']:.4f} ({r['transfer_time']:.1f}s)"
-        )
+        cathode = r['cathode']
+        model_name = r['model']
+        base_count = baseline_eval_counts.get(cathode, 0)
+        transfer_key = (cathode, model_name)
+        transfer_count = transfer_eval_counts.get(transfer_key, 0)
+        print(f"{model_name} {cathode}: baseline {r['baseline']:.4f} ({base_count} samples) → transfer {r['transfer']:.4f} ({transfer_count} samples)")
         # b = r.get("baseline", 0)
         # t = r.get("transfer", 0)
         # bt = r.get("baseline_time", 0)
         # tt = r.get("transfer_time", 0)
         # print(f"{r['model']} {r['cathode']}: baseline {b:.4f} ({bt:.1f}s) → transfer {t:.4f} ({tt:.1f}s)")
+        base_cm = baseline_conf_matrices.get(cathode)
+        transfer_cm = transfer_conf_matrices.get(transfer_key)
+        if (
+            base_cm is not None
+            and transfer_cm is not None
+            and base_cm.size > 0
+            and transfer_cm.size > 0
+        ):
+            fig, axes = plt.subplots(1, 2, figsize=(10, 4))
+            ConfusionMatrixDisplay(base_cm).plot(ax=axes[0])
+            axes[0].set_title(f"Baseline {cathode}")
+            ConfusionMatrixDisplay(transfer_cm).plot(ax=axes[1])
+            axes[1].set_title(f"Transfer {cathode}")
+            plt.show()
 
 
 if __name__ == '__main__':
