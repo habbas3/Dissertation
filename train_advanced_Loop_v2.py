@@ -57,6 +57,7 @@ def reset_seed(seed=SEED):
         torch.cuda.manual_seed(seed)
         torch.cuda.manual_seed_all(seed)
 
+#Reverted back to functioning ver
 
 def parse_args():
     parser = argparse.ArgumentParser(description='Train')
