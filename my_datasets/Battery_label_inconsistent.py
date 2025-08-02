@@ -80,11 +80,25 @@ def load_battery_dataset(
 ):
     
     df = pd.read_csv(csv_path)
+    
+    cycle_counts = df.groupby("filename")["cycle_number"].max()
+    print("\U0001F501 Total cycles per cell:\n", cycle_counts)
+
+    def _half_cycles(group: pd.DataFrame) -> pd.DataFrame:
+        """Return only the first 25% of cycles for a single cell.
+
+        Uses the ordering of `cycle_number` within each group to select the
+        earliest half of the available cycles, which is more robust when cycle
+        numbering does not start at 0 or 1."""
+        group = group.sort_values("cycle_number")
+        n_cycles = len(group)
+        cutoff_idx = int(np.ceil(n_cycles * 0.25))
+        return group.iloc[:cutoff_idx]
 
     if classification_label not in df.columns:
-        raise ValueError(f"❌ Missing classification label: {classification_label}")
+        raise ValueError(f"Missing classification label: {classification_label}")
     if "cathode" not in df.columns:
-        raise ValueError("❌ 'cathode' column missing in CSV.")
+        raise ValueError("'cathode' column missing in CSV.")
 
     # Encode labels
     df[classification_label + "_encoded"] = LabelEncoder().fit_transform(df[classification_label])
@@ -104,6 +118,11 @@ def load_battery_dataset(
         target_df = df[df["cathode"].isin(target_cathodes)].reset_index(drop=True)
         if target_df.empty:
             print(f"⚠️ No rows found for target cathodes: {target_cathodes}")
+        
+    # Use only the first 50% of cycles for each cell in both source and target
+    source_df = source_df.groupby("filename", group_keys=False).apply(_half_cycles).reset_index(drop=True)
+    if not target_df.empty:
+        target_df = target_df.groupby("filename", group_keys=False).apply(_half_cycles).reset_index(drop=True)
 
     feature_cols = ['cycle_number', 'energy_charge', 'capacity_charge', 'energy_discharge',
                     'capacity_discharge', 'cycle_start', 'cycle_duration']
