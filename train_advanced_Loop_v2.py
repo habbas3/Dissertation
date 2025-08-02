@@ -100,8 +100,10 @@ def parse_args():
     parser.add_argument('--input_channels', type=int, default=7)
     parser.add_argument('--classification_label', type=str, default='eol_class')
     parser.add_argument('--sequence_length', type=int, default=32)
-    parser.add_argument('--source_cathode', nargs='+', default=["NMC532", "NMC811", "HE5050", "NMC111"])
-    parser.add_argument('--target_cathode', nargs='+', default=["NMC622", "5Vspinel"])
+    # parser.add_argument('--source_cathode', nargs='+', default=["NMC532", "NMC811", "HE5050", "NMC111"])
+    # parser.add_argument('--target_cathode', nargs='+', default=["NMC622", "5Vspinel"])
+    parser.add_argument('--source_cathode', nargs='+', default=[])
+    parser.add_argument('--target_cathode', nargs='+', default=[])
     parser.add_argument('--domain_temperature', type=float, default=1.0,
                             help='Temperature scaling for domain predictions')
     parser.add_argument('--class_temperature', type=float, default=10.0,
@@ -201,24 +203,19 @@ def main():
     
     df_all["cathode"] = df_all["cathode"].astype(str).str.strip()
     all_cathodes = sorted(df_all["cathode"].unique().tolist())
+    # Define cathode groups
+    cathode_groups = {
+        "NMC_Layered_Oxides": ["NMC532", "NMC622", "NMC111", "NMC811"],
+        "Li_rich_Layered_Oxides": ["Li1.2Ni0.3Mn0.6O2", "Li1.35Ni0.33Mn0.67O2.35"],
+    }
 
     # Define cathodes
     # pretrain_cathodes = ["HE5050", "NMC111", "NMC532", "FCG", "NMC811"]
     # transfer_cathodes = ["NMC622", "Li1.2Ni0.3Mn0.6O2", "Li1.35Ni0.33Mn0.67O2.35"]
-    pretrain_cathodes = [
-        "HE5050",
-        "NMC111",
-        "NMC532",
-        "FCG",
-        "NMC811",
-        "Li1.2Ni0.3Mn0.6O2",
-    ]
-
-    transfer_cathodes = [
-        "NMC622",
-        "5Vspinel",
-        "Li1.35Ni0.33Mn0.67O2.35",
-    ]
+    grouped = [c for group in cathode_groups.values() for c in group]
+    for cat in all_cathodes:
+        if cat not in grouped:
+            cathode_groups[cat] = [cat]
 
     model_architectures = [
         "cnn_features_1d",
@@ -229,35 +226,10 @@ def main():
         "WideResNet_edited",
     ]
 
-    # skip_pretraining = False
-
-    # if not skip_pretraining:
-    #     print("🔧 Starting Pretraining per cathode type")
-
-    #     for cathode in pretrain_cathodes:
-    #         # Use all rows belonging to this cathode
-    #         args.source_cathode = [cathode]
-    #         args.target_cathode = []
-
-    #         for model_name in model_architectures:
-    #             global_habbas3.init()
-    #             args.model_name = model_name
-    #             os.environ["CUDA_VISIBLE_DEVICES"] = args.cuda_device.strip()
-
-    #             pretrain_dir = os.path.join(args.checkpoint_dir, f"Pretrain_{model_name}_{cathode}_{datetime.now().strftime('%m%d')}")
-    #             os.makedirs(pretrain_dir, exist_ok=True)
-
-    #             model_pre, src_acc = run_experiment(args, pretrain_dir)
-    #             args.pretrained = True
-    #             args.pretrained_model_path = os.path.join(pretrain_dir, "best_model.pth")
-    #             print(f"✅  Pretrained {model_name} on {cathode}: src_val_acc={src_acc:.4f}")
     
     results = []
 
-    # Transfer Learning Stage
-    # for target_cathode in transfer_cathodes:
-        # ---- Baseline Training on each cathode independently ----
-    # ---------------- Baseline ----------------
+   
     print("\n📊 Baseline training (cnn_features_1d)")
     baseline_results = {}
     baseline_conf_matrices = {}
@@ -267,124 +239,80 @@ def main():
     args.model_name = "cnn_features_1d"
     args.pretrained = False
     args.pretrained_model_path = None
-    args.source_cathode = pretrain_cathodes
-    for cathode in transfer_cathodes:
-        # args.source_cathode = [cathode]
+   
+            
+    for group_name, cathodes in cathode_groups.items():
         global_habbas3.init()
-        args.target_cathode = [cathode]
-        # for model_name in model_architectures:
-        #     global_habbas3.init()
-        #     args.model_name = model_name
-
-        #     # Use all pretrain_cathodes except target as source_cathodes
-        #     # args.source_cathode = [c for c in pretrain_cathodes if c != target_cathode]
-        #     # args.target_cathode = [target_cathode]
-        #     args.pretrained = False
-        #     args.pretrained_model_path = None
-        #     os.environ["CUDA_VISIBLE_DEVICES"] = args.cuda_device.strip()
-
-        #     # print(f"\n🚀 Running Optuna for {model_name} → {target_cathode}")
-
-        #     # # Define pretrained checkpoint directory for this model
-        #     # # (here we simply use the first source cathode pretrained file for simplicity)
-        #     # pretrained_cathode = args.source_cathode[0]
-        #     # pretrained_dir = os.path.join(args.checkpoint_dir, f"Pretrain_{model_name}_{pretrained_cathode}_{datetime.now().strftime('%m%d')}")
-        #     # args.pretrained_model_path = os.path.join(pretrained_dir, "best_model.pth")
-        #     # args.transfer = True
-            
-        #     base_dir = os.path.join(args.checkpoint_dir, f"baseline_{model_name}_{cathode}_{datetime.now().strftime('%m%d')}")
-        #     os.makedirs(base_dir, exist_ok=True)
-        #     _, base_acc, base_time = run_experiment(args, base_dir)
-        #     results.append({"cathode": cathode, "model": model_name, "baseline": base_acc, "baseline_time": base_time})
-        #     print(f"✅ Baseline {model_name} on {cathode}: {base_acc:.4f} ({base_time:.1f}s)")
-
-        #     # run_optuna_search(args, model_name, n_trials=25)
-            
-        #     # ---- Pretrain on other cathodes then fine-tune on target ----
+        args.source_cathode = cathodes
+        args.target_cathode = []
+        
         os.environ["CUDA_VISIBLE_DEVICES"] = args.cuda_device.strip()
         base_dir = os.path.join(
             args.checkpoint_dir,
-            f"baseline_cnn1d_{cathode}_{datetime.now().strftime('%m%d')}"
+            f"baseline_cnn1d_{group_name}_{datetime.now().strftime('%m%d')}"
         )
         os.makedirs(base_dir, exist_ok=True)
         model_bl, base_acc, base_time = run_experiment(args, base_dir)
-        baseline_results[cathode] = (base_acc, base_time)
+        baseline_results[group_name] = (base_acc, base_time)
 
-        # Collect baseline evaluation metrics using the trained model
+        # Evaluate baseline on target group
+        args.target_cathode = cathodes
         bl_labels, bl_preds = evaluate_model(model_bl, args)
-        baseline_eval_counts[cathode] = len(bl_labels)
+        baseline_eval_counts[group_name] = len(bl_labels)
         if len(bl_labels) > 0:
-            baseline_conf_matrices[cathode] = confusion_matrix(bl_labels, bl_preds)
+            baseline_conf_matrices[group_name] = confusion_matrix(bl_labels, bl_preds)
         else:
-            baseline_conf_matrices[cathode] = None
+            baseline_conf_matrices[group_name] = None
 
-        print(f"✅ Baseline cnn_features_1d -> {cathode}: {base_acc:.4f} ({base_time:.1f}s)")
+        print(f"✅ Baseline cnn_features_1d -> {group_name}: {base_acc:.4f} ({base_time:.1f}s)")
 
     # --------------- Transfer Learning -----------------
-    print("\n🔧 Transfer learning per cathode")
-    for cathode in transfer_cathodes:
-        # other_cathodes = [c for c in pretrain_cathodes if c != cathode]
+    print("\n🔧 Transfer learning per group")
+    for group_name, target_cathodes in cathode_groups.items():
+        source_cathodes = [c for g, cats in cathode_groups.items() if g != group_name for c in cats]
         for model_name in model_architectures:
             global_habbas3.init()
             args.model_name = model_name
             os.environ["CUDA_VISIBLE_DEVICES"] = args.cuda_device.strip()
 
-            # best_params = json.load(open(os.path.join(args.checkpoint_dir, f"optuna_{model_name}/{model_name}_best_params.json")))
-            # final_dir = os.path.join(args.checkpoint_dir, f"optuna_{model_name}/final")
-            # os.makedirs(final_dir, exist_ok=True)
-            # model_ft, tgt_acc = run_experiment(args, final_dir, None)
-            # print(f"✅  Fine-tuned {model_name} → {target_cathode}: tgt_val_acc={tgt_acc:.4f}")
             
-            # Pretrain on all other cathodes
-            # args.source_cathode = other_cathodes
-            # Pretrain on all source cathodes
             args.pretrained = False
-            args.source_cathode = pretrain_cathodes
+            args.source_cathode = source_cathodes
             args.target_cathode = []
-            # pre_dir = os.path.join(args.checkpoint_dir, f"pretrain_{model_name}_{cathode}_{datetime.now().strftime('%m%d')}")
             pre_dir = os.path.join(
                 args.checkpoint_dir,
-                f"pretrain_{model_name}_{cathode}_{datetime.now().strftime('%m%d')}"
+                f"pretrain_{model_name}_{group_name}_{datetime.now().strftime('%m%d')}"
             )
             os.makedirs(pre_dir, exist_ok=True)
-            _, _, _ = run_experiment(args, pre_dir)
-            # _, _ = run_experiment(args, pre_dir)
+            run_experiment(args, pre_dir)
 
-            # Fine-tune on target cathode
+
+            # Fine-tune on target cathode group
             args.pretrained = True
             args.pretrained_model_path = os.path.join(pre_dir, "best_model.pth")
-            args.source_cathode = [cathode]
-            args.target_cathode = [cathode]
+            args.source_cathode = target_cathodes
+            args.target_cathode = []
             # ft_dir = os.path.join(args.checkpoint_dir, f"transfer_{model_name}_{cathode}_{datetime.now().strftime('%m%d')}")
             ft_dir = os.path.join(
                 args.checkpoint_dir,
-                f"transfer_{model_name}_{cathode}_{datetime.now().strftime('%m%d')}"
+                f"transfer_{model_name}_{group_name}_{datetime.now().strftime('%m%d')}"
             )
             os.makedirs(ft_dir, exist_ok=True)
             model_ft, transfer_acc, transfer_time = run_experiment(args, ft_dir)
 
-            # Collect transfer evaluation metrics using the fine-tuned model
+            # Evaluate fine-tuned model on target group
+            args.target_cathode = target_cathodes
             tr_labels, tr_preds = evaluate_model(model_ft, args)
-            transfer_key = (cathode, model_name)
+            transfer_key = (group_name, model_name)
             transfer_eval_counts[transfer_key] = len(tr_labels)
             if len(tr_labels) > 0:
                 transfer_conf_matrices[transfer_key] = confusion_matrix(tr_labels, tr_preds)
             else:
                 transfer_conf_matrices[transfer_key] = None
 
-            # Update results list with transfer accuracy
-            # base_value = 0
-            # for r in results:
-            #     if r["cathode"] == cathode and r["model"] == model_name:
-            #         base_value = r["baseline"]
-            #         base_time = r.get("baseline_time", 0)
-            #         r["transfer"] = transfer_acc
-            #         r["transfer_time"] = transfer_time
-            #         break
-            # print(f"✅ {model_name} on {cathode}: baseline -> {base_value:.4f} ({base_time:.1f}s) | transfer -> {transfer_acc:.4f} ({transfer_time:.1f}s)")
-            base_acc, base_time = baseline_results[cathode]
+            base_acc, base_time = baseline_results[group_name]
             results.append({
-                "cathode": cathode,
+                "cathode": group_name,
                 "model": model_name,
                 "baseline": base_acc,
                 "baseline_time": base_time,
@@ -392,24 +320,21 @@ def main():
                 "transfer_time": transfer_time,
             })
             print(
-                f"✅ {model_name} on {cathode}: baseline -> {base_acc:.4f} ({base_time:.1f}s) | transfer -> {transfer_acc:.4f} ({transfer_time:.1f}s)"
+                f"✅ {model_name} on {group_name}: baseline -> {base_acc:.4f} ({base_time:.1f}s) | transfer -> {transfer_acc:.4f} ({transfer_time:.1f}s)"
             )
 
     # Print final summary
     print("\n===== Summary =====")
     for r in results:
-        cathode = r['cathode']
+        group_name = r['cathode']
         model_name = r['model']
-        base_count = baseline_eval_counts.get(cathode, 0)
-        transfer_key = (cathode, model_name)
+        base_count = baseline_eval_counts.get(group_name, 0)
+        transfer_key = (group_name, model_name)
         transfer_count = transfer_eval_counts.get(transfer_key, 0)
-        print(f"{model_name} {cathode}: baseline {r['baseline']:.4f} ({base_count} samples) → transfer {r['transfer']:.4f} ({transfer_count} samples)")
-        # b = r.get("baseline", 0)
-        # t = r.get("transfer", 0)
-        # bt = r.get("baseline_time", 0)
-        # tt = r.get("transfer_time", 0)
-        # print(f"{r['model']} {r['cathode']}: baseline {b:.4f} ({bt:.1f}s) → transfer {t:.4f} ({tt:.1f}s)")
-        base_cm = baseline_conf_matrices.get(cathode)
+        print(
+            f"{model_name} {group_name}: baseline {r['baseline']:.4f} ({base_count} samples) → transfer {r['transfer']:.4f} ({transfer_count} samples)"
+        )
+        base_cm = baseline_conf_matrices.get(group_name)
         transfer_cm = transfer_conf_matrices.get(transfer_key)
         if (
             base_cm is not None
@@ -419,296 +344,11 @@ def main():
         ):
             fig, axes = plt.subplots(1, 2, figsize=(10, 4))
             ConfusionMatrixDisplay(base_cm).plot(ax=axes[0])
-            axes[0].set_title(f"Baseline {cathode}")
+            axes[0].set_title(f"Baseline {group_name}")
             ConfusionMatrixDisplay(transfer_cm).plot(ax=axes[1])
-            axes[1].set_title(f"Transfer {cathode}")
+            axes[1].set_title(f"Transfer {group_name}")
             plt.show()
 
 
 if __name__ == '__main__':
     main()
-
-
-
-
-# if __name__ == '__main__':
-#     args = parse_args()
-    
-#     trial_results = []
-#     # best_configs = {}
-#     # best_hscores = {}
-
-    
-#     def objective(trial, transfer_task, model_architecture):
-#         args.transfer_task = transfer_task
-#         args.model_name = model_architecture
-#         # Suggest hyperparameters
-#         args.lr = trial.suggest_float("lr", 1e-5, 1e-1, log=True)
-#         args.batch_size = trial.suggest_categorical("batch_size", [32, 64, 128, 256])
-#         args.hidden_size = trial.suggest_categorical("hidden_size", [128, 256, 512, 1024])
-#         args.dropout_rate = trial.suggest_float("dropout_rate", 0.1, 0.5)
-#         args.bottleneck_num = trial.suggest_int('bottleneck_num', 128, 256, 512)
-#         # args.bottleneck = 
-#         # args.method = trial.suggest_categorical("method", ['sngp', 'deterministic'])
-#         args.method = trial.suggest_categorical("method", ['sngp'])
-
-
-#         # Your existing training setup and execution
-#         save_dir = os.path.join(args.checkpoint_dir, "optuna_trial")
-#         if not os.path.exists(save_dir):
-#             os.makedirs(save_dir)
-#         trainer = train_utils_open_univ(args, save_dir)
-#         trainer.setup()
-#         # validation_accuracy = trainer.train()  # Ensure this returns a validation metric
-#         best_hscore = trainer.train()
-        
-#         trial_result = {
-#         'trial_number': trial.number,
-#         'params': trial.params,
-#         'best_hscore': best_hscore
-#         }
-        
-#         # Append to the global list
-#         trial_results.append(trial_result)
-        
-#         # Optionally write to file (appending to the file in each trial)
-#         # with open('trial_results.json', 'a') as f:
-#         #     f.write(json.dumps(trial_result) + '\n')
-        
-#         return best_hscore
-#         # return validation_accuracy
-
-    
-#     def run_optuna_study(transfer_task,model_architecture, num_trials=15):
-#         study = optuna.create_study(study_name=f'habbas_transfer_study_{model_architecture}_{transfer_task}', direction='maximize')
-#         study.optimize(lambda trial: objective(trial, transfer_task, model_architecture), n_trials=num_trials)
-
-#         best_trial = study.best_trial
-
-#         print("Best trial:")
-#         print(f"  Value: {best_trial.value}")
-#         print("  Params: ")
-#         for key, value in best_trial.params.items():
-#             print(f"    {key}: {value}")
-
-#         return best_trial
-    
-    
-    
-
-#     # Define transfer learning tasks
-#     transfer_tasks = get_transfer_tasks(args.data_name)
-
-
-#     # Define model architectures
-#     model_architectures = [
-#         'cnn_features_1d',
-#         'cnn_features_1d_sa', 
-#         'cnn_openmax',
-#         'WideResNet', 
-#         'WideResNet_sa', 
-#         'WideResNet_edited'
-#     ]
-
-#     for transfer_task in transfer_tasks:
-#         for model_architecture in model_architectures:
-#             global_habbas3.init()
-#             global_habbas3.accuracy_score = 0
-#             args.transfer_task = transfer_task
-#             args.model_name = model_architecture
-
-#             os.environ['CUDA_VISIBLE_DEVICES'] = args.cuda_device.strip()
-#             sub_dir = args.model_name + '_' + str(args.transfer_task)
-#             datestamp = datetime.now().strftime("%m%d%Y")
-#             save_dir = os.path.join(args.checkpoint_dir, f"OptimizatedHyperPar_CWRU_{sub_dir}_{datestamp}")
-#             if not os.path.exists(save_dir):
-#                 os.makedirs(save_dir)
-
-#             if args.model_name != 'cnn_features_1d':
-#                 best_trial = run_optuna_study(transfer_task, model_architecture, num_trials=15)
-#                 args.lr = best_trial.params['lr']
-#                 args.batch_size = best_trial.params['batch_size']
-#                 args.hidden_size = best_trial.params['hidden_size']
-#                 args.dropout_rate = best_trial.params['dropout_rate']
-#                 args.bottleneck_num = best_trial.params['bottleneck_num']
-
-#             # Run experiment with the best hyperparameters
-#             best_hscore = run_experiment(args, save_dir)
-            
-#             #Source Training data
-#             source_train_acc_tor = global_habbas3.source_train_acc
-#             source_train_acc = numpy.array(source_train_acc_tor)
-#             source_train_labels_tor = (global_habbas3.source_train_labels)
-#             source_train_labels = numpy.array(source_train_labels_tor)
-#             source_train_predictions_tor = (global_habbas3.source_train_predictions)
-#             source_train_predictions = numpy.array(source_train_predictions_tor)
-#             conf_matrix_source_train = sklearn.metrics.confusion_matrix(source_train_labels, source_train_predictions)
-#             import matplotlib.pyplot as plt
-#             from sklearn.metrics import ConfusionMatrixDisplay
-#             disp = ConfusionMatrixDisplay(confusion_matrix=conf_matrix_source_train)
-#             disp.plot()
-#             disp.ax_.set_title("Source Training Data")
-#             # Save plot
-#             plt.savefig(os.path.join(save_dir, 'source_training_experiment_plot.png'))
-#             plt.show()
-            
-            
-#             #Source Validation data
-#             source_val_acc_tor = global_habbas3.source_val_acc
-#             source_val_acc = numpy.array(source_val_acc_tor)
-#             source_val_labels_tor = (global_habbas3.source_val_labels)
-#             source_val_labels = numpy.array(source_val_labels_tor)
-#             source_val_predictions_tor = (global_habbas3.source_val_predictions)
-#             source_val_predictions = numpy.array(source_val_predictions_tor)
-#             conf_matrix_source_val = sklearn.metrics.confusion_matrix(source_val_labels, source_val_predictions)
-#             import matplotlib.pyplot as plt
-#             from sklearn.metrics import ConfusionMatrixDisplay
-#             disp = ConfusionMatrixDisplay(confusion_matrix=conf_matrix_source_val)
-#             disp.plot()
-#             disp.ax_.set_title("Source Validation Data")
-            
-#             plt.savefig(os.path.join(save_dir, 'source_validation_comparison_plot.png'))
-#             plt.show()
-            
-#             #Target Validation data
-#             target_val_labels_tor = (global_habbas3.target_val_labels)
-#             target_val_labels = numpy.array(target_val_labels_tor)
-#             target_val_predictions_tor = (global_habbas3.target_val_predictions)
-#             target_val_predictions = numpy.array(target_val_predictions_tor)
-#             tmp = target_val_predictions.argmax(1)
-#             target_val_acc_tor = global_habbas3.target_val_acc
-            
-#             target_val_acc = numpy.array(target_val_acc_tor)
-#             target_outlier_acc = global_habbas3.target_outlier_acc
-#             target_common_acc = global_habbas3.target_common_acc
-            
-#             conf_matrix_target_val = sklearn.metrics.confusion_matrix(target_val_labels, tmp)
-#             import matplotlib.pyplot as plt
-#             from sklearn.metrics import ConfusionMatrixDisplay
-#             disp = ConfusionMatrixDisplay(confusion_matrix=conf_matrix_target_val)
-#             disp.plot()
-#             disp.ax_.set_title("Target Validation Data")
-            
-#             plt.savefig(os.path.join(save_dir, 'target_validation_comparison_plot.png'))
-#             plt.show()
-
-#             #SNGP HABBAS3
-#             amount_target = global_habbas3.amount_target
-#             correct_target = global_habbas3.correct_target
-#             probs_list = global_habbas3.probs_list
-#             accuracy_score = global_habbas3.accuracy_score
-#             best_hscore = global_habbas3.best_hscore
-    
-#             probs = numpy.array(probs_list)
-#             pred_probs = probs.max(1)
-#             pred_probs = 1-pred_probs
-    
-    
-#             from sklearn.metrics import precision_recall_curve, auc
-#             from sklearn.preprocessing import label_binarize
-            
-#             # Assuming target_val_labels is a 1D array of labels
-#             num_classes = numpy.unique(target_val_labels).size
-#             target_val_binarized = label_binarize(target_val_labels, classes=range(num_classes))
-            
-#             # Calculate AUPRC for each class
-#             auprc_scores = []
-#             for i in range(num_classes):
-#                 # Binarize predictions for the current class
-#                 pred_probs_class = (pred_probs == i).astype(int)
-                
-#                 precision, recall, _ = precision_recall_curve(target_val_binarized[:, i], pred_probs_class)
-#                 auprc = auc(recall, precision)
-#                 auprc_scores.append(auprc)
-#                 print(f'Class {i} AUPRC: {auprc:.4f}')
-            
-#             # Calculate average AUPRC
-#             average_auprc = numpy.mean(auprc_scores)
-#             print(f'Average AUPRC: {average_auprc:.4f}')
-            
-#             #SNGP CALCULATION
-#             import numpy as np
-#             from sklearn.metrics import accuracy_score, precision_recall_curve, auc
-#             from sklearn.preprocessing import label_binarize
-            
-
-            
-#             # Convert probability predictions to class labels
-#             predicted_labels = np.argmax(target_val_predictions, axis=1)
-            
-#             # Calculate accuracy
-#             accuracy = accuracy_score(target_val_labels, predicted_labels)
-            
-#             # Binarize the labels for multi-class AUPRC calculation
-#             num_classes = np.unique(target_val_labels).size
-#             target_val_labels_binarized = label_binarize(target_val_labels, classes=range(num_classes))
-            
-#             # Calculate AUPRC for each class
-#             auprc_scores = []
-#             for i in range(num_classes):
-#                 precision, recall, _ = precision_recall_curve(target_val_labels_binarized[:, i], probs[:, i])
-#                 auprc = auc(recall, precision)
-#                 auprc_scores.append(auprc)
-            
-#             # Calculate average AUPRC
-#             average_auprc = np.mean(auprc_scores)
-            
-#             # Calculate H-score
-#             common_acc = target_common_acc
-#             outlier_acc = target_outlier_acc
-#             hscore = 2 * common_acc * outlier_acc / (common_acc + outlier_acc) if (common_acc + outlier_acc) != 0 else 0
-            
-#             # SNGP accuracy score can be a weighted combination of these metrics
-#             # You can define the weights based on the importance of each metric in your context
-#             sngp_accuracy_score = (accuracy + hscore + average_auprc) / 3
-#             print("Accuracy Score:", accuracy)
-#             print("Best H-Score:", hscore)
-#             print("Average AUPRC:", average_auprc)
-#             print("SNGP Accuracy Score:", sngp_accuracy_score)
-#             print("target common accuracy", target_common_acc)
-#             print("target outlier accuracy", target_outlier_acc)
-#             print("target validation accuracy", target_val_acc)
-            
-#         # Save variables
-#         variables_to_save = {
-#             'source_train_acc': source_train_acc,  
-#             'source_val_acc': source_val_acc,
-#             'target_val_acc': target_val_acc,  
-#             'target_outlier_acc': target_outlier_acc,
-#             'target_common_acc': target_common_acc,  
-#             'accuracy_score': accuracy_score,
-#             'amount_target': amount_target,  
-#             'auprc': average_auprc,
-#             'correct_target': correct_target,  
-#             'precision': precision,
-#             'pred_probs': pred_probs,  
-#             'probs': probs,
-#             'recall': recall,
-#             'source_val_labels': source_val_labels,  
-#             'source_val_predictions': source_val_predictions,
-#             'target_val_labels': target_val_labels,
-#             'target_val_predictions': target_val_predictions,
-#             'transfer_task': transfer_task,  
-#             'model_architecture': model_architecture,
-#             'best_hscore': best_hscore,
-#             'optimal_lr': args.lr,
-#             'optimal_batch_size': args.batch_size,
-#             'optimal_hidden_size': args.hidden_size,
-#             # 'optimal_dropout_rate': args.dropout_rate,
-#             'optimal_bottleneck_num': args.bottleneck_num,
-#             'SNGP_Accuracy_Score:': sngp_accuracy_score,
-            
-#         }
-#         save_variables(variables_to_save, os.path.join(save_dir, 'comparison_variables.pkl'))
-
-    # Save best configurations and h-scores for all transfer tasks and model architectures
-           
-            
-    #Load Results
-    # file_path = os.path.join(save_dir, 'comparison_variables.pkl')
-    # with open(file_path, 'rb') as file:
-    #     # Load the data from the file
-    #     data = pickle.load(file)
-    
-    
-
