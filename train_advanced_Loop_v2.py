@@ -267,74 +267,76 @@ def main():
         print(f"✅ Baseline cnn_features_1d -> {group_name}: {base_acc:.4f} ({base_time:.1f}s)")
 
     # --------------- Transfer Learning -----------------
-    print("\n🔧 Transfer learning per group")
-    for group_name, target_cathodes in cathode_groups.items():
-        source_cathodes = [c for g, cats in cathode_groups.items() if g != group_name for c in cats]
-        for model_name in model_architectures:
-            global_habbas3.init()
-            args.model_name = model_name
-            os.environ["CUDA_VISIBLE_DEVICES"] = args.cuda_device.strip()
+    print("\n🔧 Transfer learning across groups")
+    for target_name, target_cathodes in cathode_groups.items():
+        for source_name, source_cathodes in cathode_groups.items():
+            if source_name == target_name:
+                continue
+            for model_name in model_architectures:
+                global_habbas3.init()
+                args.model_name = model_name
+                os.environ["CUDA_VISIBLE_DEVICES"] = args.cuda_device.strip()
 
-            
-            args.pretrained = False
-            args.source_cathode = source_cathodes
-            args.target_cathode = []
-            pre_dir = os.path.join(
-                args.checkpoint_dir,
-                f"pretrain_{model_name}_{group_name}_{datetime.now().strftime('%m%d')}"
-            )
-            os.makedirs(pre_dir, exist_ok=True)
-            run_experiment(args, pre_dir)
+                # Pretrain on source group
+                args.pretrained = False
+                args.source_cathode = source_cathodes
+                args.target_cathode = []
+                pre_dir = os.path.join(
+                    args.checkpoint_dir,
+                    f"pretrain_{model_name}_{source_name}_{datetime.now().strftime('%m%d')}",
+                )
+                os.makedirs(pre_dir, exist_ok=True)
+                run_experiment(args, pre_dir)
 
+                # Fine-tune on target group
+                args.pretrained = True
+                args.pretrained_model_path = os.path.join(pre_dir, "best_model.pth")
+                args.source_cathode = target_cathodes
+                args.target_cathode = []
+                ft_dir = os.path.join(
+                    args.checkpoint_dir,
+                    f"transfer_{model_name}_{source_name}_to_{target_name}_{datetime.now().strftime('%m%d')}",
+                )
+                os.makedirs(ft_dir, exist_ok=True)
+                model_ft, transfer_acc, transfer_time = run_experiment(args, ft_dir)
 
-            # Fine-tune on target cathode group
-            args.pretrained = True
-            args.pretrained_model_path = os.path.join(pre_dir, "best_model.pth")
-            args.source_cathode = target_cathodes
-            args.target_cathode = []
-            # ft_dir = os.path.join(args.checkpoint_dir, f"transfer_{model_name}_{cathode}_{datetime.now().strftime('%m%d')}")
-            ft_dir = os.path.join(
-                args.checkpoint_dir,
-                f"transfer_{model_name}_{group_name}_{datetime.now().strftime('%m%d')}"
-            )
-            os.makedirs(ft_dir, exist_ok=True)
-            model_ft, transfer_acc, transfer_time = run_experiment(args, ft_dir)
+                # Evaluate fine-tuned model on target group
+                args.target_cathode = target_cathodes
+                tr_labels, tr_preds = evaluate_model(model_ft, args)
+                transfer_key = (target_name, source_name, model_name)
+                transfer_eval_counts[transfer_key] = len(tr_labels)
+                if len(tr_labels) > 0:
+                    transfer_conf_matrices[transfer_key] = confusion_matrix(tr_labels, tr_preds)
+                else:
+                    transfer_conf_matrices[transfer_key] = None
 
-            # Evaluate fine-tuned model on target group
-            args.target_cathode = target_cathodes
-            tr_labels, tr_preds = evaluate_model(model_ft, args)
-            transfer_key = (group_name, model_name)
-            transfer_eval_counts[transfer_key] = len(tr_labels)
-            if len(tr_labels) > 0:
-                transfer_conf_matrices[transfer_key] = confusion_matrix(tr_labels, tr_preds)
-            else:
-                transfer_conf_matrices[transfer_key] = None
-
-            base_acc, base_time = baseline_results[group_name]
-            results.append({
-                "cathode": group_name,
-                "model": model_name,
-                "baseline": base_acc,
-                "baseline_time": base_time,
-                "transfer": transfer_acc,
-                "transfer_time": transfer_time,
-            })
-            print(
-                f"✅ {model_name} on {group_name}: baseline -> {base_acc:.4f} ({base_time:.1f}s) | transfer -> {transfer_acc:.4f} ({transfer_time:.1f}s)"
-            )
+                base_acc, base_time = baseline_results[target_name]
+                results.append({
+                    "source": source_name,
+                    "target": target_name,
+                    "model": model_name,
+                    "baseline": base_acc,
+                    "baseline_time": base_time,
+                    "transfer": transfer_acc,
+                    "transfer_time": transfer_time,
+                })
+                print(
+                    f"✅ {model_name} {source_name} → {target_name}: baseline {base_acc:.4f} ({base_time:.1f}s) | transfer {transfer_acc:.4f} ({transfer_time:.1f}s)"
+                )
 
     # Print final summary
     print("\n===== Summary =====")
     for r in results:
-        group_name = r['cathode']
+        target = r['target']
+        source = r['source']
         model_name = r['model']
-        base_count = baseline_eval_counts.get(group_name, 0)
-        transfer_key = (group_name, model_name)
+        base_count = baseline_eval_counts.get(target, 0)
+        transfer_key = (target, source, model_name)
         transfer_count = transfer_eval_counts.get(transfer_key, 0)
         print(
-            f"{model_name} {group_name}: baseline {r['baseline']:.4f} ({base_count} samples) → transfer {r['transfer']:.4f} ({transfer_count} samples)"
+            f"{model_name} {source}→{target}: baseline {r['baseline']:.4f} ({base_count} samples) → transfer {r['transfer']:.4f} ({transfer_count} samples)"
         )
-        base_cm = baseline_conf_matrices.get(group_name)
+        base_cm = baseline_conf_matrices.get(target)
         transfer_cm = transfer_conf_matrices.get(transfer_key)
         if (
             base_cm is not None
@@ -344,9 +346,9 @@ def main():
         ):
             fig, axes = plt.subplots(1, 2, figsize=(10, 4))
             ConfusionMatrixDisplay(base_cm).plot(ax=axes[0])
-            axes[0].set_title(f"Baseline {group_name}")
+            axes[0].set_title(f"Baseline {target}")
             ConfusionMatrixDisplay(transfer_cm).plot(ax=axes[1])
-            axes[1].set_title(f"Transfer {group_name}")
+            axes[1].set_title(f"Transfer {source}→{target}")
             plt.show()
 
 

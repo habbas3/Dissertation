@@ -88,8 +88,8 @@ def load_battery_dataset(
         """Return only the first 25% of cycles for a single cell.
 
         Uses the ordering of `cycle_number` within each group to select the
-        earliest half of the available cycles, which is more robust when cycle
-        numbering does not start at 0 or 1."""
+        earliest portion of the available cycles, which is more robust when
+        cycle numbering does not start at 0 or 1."""
         group = group.sort_values("cycle_number")
         n_cycles = len(group)
         cutoff_idx = int(np.ceil(n_cycles * 0.25))
