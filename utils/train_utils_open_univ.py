@@ -370,6 +370,31 @@ class train_utils_open_univ(object):
                 self.AdversarialNet = torch.nn.DataParallel(self.AdversarialNet)
                 self.AdversarialNet_auxiliary = torch.nn.DataParallel(self.AdversarialNet)
             self.classifier_layer = torch.nn.DataParallel(self.classifier_layer)
+            
+        # --------------------------------------------------------------
+        # Add SNGP (or deterministic) classification head so that its
+        # parameters can be optimized together with the backbone.
+        # --------------------------------------------------------------
+        self.backbone = self.model
+        if args.method == 'sngp':
+            self.sngp_model = sngp(
+                backbone=self.model,
+                bottleneck_num=final_feature_dim,
+                num_classes=self.num_classes,
+                num_inducing=args.gp_hidden_dim,
+                n_power_iterations=args.n_power_iterations,
+                spec_norm_bound=args.spectral_norm_bound,
+                device=self.device,
+                normalize_input=False,
+            )
+        else:
+            self.sngp_model = deterministic(
+                self.backbone,
+                bottleneck_num=final_feature_dim,
+                num_classes=self.num_classes,
+            )
+        # move gp head to the correct device
+        self.sngp_model.to(self.device)
 
         # Define the learning parameters
         if args.inconsistent == "OSBP":
@@ -392,6 +417,13 @@ class train_utils_open_univ(object):
                                   {"params": self.classifier_layer.parameters(), "lr": args.lr},
                                   {"params": self.AdversarialNet_auxiliary.parameters(), "lr": args.lr},
                                   {"params": self.AdversarialNet.parameters(), "lr": args.lr}]
+                
+        # Ensure SNGP (or deterministic head) parameters are optimized.
+        sngp_params = [p for name, p in self.sngp_model.named_parameters()
+                       if 'backbone' not in name]
+        if sngp_params:
+            parameter_list.append({"params": sngp_params, "lr": args.lr})
+            
         # Define the optimizer
         if args.opt == 'sgd':
             self.optimizer = optim.SGD(parameter_list, lr=args.lr,
@@ -429,6 +461,7 @@ class train_utils_open_univ(object):
             self.AdversarialNet.to(self.device)
             self.AdversarialNet_auxiliary.to(self.device)
         self.classifier_layer.to(self.device)
+        self.sngp_model.to(self.device)
 
         if args.inconsistent == "OSBP":
             self.inconsistent_loss = nn.BCELoss()
@@ -441,34 +474,6 @@ class train_utils_open_univ(object):
         # self.criterion = nn.CrossEntropyLoss(weight=weights_tensor)
         self.criterion = nn.CrossEntropyLoss()
         
-        # Add SNGP HABBAS3
-        self.backbone = self.model
-        if args.method == 'sngp':
-            self.sngp_model = sngp(
-            backbone=self.model,
-            bottleneck_num=final_feature_dim,
-            num_classes=self.num_classes,
-            num_inducing=args.gp_hidden_dim,
-            n_power_iterations=args.n_power_iterations,
-            spec_norm_bound=args.spectral_norm_bound,
-            device="cuda" if self.device.type == 'cuda' else 'cpu',
-            normalize_input=False  # ✅ Turn off LayerNorm inside GP
-        )
-            # self.sngp_model = sngp(self.backbone,
-            #                         hidden_size=args.hidden_size,
-            #                         num_classes=self.num_classes,
-            #                         num_inducing=args.gp_hidden_dim,
-            #                         n_power_iterations=args.n_power_iterations,
-            #                         spec_norm_bound=args.spectral_norm_bound,
-            #                         device="cuda" if self.device == 'gpu' else 'cpu')
-        else:
-            self.sngp_model = deterministic(self.backbone,
-                                            bottleneck_num=args.bottleneck_num,
-                                            num_classes=self.num_classes)
-            
-            # self.sngp_model = deterministic(self.backbone,
-            #                                 hidden_size=args.hidden_size,
-            #                                 num_classes=self.num_classes)
 
     def train(self):
         best_source_val_acc = 0.0
@@ -516,34 +521,22 @@ class train_utils_open_univ(object):
     
                     self.optimizer.zero_grad()
                     with torch.set_grad_enabled(phase == 'source_train'):
-                        # inputs = inputs.view(inputs.size(0), 1, -1)
-                        outputs = self.model(inputs)
-                        if isinstance(outputs, tuple):
-                            if len(outputs) == 2:
-                                logits, features = outputs
-                                domain_out = None
-                            elif len(outputs) == 3:
-                                logits, features, domain_out = outputs
-                            else:
-                                raise ValueError(f"Unexpected model output tuple length: {len(outputs)}")
+                        backbone_out = self.model(inputs)
+                        if isinstance(backbone_out, tuple):
+                            model_logits, features = backbone_out[0], backbone_out[1]
+                            domain_out = backbone_out[2] if len(backbone_out) > 2 else None
                         else:
-                            logits = outputs
+                            model_logits = backbone_out
                             features = None
                             domain_out = None
     
-                        if self.args.bottleneck:
-                            if features is not None:
-                                features = self.bottleneck_layer(features)
-    
-                        self.backbone = self.model
-                        if self.sngp_model is not None and features is not None:
-                            outputs = self.sngp_model.forward_classifier(features)
-                            if isinstance(outputs, tuple):
-                                outputs = outputs[0]  # get logits if tuple
+                        if features is not None and self.args.bottleneck:
+                            features = self.bottleneck_layer(features)
 
-                            
-                        if isinstance(outputs, tuple):
-                            _, logits = outputs
+                        if features is not None:
+                            logits = self.sngp_model.forward_classifier(features)
+                        else:
+                            logits = model_logits
     
                         if step % 50 == 0 and phase == 'source_train':
                             with torch.no_grad():
@@ -628,7 +621,7 @@ class train_utils_open_univ(object):
                         self.optimizer.step()
     
                     running_loss += loss.item() * inputs.size(0)
-                    print(f"🔍 outputs shape: {outputs.shape}, labels shape: {labels.shape}")
+                    print(f"🔍 logits shape: {logits.shape}, labels shape: {labels.shape}")
                     _, preds = torch.max(logits, 1)
                     if phase == 'source_train' and target_iter is not None:
                         preds = preds[:source_size]
@@ -706,7 +699,31 @@ class train_utils_open_univ(object):
         )
         print(f"🔖  Saved best source model to {self.save_dir}/best_model.pth")
         print(f"🏁 Final best target validation accuracy: {self.best_val_acc_class:.4f}")
+        
+        # Build a wrapper so evaluation can call model(x) directly when SNGP
+        if self.args.method == 'sngp':
+            class SNGPWrapper(nn.Module):
+                def __init__(self, backbone, bottleneck, head):
+                    super().__init__()
+                    self.backbone = backbone
+                    self.bottleneck = bottleneck
+                    self.head = head
+
+                def forward(self, x):
+                    out = self.backbone(x)
+                    if isinstance(out, tuple):
+                        _, feats = out[:2]
+                    else:
+                        feats = out
+                    if self.bottleneck is not None:
+                        feats = self.bottleneck(feats)
+                    logits = self.head.forward_classifier(feats)
+                    return logits
+
+            eval_model = SNGPWrapper(self.model, self.bottleneck_layer if self.args.bottleneck else nn.Identity(), self.sngp_model)
+        else:
+            eval_model = self.model
 
         # now return the model instance *and* the target‐val accuracy (so optuna can optimize it)
-        return self.model, self.best_val_acc_class
+        return eval_model, self.best_val_acc_class
 

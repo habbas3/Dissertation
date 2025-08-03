@@ -65,7 +65,7 @@ def parse_args():
     parser.add_argument('--data_dir', type=str, default='./my_datasets/Battery')
     parser.add_argument('--csv', type=str, default='./my_datasets/Battery/battery_data_labeled.csv')
     parser.add_argument('--normlizetype', type=str, default='mean-std')
-    parser.add_argument('--method', type=str, default='determenistic', choices=['deterministic', 'sngp'])
+    parser.add_argument('--method', type=str, default='sngp', choices=['deterministic', 'sngp'])
     parser.add_argument('--gp_hidden_dim', type=int, default=2048)
     parser.add_argument('--spectral_norm_bound', type=float, default=0.95)
     parser.add_argument('--n_power_iterations', type=int, default=1)
