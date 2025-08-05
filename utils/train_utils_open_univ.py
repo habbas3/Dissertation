@@ -202,6 +202,13 @@ class train_utils_open_univ(object):
                                                                drop_last=(True if args.last_batch and x.split('_')[1] == 'train' else False),
                                                                generator=g)
                                 for x in ['source_train', 'source_val', 'target_train', 'target_val']}
+            
+        self.target_sample_count = 0
+        if self.dataloaders.get('target_train') is not None:
+            self.target_sample_count = len(self.dataloaders['target_train'].dataset)
+            if self.target_sample_count < 100:
+                args.lr = min(args.lr, 1e-4)
+                logging.info(f"Reducing learning rate to {args.lr} for {self.target_sample_count} target samples")
 
         first_batch = next(iter(self.dataloaders['source_train']))
         input_tensor, _ = first_batch
@@ -361,6 +368,14 @@ class train_utils_open_univ(object):
             self.model_all = nn.Sequential(self.model, self.bottleneck_layer, self.classifier_layer)
         else:
             self.model_all = nn.Sequential(self.model, self.classifier_layer)
+        
+        # Freeze early backbone layers if target data are scarce
+        if self.target_sample_count and self.target_sample_count < 100:
+            logging.info(f"Freezing early layers of backbone for {self.target_sample_count} target samples")
+            children = list(self.model.children())
+            for child in children[:-1]:
+                for param in child.parameters():
+                    param.requires_grad = False
 
         if self.device_count > 1:
             self.model = torch.nn.DataParallel(self.model)
@@ -397,26 +412,26 @@ class train_utils_open_univ(object):
         self.sngp_model.to(self.device)
 
         # Define the learning parameters
+        model_params = [p for p in self.model.parameters() if p.requires_grad]
         if args.inconsistent == "OSBP":
+            parameter_list = []
+            if model_params:
+                parameter_list.append({"params": model_params, "lr": args.lr})
+                
             if args.bottleneck:
-                parameter_list = [{"params": self.model.parameters(), "lr": args.lr},
-                                  {"params": self.bottleneck_layer.parameters(), "lr": args.lr},
-                                  {"params": self.classifier_layer.parameters(), "lr": args.lr}]
-            else:
-                parameter_list = [{"params": self.model.parameters(), "lr": args.lr},
-                                  {"params": self.classifier_layer.parameters(), "lr": args.lr}]
+                parameter_list.append({"params": self.bottleneck_layer.parameters(), "lr": args.lr})
+            parameter_list.append({"params": self.classifier_layer.parameters(), "lr": args.lr})
         else:
+            parameter_list = []
+            if model_params:
+                parameter_list.append({"params": model_params, "lr": args.lr})
             if args.bottleneck:
-                parameter_list = [{"params": self.model.parameters(), "lr": args.lr},
-                                  {"params": self.bottleneck_layer.parameters(), "lr": args.lr},
-                                  {"params": self.classifier_layer.parameters(), "lr": args.lr},
-                                  {"params": self.AdversarialNet_auxiliary.parameters(), "lr": args.lr},
-                                  {"params": self.AdversarialNet.parameters(), "lr": args.lr}]
-            else:
-                parameter_list = [{"params": self.model.parameters(), "lr": args.lr},
-                                  {"params": self.classifier_layer.parameters(), "lr": args.lr},
-                                  {"params": self.AdversarialNet_auxiliary.parameters(), "lr": args.lr},
-                                  {"params": self.AdversarialNet.parameters(), "lr": args.lr}]
+                parameter_list.append({"params": self.bottleneck_layer.parameters(), "lr": args.lr})
+            parameter_list.extend([
+                {"params": self.classifier_layer.parameters(), "lr": args.lr},
+                {"params": self.AdversarialNet_auxiliary.parameters(), "lr": args.lr},
+                {"params": self.AdversarialNet.parameters(), "lr": args.lr},
+            ])
                 
         # Ensure SNGP (or deterministic head) parameters are optimized.
         sngp_params = [p for name, p in self.sngp_model.named_parameters()

@@ -1,10 +1,11 @@
 from collections import Counter
 from sklearn.preprocessing import LabelEncoder, StandardScaler
 from sklearn.model_selection import train_test_split
-from torch.utils.data import Dataset, DataLoader
+from torch.utils.data import Dataset, DataLoader, WeightedRandomSampler
 import numpy as np
 import pandas as pd
 import torch
+from .sequence_aug import RandomAddGaussian, RandomScale, RandomStretch
 
 # --- Data transforms ---
 class Reshape:
@@ -202,8 +203,28 @@ def load_battery_dataset(
         
         
 
-        target_train = DataLoader(BatteryDataset(X_tgt_train, y_tgt_train, transform), batch_size=batch_size, shuffle=True)
-        target_val   = DataLoader(BatteryDataset(X_tgt_val, y_tgt_val, transform), batch_size=batch_size, shuffle=False)
+        # When very few target samples are available, augment and oversample
+        if len(y_tgt_train) > 0 and len(y_tgt_train) < 100:
+            aug_transform = Compose([
+                RandomAddGaussian(sigma=0.05),
+                RandomScale(sigma=0.1),
+                RandomStretch(sigma=0.3),
+                Reshape(),
+            ])
+            class_counts = np.bincount(y_tgt_train)
+            class_weights = 1.0 / class_counts
+            sample_weights = class_weights[y_tgt_train]
+            sample_weights = torch.from_numpy(sample_weights).float()
+            sampler = WeightedRandomSampler(sample_weights,
+                                            num_samples=len(sample_weights) * 10,
+                                            replacement=True)
+            target_train_dataset = BatteryDataset(X_tgt_train, y_tgt_train, aug_transform)
+            target_train = DataLoader(target_train_dataset, batch_size=batch_size, sampler=sampler)
+        else:
+            target_train_dataset = BatteryDataset(X_tgt_train, y_tgt_train, transform)
+            target_train = DataLoader(target_train_dataset, batch_size=batch_size, shuffle=True)
+
+        target_val = DataLoader(BatteryDataset(X_tgt_val, y_tgt_val, transform), batch_size=batch_size, shuffle=False)
     else:
         target_train, target_val = None, None
 
