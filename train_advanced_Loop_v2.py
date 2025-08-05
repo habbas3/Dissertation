@@ -205,7 +205,7 @@ def main():
     all_cathodes = sorted(df_all["cathode"].unique().tolist())
     # Define cathode groups
     cathode_groups = {
-        "NMC_Layered_Oxides": ["NMC532", "NMC622", "NMC111", "NMC811"],
+        "NMC_Layered_Oxides": ["NMC532", "NMC622", "NMC111", "NMC811", "5Vspinel"],
         "Li_rich_Layered_Oxides": ["Li1.2Ni0.3Mn0.6O2", "Li1.35Ni0.33Mn0.67O2.35"],
     }
 

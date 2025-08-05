@@ -85,14 +85,14 @@ def load_battery_dataset(
     print("\U0001F501 Total cycles per cell:\n", cycle_counts)
 
     def _half_cycles(group: pd.DataFrame) -> pd.DataFrame:
-        """Return only the first 25% of cycles for a single cell.
+        """Return only the first 40% of cycles for a single cell.
 
         Uses the ordering of `cycle_number` within each group to select the
         earliest portion of the available cycles, which is more robust when
         cycle numbering does not start at 0 or 1."""
         group = group.sort_values("cycle_number")
         n_cycles = len(group)
-        cutoff_idx = int(np.ceil(n_cycles * 0.25))
+        cutoff_idx = int(np.ceil(n_cycles * 0.50))
         return group.iloc[:cutoff_idx]
 
     if classification_label not in df.columns:

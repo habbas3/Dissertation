@@ -701,6 +701,7 @@ class train_utils_open_univ(object):
         print(f"🏁 Final best target validation accuracy: {self.best_val_acc_class:.4f}")
         
         # Build a wrapper so evaluation can call model(x) directly when SNGP
+        # Build a wrapper so evaluation can call model(x) directly when SNGP
         if self.args.method == 'sngp':
             class SNGPWrapper(nn.Module):
                 def __init__(self, backbone, bottleneck, head):
@@ -710,15 +711,28 @@ class train_utils_open_univ(object):
                     self.head = head
 
                 def forward(self, x):
+                    """Run backbone and route extracted features through the GP head.
+
+                    Some backbones return a tuple ``(logits, features, *extra)`` while
+                    others may return only logits.  Handle both cases so evaluation
+                    doesn't crash if features are missing (e.g. due to a different
+                    model implementation).  If features are unavailable, fall back to
+                    the backbone's logits.
+                    """
                     out = self.backbone(x)
                     if isinstance(out, tuple):
-                        _, feats = out[:2]
+                        model_logits = out[0]
+                        feats = out[1] if len(out) > 1 else None
                     else:
-                        feats = out
-                    if self.bottleneck is not None:
-                        feats = self.bottleneck(feats)
-                    logits = self.head.forward_classifier(feats)
-                    return logits
+                        model_logits, feats = out, None
+
+                    if feats is not None:
+                        if self.bottleneck is not None and not isinstance(self.bottleneck, nn.Identity):
+                            feats = self.bottleneck(feats)
+                        return self.head.forward_classifier(feats)
+
+                    # Fallback: backbone provided no features, so return its logits
+                    return model_logits
 
             eval_model = SNGPWrapper(self.model, self.bottleneck_layer if self.args.bottleneck else nn.Identity(), self.sngp_model)
         else:
