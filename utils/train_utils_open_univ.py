@@ -210,7 +210,17 @@ class train_utils_open_univ(object):
                 args.lr = min(args.lr, 1e-4)
                 logging.info(f"Reducing learning rate to {args.lr} for {self.target_sample_count} target samples")
 
-        first_batch = next(iter(self.dataloaders['source_train']))
+        # Determine if we should fine-tune using target data only
+        self.transfer_mode = (
+            self.dataloaders.get('target_train') is not None and
+            getattr(self.args, 'pretrained_model_path', None)
+        )
+        sample_loader = (
+            self.dataloaders['source_train']
+            if self.dataloaders.get('source_train') is not None
+            else self.dataloaders['target_train']
+        )
+        first_batch = next(iter(sample_loader))
         input_tensor, _ = first_batch
         args.input_channels = input_tensor.shape[1]  # Automatically infer input channels from data
         args.input_size = input_tensor.shape[-1]
@@ -220,7 +230,12 @@ class train_utils_open_univ(object):
 
         
         # Define the model
-        self.max_iter = len(self.dataloaders['source_train']) * args.max_epoch
+        train_loader_for_iter = (
+            self.dataloaders['target_train']
+            if self.transfer_mode
+            else self.dataloaders['source_train']
+        )
+        self.max_iter = len(train_loader_for_iter) * args.max_epoch
         if args.model_name in ["cnn_openmax", "cnn_features_1d_sa", "cnn_features_1d","WideResNet", "WideResNet_sa", "WideResNet_mh", "WideResNet_edited"]:
             if args.model_name == "WideResNet":
                 self.model = WideResNet(args.layers, args.widen_factor, args.droprate, self.num_classes)
@@ -335,35 +350,34 @@ class train_utils_open_univ(object):
                                                                            )
         else:
             if args.bottleneck:
-                # tmp  = nlp_layers.RandomFeatureGaussianProcess(units=self.num_classes,
-                #                                normalize_input=False,
-                #                                scale_random_features=True,
-                #                                gp_cov_momentum=-1)
-                
-                # self.classifier_layer = tmp
-                
-                # self.classifier_layer = gp_layer(args.bottleneck_num, self.num_classes)
+
                 self.classifier_layer = nn.Linear(args.bottleneck_num, self.num_classes)
 
-                self.AdversarialNet = getattr(models, 'AdversarialNet')(in_feature=args.bottleneck_num,
-                                                                        hidden_size=args.hidden_size,
-                                                                        max_iter=self.max_iter,
-                                                                        trade_off_adversarial=args.trade_off_adversarial,
-                                                                        lam_adversarial=args.lam_adversarial
-                                                                        )
-                self.AdversarialNet_auxiliary = getattr(models, 'AdversarialNet_auxiliary')(in_feature=args.bottleneck_num,
-                                                                                            hidden_size=args.hidden_size)
+                if not self.transfer_mode:
+                    self.AdversarialNet = getattr(models, 'AdversarialNet')(in_feature=args.bottleneck_num,
+                                                                            hidden_size=args.hidden_size,
+                                                                            max_iter=self.max_iter,
+                                                                            trade_off_adversarial=args.trade_off_adversarial,
+                                                                            lam_adversarial=args.lam_adversarial)
+                    self.AdversarialNet_auxiliary = getattr(models, 'AdversarialNet_auxiliary')(in_feature=args.bottleneck_num,
+                                                                                                hidden_size=args.hidden_size)
+                else:
+                    self.AdversarialNet = None
+                    self.AdversarialNet_auxiliary = None
             else:
                 self.classifier_layer = nn.Linear(self.model.output_num(), self.num_classes)
-                self.AdversarialNet = getattr(models, 'AdversarialNet')(in_feature=self.model.output_num(),
-                                                                        hidden_size=args.hidden_size,
-                                                                        max_iter=self.max_iter,
-                                                                        trade_off_adversarial=args.trade_off_adversarial,
-                                                                        lam_adversarial=args.lam_adversarial
-                                                                        )
-                self.AdversarialNet_auxiliary = getattr(models, 'AdversarialNet_auxiliary')(
-                    in_feature=self.model.output_num(),
-                    hidden_size=args.hidden_size)
+                if not self.transfer_mode:
+                    self.AdversarialNet = getattr(models, 'AdversarialNet')(in_feature=self.model.output_num(),
+                                                                            hidden_size=args.hidden_size,
+                                                                            max_iter=self.max_iter,
+                                                                            trade_off_adversarial=args.trade_off_adversarial,
+                                                                            lam_adversarial=args.lam_adversarial)
+                    self.AdversarialNet_auxiliary = getattr(models, 'AdversarialNet_auxiliary')(
+                        in_feature=self.model.output_num(),
+                        hidden_size=args.hidden_size)
+                else:
+                    self.AdversarialNet = None
+                    self.AdversarialNet_auxiliary = None
         if args.bottleneck:
             self.model_all = nn.Sequential(self.model, self.bottleneck_layer, self.classifier_layer)
         else:
@@ -381,9 +395,9 @@ class train_utils_open_univ(object):
             self.model = torch.nn.DataParallel(self.model)
             if args.bottleneck:
                 self.bottleneck_layer = torch.nn.DataParallel(self.bottleneck_layer)
-            if args.inconsistent == 'UAN':
+            if args.inconsistent == 'UAN' and self.AdversarialNet is not None:
                 self.AdversarialNet = torch.nn.DataParallel(self.AdversarialNet)
-                self.AdversarialNet_auxiliary = torch.nn.DataParallel(self.AdversarialNet)
+                self.AdversarialNet_auxiliary = torch.nn.DataParallel(self.AdversarialNet_auxiliary)
             self.classifier_layer = torch.nn.DataParallel(self.classifier_layer)
             
         # --------------------------------------------------------------
@@ -472,7 +486,7 @@ class train_utils_open_univ(object):
         self.model.to(self.device)
         if args.bottleneck:
             self.bottleneck_layer.to(self.device)
-        if args.inconsistent == 'UAN':
+        if self.AdversarialNet is not None:
             self.AdversarialNet.to(self.device)
             self.AdversarialNet_auxiliary.to(self.device)
         self.classifier_layer.to(self.device)
@@ -491,180 +505,90 @@ class train_utils_open_univ(object):
         
 
     def train(self):
-        best_source_val_acc = 0.0
+        best_eval_acc = 0.0
         best_model_wts = copy.deepcopy(self.model.state_dict())
         best_hscore = 0.0
         best_common_acc = 0.0
+        patience = getattr(self.args, 'early_stop_patience', None)
+        epochs_no_improve = 0
     
         for epoch in range(self.args.max_epoch):
             print(f"{datetime.now().strftime('%m-%d %H:%M:%S')} ----- Epoch {epoch + 1}/{self.args.max_epoch} -----")
             print(f"{datetime.now().strftime('%m-%d %H:%M:%S')} Current LR: {self.optimizer.param_groups[0]['lr']:.6f}")
             
-            if self.target_train_loader is not None:
-                target_iter = cycle(self.dataloaders['target_train'])
+            if self.transfer_mode:
+                phases = ['target_train']
+                if self.dataloaders.get('target_val') is not None:
+                    phases.append('target_val')
             else:
-                target_iter = None
-    
-            for phase in ['source_train', 'source_val', 'target_val']:
+                phases = ['source_train']
+                if self.dataloaders.get('source_val') is not None:
+                    phases.append('source_val')
+                if self.dataloaders.get('target_val') is not None:
+                    phases.append('target_val')
+                    
+            val_improved = False
+
+            for phase in phases:
                 if self.dataloaders.get(phase) is None:
                     continue
                 
-                self.model.train() if phase == 'source_train' else self.model.eval()
+                self.model.train() if phase.endswith('train') else self.model.eval()
     
                 running_loss = 0.0
                 running_corrects = 0
                 running_total = 0
-                preds_all, labels_all, logits_all, inputs_all = [], [], [], []
-                
-                
-    
-                for step, batch in enumerate(self.dataloaders[phase]):
-                    if phase == 'source_train' and target_iter is not None:
-                        source_inputs, labels = batch
-                        target_inputs, _ = next(target_iter)
-                        inputs = torch.cat((source_inputs, target_inputs), dim=0)
-                    else:
-                        inputs, labels = batch
+                preds_all, labels_all = [], []
+
+                for step, (inputs, labels) in enumerate(self.dataloaders[phase]):
                         
                     inputs, labels = inputs.to(self.device), labels.to(self.device)
     
                     if inputs.dim() == 2:
                         inputs = inputs.unsqueeze(1)
-                    if inputs.shape[1] != self.args.input_channels and \
-                       inputs.shape[-1] == self.args.input_channels:
+                    if inputs.shape[1] != self.args.input_channels and inputs.shape[-1] == self.args.input_channels:
                         inputs = inputs.permute(0, 2, 1)
     
                     self.optimizer.zero_grad()
-                    with torch.set_grad_enabled(phase == 'source_train'):
-                        backbone_out = self.model(inputs)
-                        if isinstance(backbone_out, tuple):
-                            model_logits, features = backbone_out[0], backbone_out[1]
-                            domain_out = backbone_out[2] if len(backbone_out) > 2 else None
+                    with torch.set_grad_enabled(phase.endswith('train')):
+                        out = self.model(inputs)
+                        if isinstance(out, tuple):
+                            model_logits = out[0]
+                            features = out[1] if len(out) > 1 else None
                         else:
-                            model_logits = backbone_out
-                            features = None
-                            domain_out = None
+                            model_logits, features = out, None
     
                         if features is not None and self.args.bottleneck:
                             features = self.bottleneck_layer(features)
 
-                        if features is not None:
-                            logits = self.sngp_model.forward_classifier(features)
-                        else:
-                            logits = model_logits
-    
-                        if step % 50 == 0 and phase == 'source_train':
-                            with torch.no_grad():
-                                probs = F.softmax(logits, dim=1)
-                                max_probs, preds = torch.max(probs, 1)
-                                pred_counts = torch.bincount(preds, minlength=self.num_classes)
-                                print(f"🧪 [Epoch {epoch:02d} | Step {step:04d}] Pred dist: {pred_counts.tolist()}")
-                                print(f"🧪 [Epoch {epoch:02d} | Step {step:04d}] Avg Max Softmax Prob: {max_probs.mean().item():.4f}")
-    
-                        if phase != 'source_train':
-                            loss = self.criterion(logits, labels)
-                            loss = torch.where(torch.isnan(loss), torch.zeros_like(loss), loss)
-                        else:
-                            batch_size = inputs.size(0)
-                            source_size = labels.size(0)
-                            target_size = batch_size - source_size
-    
-                            logits = torch.where(torch.isnan(logits), torch.full_like(logits, 0.22815), logits)
-                            logits_source = logits[:source_size]
-                            classifier_loss = self.criterion(logits_source, labels)
-    
-                            if self.args.inconsistent != 'OSBP' and domain_out is not None:
-                                features_source = features[:source_size]
-                                features_target = features[source_size:]
-                                logits_target = logits[source_size:]
-                                domain_out_source = domain_out[:source_size]
-                                domain_out_target = domain_out[source_size:]
-    
-                                domain_prob_source = torch.sigmoid(self.AdversarialNet(features_source))
-                                domain_prob_target = torch.sigmoid(self.AdversarialNet(features_target))
-                                domain_prob_source_aux = torch.sigmoid(self.AdversarialNet_auxiliary(features_source.detach()))
-                                domain_prob_target_aux = torch.sigmoid(self.AdversarialNet_auxiliary(features_target.detach()))
-    
-                                source_share_weight = get_source_share_weight(
-                                    domain_prob_source_aux,
-                                    logits_source,
-                                    domain_temperature=1.0,
-                                    class_temperature=10.0
-                                )
-                                source_share_weight = normalize_weight(source_share_weight)
-    
-                                if target_size > 0:
-                                    domain_temperature = getattr(self.args, 'domain_temperature', 1.0)
-                                    class_temperature = getattr(self.args, 'class_temperature', 10.0)
-    
-                                    target_share_weight = get_target_share_weight(
-                                        domain_out_target.detach(),
-                                        logits_target.detach(),
-                                        domain_temperature=domain_temperature,
-                                        class_temperature=class_temperature
-                                    )
-                                    target_share_weight = normalize_weight(target_share_weight)
-                                    mask = (target_share_weight > 0.1).float()
-                                    target_share_weight = target_share_weight * mask
-    
-                                    if target_share_weight.numel() == 0 or torch.isnan(target_share_weight).all():
-                                        print("⚠️ Empty/NaN target_share_weight. Skipping adversarial loss.")
-                                        inconsistent_loss = classifier_loss
-                                    else:
-                                        target_share_weight = torch.clamp(
-                                            torch.nan_to_num(target_share_weight, nan=0.5), 0.01, 0.99
-                                        )
-    
-                                        tmp_src = nn.BCELoss(reduction='none')(domain_prob_source, torch.ones_like(domain_prob_source))
-                                        tmp_tgt = nn.BCELoss(reduction='none')(domain_prob_target, torch.zeros_like(domain_prob_target))
-                                        adv_loss = torch.mean(source_share_weight * tmp_src) + torch.mean(target_share_weight * tmp_tgt)
-    
-                                        aux_loss_src = nn.BCELoss()(domain_prob_source_aux, torch.ones_like(domain_prob_source_aux))
-                                        aux_loss_tgt = nn.BCELoss()(domain_prob_target_aux, torch.zeros_like(domain_prob_target_aux))
-    
-                                        inconsistent_loss = adv_loss + aux_loss_src + aux_loss_tgt
-                                else:
-                                    inconsistent_loss = classifier_loss
-    
-                            else:
-                                inconsistent_loss = classifier_loss  # fallback if OSBP or no domain_out
-    
-                            loss = classifier_loss + inconsistent_loss
-    
-                    if phase == 'source_train':
-                        loss.backward()
-                        self.optimizer.step()
+                        logits = self.sngp_model.forward_classifier(features) if features is not None else model_logits
+
+                        loss = self.criterion(logits, labels)
+
+                        if phase.endswith('train'):
+                            loss.backward()
+                            self.optimizer.step()
     
                     running_loss += loss.item() * inputs.size(0)
-                    print(f"🔍 logits shape: {logits.shape}, labels shape: {labels.shape}")
                     _, preds = torch.max(logits, 1)
-                    if phase == 'source_train' and target_iter is not None:
-                        preds = preds[:source_size]
-                        logits_for_log = logits[:source_size]
-                        inputs_for_log = inputs[:source_size]
-                    else:
-                        logits_for_log = logits
-                        inputs_for_log = inputs
-                        
-                    if preds.numel() == 0:
-                        continue
+                    
                     
                     running_corrects += torch.sum(preds == labels.data)
                     running_total += labels.size(0)
     
                     preds_all.extend(preds.detach().cpu().numpy())
                     labels_all.extend(labels.detach().cpu().numpy())
-                    logits_all.append(logits_for_log.detach().cpu())
-                    inputs_all.append(inputs_for_log.detach().cpu())
+                    
     
                 epoch_loss = running_loss / running_total if running_total > 0 else 0.0
                 epoch_acc = running_corrects.double() / running_total if running_total > 0 else 0.0
                 print(f"{datetime.now().strftime('%m-%d %H:%M:%S')} Epoch: {epoch} {phase}-Loss: {epoch_loss:.4f} {phase}-Acc: {epoch_acc:.4f}")
     
-                if phase == 'source_val' and epoch_acc > best_source_val_acc:
-                    best_source_val_acc = epoch_acc
+                if phase in ['source_val', 'target_val'] and epoch_acc > best_eval_acc:
+                    best_eval_acc = epoch_acc
                     best_model_wts = copy.deepcopy(self.model.state_dict())
-                    print("✓ Best model updated based on source_val accuracy.")
+                    print("✓ Best model updated based on validation accuracy.")
+                    val_improved = True
     
                 if phase == 'target_val':
                     preds_np = np.array(preds_all)
@@ -691,22 +615,28 @@ class train_utils_open_univ(object):
                     if common_acc > best_common_acc:
                         best_common_acc = common_acc
 
-                    print(
-                        f"{datetime.now().strftime('%m-%d %H:%M:%S')} Epoch: {epoch} {phase}-hscore: {hscore:.4f}"
-                    )
+                    print(f"{datetime.now().strftime('%m-%d %H:%M:%S')} Epoch: {epoch} {phase}-hscore: {hscore:.4f}")
                     if hscore > best_hscore:
                         best_hscore = hscore
                         print("✓ Best target hscore updated.")
     
             self.lr_scheduler.step()
+            if patience is not None:
+                if val_improved:
+                    epochs_no_improve = 0
+                else:
+                    epochs_no_improve += 1
+                    if epochs_no_improve >= patience:
+                        print(f"⏹ Early stopping triggered after {patience} epochs without improvement.")
+                        break
     
         print("Training complete.")
         self.model.load_state_dict(best_model_wts)
-        self.best_source_val_acc = float(best_source_val_acc)
-        if self.dataloaders.get('target_val') is None:
-            self.best_val_acc_class = self.best_source_val_acc
-        else:
+        self.best_source_val_acc = float(best_eval_acc)
+        if self.dataloaders.get('target_val') is not None and not self.transfer_mode:
             self.best_val_acc_class = best_common_acc if best_common_acc > 0 else best_hscore
+        else:
+            self.best_val_acc_class = self.best_source_val_acc
         
         torch.save(
             self.model.state_dict(),

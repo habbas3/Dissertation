@@ -26,11 +26,12 @@ from my_datasets.Battery_label_inconsistent import load_battery_dataset
 from torch.utils.data import DataLoader
 
 def run_experiment(args, save_dir, trial=None):
+    args.early_stop_patience = getattr(args, 'early_stop_patience', 5)
     setlogger(os.path.join(save_dir, 'train.log'))
     for k, v in vars(args).items():
         logging.info(f"{k}: {v}")
 
-    # ✅ Load dataset using cathode filters
+    # ✅ Load dataset using cathode filters (already returns DataLoaders)
     source_train_loader, source_val_loader, target_train_loader, target_val_loader, label_names, df = load_battery_dataset(
         csv_path=args.csv,
         source_cathodes=args.source_cathode,
@@ -48,6 +49,13 @@ def run_experiment(args, save_dir, trial=None):
             tgt_sample_count = len(target_train_loader.dataset)
         else:
             tgt_sample_count = len(target_train_loader)
+            
+    # If a pretrained model path is provided, we are fine-tuning and can
+    # ignore the source loaders to train purely on target data
+    if getattr(args, 'pretrained_model_path', None):
+        logging.info("Fine-tuning mode: ignoring source loaders and training only on target data")
+        source_train_loader = None
+        source_val_loader = None
 
     # ✅ Inject Optuna trial hyperparameters
     if trial is not None:
