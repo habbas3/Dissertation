@@ -30,6 +30,7 @@ from models.optuna_search import run_optuna_search
 import pandas as pd
 from torch.utils.data import Dataset, DataLoader
 import time
+from itertools import combinations
 
 
 import sys
@@ -226,14 +227,19 @@ def main():
     ]
 
     
-    # Example baseline/transfer configurations.  Each tuple contains a list
-    # of source cathodes and a list of target cathodes to be treated as the
-    # unseen domain.
-    experiment_configs = [
-        (cathode_groups["nmc_pool"], ["NMC622"]),
-        (["NMC532", "NMC811"], ["NMC622"]),
-        (["HE5050"], ["NMC622"]),
-    ]
+    # Automatically generate baseline/transfer configurations by pairing
+    # every non-empty subset of a source group with each individual cathode
+    # from a different target group.  This greatly increases the number of
+    # source→target evaluations and yields more samples for analysis.
+    experiment_configs = []
+    for src_group_name, src_cathodes in cathode_groups.items():
+        for tgt_group_name, tgt_cathodes in cathode_groups.items():
+            if src_group_name == tgt_group_name:
+                continue
+            for r in range(1, len(src_cathodes) + 1):
+                for src_subset in combinations(src_cathodes, r):
+                    for tgt in tgt_cathodes:
+                        experiment_configs.append((list(src_subset), [tgt]))
 
     # Allow command-line overrides for a single experiment or model.
     if args.source_cathode and args.target_cathode:
@@ -241,6 +247,7 @@ def main():
     if args.model_name:
         model_architectures = [args.model_name]
 
+    results = []
     for model_name in model_architectures:
         for source_cathodes, target_cathodes in experiment_configs:
             global_habbas3.init()
@@ -287,6 +294,30 @@ def main():
             print(
                 f"✅ Transfer {source_cathodes} → {target_cathodes}: {transfer_acc:.4f} ({len(tr_labels)} samples)"
             )
+            
+            if transfer_acc < baseline_acc:
+                print(
+                    f"⚠️ Transfer did not improve over baseline for {source_cathodes} → {target_cathodes}"
+                )
+
+            results.append(
+                {
+                    "model": model_name,
+                    "source": "-".join(source_cathodes),
+                    "target": "-".join(target_cathodes),
+                    "baseline_acc": baseline_acc,
+                    "transfer_acc": transfer_acc,
+                }
+            )
+
+    if results:
+        summary_df = pd.DataFrame(results)
+        summary_path = os.path.join(
+            args.checkpoint_dir,
+            f"summary_{datetime.now().strftime('%m%d')}.csv",
+        )
+        summary_df.to_csv(summary_path, index=False)
+        print(f"Saved summary to {summary_path}")
 
 
 if __name__ == '__main__':
