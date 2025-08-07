@@ -96,6 +96,7 @@ def parse_args():
     parser.add_argument('--max_epoch', type=int, default=100) #100
     parser.add_argument('--print_step', type=int, default=50) #50
     parser.add_argument('--inconsistent', type=str, default='UAN')
+    parser.add_argument('--model_name', type=str, default='cnn_features_1d')
     parser.add_argument('--th', type=float, default=0.5)
     parser.add_argument('--input_channels', type=int, default=7)
     parser.add_argument('--classification_label', type=str, default='eol_class')
@@ -104,6 +105,8 @@ def parse_args():
     # parser.add_argument('--target_cathode', nargs='+', default=["NMC622", "5Vspinel"])
     parser.add_argument('--source_cathode', nargs='+', default=[])
     parser.add_argument('--target_cathode', nargs='+', default=[])
+    parser.add_argument('--num_classes', type=int, default=None,
+                        help='Override the number of label classes if the raw label is numeric')
     parser.add_argument('--domain_temperature', type=float, default=1.0,
                             help='Temperature scaling for domain predictions')
     parser.add_argument('--class_temperature', type=float, default=10.0,
@@ -126,6 +129,7 @@ def run_experiment(args, save_dir, trial=None):
         classification_label=args.classification_label,
         batch_size=args.batch_size,
         sequence_length=args.sequence_length,
+        num_classes=args.num_classes,
     )
     args.num_classes = len(label_names)
 
@@ -174,6 +178,7 @@ def evaluate_model(model, args):
         classification_label=args.classification_label,
         batch_size=args.batch_size,
         sequence_length=args.sequence_length,
+        num_classes=args.num_classes,
     )
 
     if target_val_loader is None:
@@ -198,24 +203,18 @@ def evaluate_model(model, args):
 
 def main():
     args = parse_args()
-    global_habbas3.init()
-    df_all = pd.read_csv(args.csv)
-    
-    df_all["cathode"] = df_all["cathode"].astype(str).str.strip()
-    all_cathodes = sorted(df_all["cathode"].unique().tolist())
+    os.environ["CUDA_VISIBLE_DEVICES"] = args.cuda_device.strip()
+
+    # Define cathode groups and model architectures to explore.  These can
+    # be customised by the user to bundle cathodes with similar chemistry
+    # or to avoid sparsely sampled types.
     # Define cathode groups
     cathode_groups = {
-        "NMC_Layered_Oxides": ["NMC532", "NMC622", "NMC111", "NMC811", "5Vspinel"],
-        "Li_rich_Layered_Oxides": ["Li1.2Ni0.3Mn0.6O2", "Li1.35Ni0.33Mn0.67O2.35"],
+        "nmc_pool": ["HE5050", "NMC111", "NMC532", "FCG", "NMC811"],
+        "hv_pool": ["NMC622", "5Vspinel", "Li1.2Ni0.3Mn0.6O2", "Li1.35Ni0.33Mn0.67O2.35"],
     }
 
-    # Define cathodes
-    # pretrain_cathodes = ["HE5050", "NMC111", "NMC532", "FCG", "NMC811"]
-    # transfer_cathodes = ["NMC622", "Li1.2Ni0.3Mn0.6O2", "Li1.35Ni0.33Mn0.67O2.35"]
-    grouped = [c for group in cathode_groups.values() for c in group]
-    for cat in all_cathodes:
-        if cat not in grouped:
-            cathode_groups[cat] = [cat]
+    
 
     model_architectures = [
         "cnn_features_1d",
@@ -227,129 +226,67 @@ def main():
     ]
 
     
-    results = []
+    # Example baseline/transfer configurations.  Each tuple contains a list
+    # of source cathodes and a list of target cathodes to be treated as the
+    # unseen domain.
+    experiment_configs = [
+        (cathode_groups["nmc_pool"], ["NMC622"]),
+        (["NMC532", "NMC811"], ["NMC622"]),
+        (["HE5050"], ["NMC622"]),
+    ]
 
-   
-    print("\n📊 Baseline training (cnn_features_1d)")
-    baseline_results = {}
-    baseline_conf_matrices = {}
-    baseline_eval_counts = {}
-    transfer_conf_matrices = {}
-    transfer_eval_counts = {}
-    args.model_name = "cnn_features_1d"
-    args.pretrained = False
-    args.pretrained_model_path = None
-   
-            
-    for group_name, cathodes in cathode_groups.items():
-        global_habbas3.init()
-        args.source_cathode = cathodes
-        args.target_cathode = []
-        
-        os.environ["CUDA_VISIBLE_DEVICES"] = args.cuda_device.strip()
-        base_dir = os.path.join(
-            args.checkpoint_dir,
-            f"baseline_cnn1d_{group_name}_{datetime.now().strftime('%m%d')}"
-        )
-        os.makedirs(base_dir, exist_ok=True)
-        model_bl, base_acc, base_time = run_experiment(args, base_dir)
-        baseline_results[group_name] = (base_acc, base_time)
+    # Allow command-line overrides for a single experiment or model.
+    if args.source_cathode and args.target_cathode:
+        experiment_configs = [(args.source_cathode, args.target_cathode)]
+    if args.model_name:
+        model_architectures = [args.model_name]
 
-        # Evaluate baseline on target group
-        args.target_cathode = cathodes
-        bl_labels, bl_preds = evaluate_model(model_bl, args)
-        baseline_eval_counts[group_name] = len(bl_labels)
-        if len(bl_labels) > 0:
-            baseline_conf_matrices[group_name] = confusion_matrix(bl_labels, bl_preds)
-        else:
-            baseline_conf_matrices[group_name] = None
+    for model_name in model_architectures:
+        for source_cathodes, target_cathodes in experiment_configs:
+            global_habbas3.init()
+            args.model_name = model_name
+            args.source_cathode = source_cathodes
+            args.target_cathode = target_cathodes
 
-        print(f"✅ Baseline cnn_features_1d -> {group_name}: {base_acc:.4f} ({base_time:.1f}s)")
+            # ---------------- Baseline training ----------------
+            baseline_args = argparse.Namespace(**vars(args))
+            baseline_args.target_cathode = []
+            baseline_args.pretrained = False
+            baseline_args.pretrained_model_path = None
+            base_dir = os.path.join(
+                args.checkpoint_dir,
+                f"baseline_{model_name}_{'-'.join(source_cathodes)}_to_{'-'.join(target_cathodes)}_{datetime.now().strftime('%m%d')}",
+            )
+            os.makedirs(base_dir, exist_ok=True)
+            model_bl, _, _ = run_experiment(baseline_args, base_dir)
 
-    # --------------- Transfer Learning -----------------
-    print("\n🔧 Transfer learning across groups")
-    for target_name, target_cathodes in cathode_groups.items():
-        for source_name, source_cathodes in cathode_groups.items():
-            if source_name == target_name:
-                continue
-            for model_name in model_architectures:
-                global_habbas3.init()
-                args.model_name = model_name
-                os.environ["CUDA_VISIBLE_DEVICES"] = args.cuda_device.strip()
+            eval_args = argparse.Namespace(**vars(args))
+            eval_args.source_cathode = source_cathodes
+            eval_args.target_cathode = target_cathodes
+            bl_labels, bl_preds = evaluate_model(model_bl, eval_args)
+            baseline_acc = accuracy_score(bl_labels, bl_preds) if len(bl_labels) else 0.0
+            print(
+                f"✅ Baseline {source_cathodes} → {target_cathodes}: {baseline_acc:.4f} ({len(bl_labels)} samples)"
+            )
 
-                # Pretrain on source group
-                args.pretrained = False
-                args.source_cathode = source_cathodes
-                args.target_cathode = []
-                pre_dir = os.path.join(
-                    args.checkpoint_dir,
-                    f"pretrain_{model_name}_{source_name}_{datetime.now().strftime('%m%d')}",
-                )
-                os.makedirs(pre_dir, exist_ok=True)
-                run_experiment(args, pre_dir)
+            # ---------------- Transfer learning ----------------
+            transfer_args = argparse.Namespace(**vars(args))
+            transfer_args.pretrained = True
+            transfer_args.pretrained_model_path = os.path.join(base_dir, "best_model.pth")
+            transfer_args.source_cathode = target_cathodes
+            transfer_args.target_cathode = []
+            ft_dir = os.path.join(
+                args.checkpoint_dir,
+                f"transfer_{model_name}_{'-'.join(source_cathodes)}_to_{'-'.join(target_cathodes)}_{datetime.now().strftime('%m%d')}",
+            )
+            os.makedirs(ft_dir, exist_ok=True)
+            model_ft, _, _ = run_experiment(transfer_args, ft_dir)
 
-                # Fine-tune on target group
-                args.pretrained = True
-                args.pretrained_model_path = os.path.join(pre_dir, "best_model.pth")
-                args.source_cathode = target_cathodes
-                args.target_cathode = []
-                ft_dir = os.path.join(
-                    args.checkpoint_dir,
-                    f"transfer_{model_name}_{source_name}_to_{target_name}_{datetime.now().strftime('%m%d')}",
-                )
-                os.makedirs(ft_dir, exist_ok=True)
-                model_ft, transfer_acc, transfer_time = run_experiment(args, ft_dir)
-
-                # Evaluate fine-tuned model on target group
-                args.target_cathode = target_cathodes
-                tr_labels, tr_preds = evaluate_model(model_ft, args)
-                transfer_key = (target_name, source_name, model_name)
-                transfer_eval_counts[transfer_key] = len(tr_labels)
-                if len(tr_labels) > 0:
-                    transfer_conf_matrices[transfer_key] = confusion_matrix(tr_labels, tr_preds)
-                else:
-                    transfer_conf_matrices[transfer_key] = None
-
-                base_acc, base_time = baseline_results[target_name]
-                results.append({
-                    "source": source_name,
-                    "target": target_name,
-                    "model": model_name,
-                    "baseline": base_acc,
-                    "baseline_time": base_time,
-                    "transfer": transfer_acc,
-                    "transfer_time": transfer_time,
-                })
-                print(
-                    f"✅ {model_name} {source_name} → {target_name}: baseline {base_acc:.4f} ({base_time:.1f}s) | transfer {transfer_acc:.4f} ({transfer_time:.1f}s)"
-                )
-
-    # Print final summary
-    print("\n===== Summary =====")
-    for r in results:
-        target = r['target']
-        source = r['source']
-        model_name = r['model']
-        base_count = baseline_eval_counts.get(target, 0)
-        transfer_key = (target, source, model_name)
-        transfer_count = transfer_eval_counts.get(transfer_key, 0)
-        print(
-            f"{model_name} {source}→{target}: baseline {r['baseline']:.4f} ({base_count} samples) → transfer {r['transfer']:.4f} ({transfer_count} samples)"
-        )
-        base_cm = baseline_conf_matrices.get(target)
-        transfer_cm = transfer_conf_matrices.get(transfer_key)
-        if (
-            base_cm is not None
-            and transfer_cm is not None
-            and base_cm.size > 0
-            and transfer_cm.size > 0
-        ):
-            fig, axes = plt.subplots(1, 2, figsize=(10, 4))
-            ConfusionMatrixDisplay(base_cm).plot(ax=axes[0])
-            axes[0].set_title(f"Baseline {target}")
-            ConfusionMatrixDisplay(transfer_cm).plot(ax=axes[1])
-            axes[1].set_title(f"Transfer {source}→{target}")
-            plt.show()
+            tr_labels, tr_preds = evaluate_model(model_ft, eval_args)
+            transfer_acc = accuracy_score(tr_labels, tr_preds) if len(tr_labels) else 0.0
+            print(
+                f"✅ Transfer {source_cathodes} → {target_cathodes}: {transfer_acc:.4f} ({len(tr_labels)} samples)"
+            )
 
 
 if __name__ == '__main__':

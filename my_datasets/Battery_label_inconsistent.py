@@ -87,6 +87,7 @@ def load_battery_dataset(
     classification_label="eol_class",
     batch_size=64,
     sequence_length=32,
+    num_classes=None,
 ):
     
     df = pd.read_csv(csv_path)
@@ -109,9 +110,29 @@ def load_battery_dataset(
         raise ValueError(f"Missing classification label: {classification_label}")
     if "cathode" not in df.columns:
         raise ValueError("'cathode' column missing in CSV.")
+        
+    # Optionally rebin the target column into a different number of classes.
+    # This is useful when the raw label is numeric and a user wants to
+    # evaluate a coarser or finer-grained classification task without
+    # regenerating the CSV file.
+    if num_classes is not None:
+        try:
+            df[classification_label] = pd.qcut(
+                df[classification_label],
+                q=num_classes,
+                labels=False,
+                duplicates="drop",
+            )
+        except Exception as exc:  # pragma: no cover - defensive, feature optional
+            raise ValueError(
+                f"Failed to bin '{classification_label}' into {num_classes} classes"
+            ) from exc
+
 
     # Encode labels
-    df[classification_label + "_encoded"] = LabelEncoder().fit_transform(df[classification_label])
+    df[classification_label + "_encoded"] = LabelEncoder().fit_transform(
+        df[classification_label]
+    )
 
     print("🔢 Class distribution:\n", df[classification_label + "_encoded"].value_counts())
     print("🔬 Cathode distribution:\n", df["cathode"].value_counts())
