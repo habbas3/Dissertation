@@ -114,6 +114,21 @@ def parse_args():
                             help='Temperature scaling for class predictions')
     return parser.parse_args()
 
+def build_cathode_groups(csv_path):
+    """Dynamically group cathodes into NMC-based and high-voltage pools.
+
+    This allows experiments to automatically span more combinations without
+    manually enumerating every cathode name.  Additional grouping logic can be
+    inserted here as new cathode families are added to the dataset.
+    """
+    df = pd.read_csv(csv_path)
+    cathodes = df["cathode"].astype(str).str.strip()
+    groups = {
+        "nmc_pool": sorted(cathodes[cathodes.str.contains("NMC", case=False)].unique().tolist()),
+        "hv_pool": sorted(cathodes[~cathodes.str.contains("NMC", case=False)].unique().tolist()),
+    }
+    return groups
+
 def run_experiment(args, save_dir, trial=None):
     reset_seed()
     setlogger(os.path.join(save_dir, 'train.log'))
@@ -170,26 +185,44 @@ def run_experiment(args, save_dir, trial=None):
     return model, acc, elapsed
 
 
-def evaluate_model(model, args):
-    """Run inference on the target validation set and return labels and predictions."""
-    _, _, _, target_val_loader, _, _ = load_battery_dataset(
-        csv_path=args.csv,
-        source_cathodes=args.source_cathode,
-        target_cathodes=args.target_cathode,
-        classification_label=args.classification_label,
-        batch_size=args.batch_size,
-        sequence_length=args.sequence_length,
-        num_classes=args.num_classes,
-    )
+def evaluate_model(model, args, baseline=False):
+    """Run inference on the validation set and return labels and predictions.
 
-    if target_val_loader is None:
+    When ``baseline`` is True, the evaluation is performed on the validation
+    split of the target cathode data without any transfer learning.  Otherwise
+    the function evaluates the fine-tuned model on the held-out target split.
+    """
+    if baseline:
+        # Load only the target cathode data (treated as source within the
+        # loader) so that we can evaluate a model trained from scratch.
+        _, val_loader, _, _, _, _ = load_battery_dataset(
+            csv_path=args.csv,
+            source_cathodes=args.source_cathode,
+            target_cathodes=[],
+            classification_label=args.classification_label,
+            batch_size=args.batch_size,
+            sequence_length=args.sequence_length,
+            num_classes=args.num_classes,
+        )
+    else:
+        _, _, _, val_loader, _, _ = load_battery_dataset(
+            csv_path=args.csv,
+            source_cathodes=args.source_cathode,
+            target_cathodes=args.target_cathode,
+            classification_label=args.classification_label,
+            batch_size=args.batch_size,
+            sequence_length=args.sequence_length,
+            num_classes=args.num_classes,
+        )
+
+    if val_loader is None:
         return np.array([]), np.array([])
 
     device = next(model.parameters()).device
     model.eval()
     all_labels, all_preds = [], []
     with torch.no_grad():
-        for inputs, labels in target_val_loader:
+        for inputs, labels in val_loader:
             inputs = inputs.to(device)
             labels = labels.to(device)
             outputs = model(inputs)
@@ -206,15 +239,12 @@ def main():
     args = parse_args()
     os.environ["CUDA_VISIBLE_DEVICES"] = args.cuda_device.strip()
 
-    # Define cathode groups and model architectures to explore.  These can
-    # be customised by the user to bundle cathodes with similar chemistry
-    # or to avoid sparsely sampled types.
-    # Define cathode groups
-    cathode_groups = {
-        "nmc_pool": ["HE5050", "NMC111", "NMC532", "FCG", "NMC811"],
-        "hv_pool": ["NMC622", "5Vspinel", "Li1.2Ni0.3Mn0.6O2", "Li1.35Ni0.33Mn0.67O2.35"],
-    }
+    # Dynamically build cathode groups from the CSV so new cathode types are
+    # picked up automatically without modifying this script.
+    cathode_groups = build_cathode_groups(args.csv)
 
+    # Baseline architecture defaults to CNN-1D but other models can be
+    # explored by overriding --model_name.
     
 
     model_architectures = [
@@ -227,19 +257,19 @@ def main():
     ]
 
     
-    # Automatically generate baseline/transfer configurations by pairing
-    # every non-empty subset of a source group with each individual cathode
-    # from a different target group.  This greatly increases the number of
-    # source→target evaluations and yields more samples for analysis.
+    # Generate experiments by pairing every non-empty subset of a source group
+    # with every non-empty subset of a different target group.  This yields a
+    # rich set of baseline vs. transfer comparisons across cathode families.
     experiment_configs = []
-    for src_group_name, src_cathodes in cathode_groups.items():
-        for tgt_group_name, tgt_cathodes in cathode_groups.items():
-            if src_group_name == tgt_group_name:
+    for src_group, src_cathodes in cathode_groups.items():
+        for tgt_group, tgt_cathodes in cathode_groups.items():
+            if src_group == tgt_group:
                 continue
-            for r in range(1, len(src_cathodes) + 1):
-                for src_subset in combinations(src_cathodes, r):
-                    for tgt in tgt_cathodes:
-                        experiment_configs.append((list(src_subset), [tgt]))
+            for r_s in range(1, len(src_cathodes) + 1):
+                for src_subset in combinations(src_cathodes, r_s):
+                    for r_t in range(1, len(tgt_cathodes) + 1):
+                        for tgt_subset in combinations(tgt_cathodes, r_t):
+                            experiment_configs.append((list(src_subset), list(tgt_subset)))
 
     # Allow command-line overrides for a single experiment or model.
     if args.source_cathode and args.target_cathode:
@@ -253,33 +283,40 @@ def main():
             global_habbas3.init()
             args.model_name = model_name
             args.source_cathode = source_cathodes
-            args.target_cathode = target_cathodes
+            # ---------------- Pretraining on source cathodes ----------------
+            pre_args = argparse.Namespace(**vars(args))
+            pre_args.target_cathode = []
+            pre_args.pretrained = False
+            pre_args.pretrained_model_path = None
+            pre_dir = os.path.join(
+                args.checkpoint_dir,
+                f"pretrain_{model_name}_{'-'.join(source_cathodes)}_{datetime.now().strftime('%m%d')}",
+            )
+            os.makedirs(pre_dir, exist_ok=True)
+            run_experiment(pre_args, pre_dir)
 
-            # ---------------- Baseline training ----------------
+            # ---------------- Baseline: train target from scratch ----------------
             baseline_args = argparse.Namespace(**vars(args))
+            baseline_args.source_cathode = target_cathodes
             baseline_args.target_cathode = []
             baseline_args.pretrained = False
-            baseline_args.pretrained_model_path = None
-            base_dir = os.path.join(
+            baseline_dir = os.path.join(
                 args.checkpoint_dir,
-                f"baseline_{model_name}_{'-'.join(source_cathodes)}_to_{'-'.join(target_cathodes)}_{datetime.now().strftime('%m%d')}",
+                f"baseline_{model_name}_{'-'.join(target_cathodes)}_{datetime.now().strftime('%m%d')}",
             )
-            os.makedirs(base_dir, exist_ok=True)
-            model_bl, _, _ = run_experiment(baseline_args, base_dir)
-
-            eval_args = argparse.Namespace(**vars(args))
-            eval_args.source_cathode = source_cathodes
-            eval_args.target_cathode = target_cathodes
-            bl_labels, bl_preds = evaluate_model(model_bl, eval_args)
-            baseline_acc = accuracy_score(bl_labels, bl_preds) if len(bl_labels) else 0.0
+            os.makedirs(baseline_dir, exist_ok=True)
+            model_bl, baseline_acc, _ = run_experiment(baseline_args, baseline_dir)
+            bl_labels, bl_preds = evaluate_model(model_bl, baseline_args, baseline=True)
+            if len(bl_labels):
+                baseline_acc = accuracy_score(bl_labels, bl_preds)
             print(
-                f"✅ Baseline {source_cathodes} → {target_cathodes}: {baseline_acc:.4f} ({len(bl_labels)} samples)"
+                f"✅ Baseline {target_cathodes}: {baseline_acc:.4f} ({len(bl_labels)} samples)"
             )
 
             # ---------------- Transfer learning ----------------
             transfer_args = argparse.Namespace(**vars(args))
             transfer_args.pretrained = True
-            transfer_args.pretrained_model_path = os.path.join(base_dir, "best_model.pth")
+            transfer_args.pretrained_model_path = os.path.join(pre_dir, "best_model.pth")
             transfer_args.source_cathode = target_cathodes
             transfer_args.target_cathode = []
             ft_dir = os.path.join(
@@ -287,10 +324,10 @@ def main():
                 f"transfer_{model_name}_{'-'.join(source_cathodes)}_to_{'-'.join(target_cathodes)}_{datetime.now().strftime('%m%d')}",
             )
             os.makedirs(ft_dir, exist_ok=True)
-            model_ft, _, _ = run_experiment(transfer_args, ft_dir)
-
-            tr_labels, tr_preds = evaluate_model(model_ft, eval_args)
-            transfer_acc = accuracy_score(tr_labels, tr_preds) if len(tr_labels) else 0.0
+            model_ft, transfer_acc, _ = run_experiment(transfer_args, ft_dir)
+            tr_labels, tr_preds = evaluate_model(model_ft, transfer_args, baseline=True)
+            if len(tr_labels):
+                transfer_acc = accuracy_score(tr_labels, tr_preds)
             print(
                 f"✅ Transfer {source_cathodes} → {target_cathodes}: {transfer_acc:.4f} ({len(tr_labels)} samples)"
             )
@@ -307,6 +344,7 @@ def main():
                     "target": "-".join(target_cathodes),
                     "baseline_acc": baseline_acc,
                     "transfer_acc": transfer_acc,
+                    "improvement": transfer_acc - baseline_acc,
                 }
             )
 
@@ -318,6 +356,7 @@ def main():
         )
         summary_df.to_csv(summary_path, index=False)
         print(f"Saved summary to {summary_path}")
+            
 
 
 if __name__ == '__main__':
