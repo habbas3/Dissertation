@@ -21,13 +21,12 @@ class Compose:
         return x
 
 # --- Sequence generation ---
-def build_sequences(df, feature_cols, label_col, seq_len=32, group_col=None):
-    sequences, labels, groups = [], [], []
+def build_sequences(df, feature_cols, label_col, seq_len=32):
+    sequences, labels = [], []
     for _, group in df.groupby("filename"):
         group = group.sort_values("cycle_number")
         features = group[feature_cols].values
         labels_all = group[label_col].values
-        group_label = group[group_col].iloc[0] if group_col else None
         if len(features) < seq_len:
             # Pad by repeating the last row so CNNs still receive a minimum length
             pad_len = seq_len - len(features)
@@ -36,21 +35,13 @@ def build_sequences(df, feature_cols, label_col, seq_len=32, group_col=None):
             label = labels_all[-1]
             sequences.append(seq)
             labels.append(label)
-            if group_col:
-                groups.append(group_label)
         else:
             for i in range(len(features) - seq_len + 1):  # +1 to get last window
                 seq = features[i:i + seq_len]
                 label = labels_all[i + seq_len - 1]
                 sequences.append(seq)
                 labels.append(label)
-                if group_col:
-                    groups.append(group_label)
-    sequences = np.array(sequences)
-    labels = np.array(labels)
-    if group_col:
-        return sequences, labels, np.array(groups)
-    return sequences, labels
+    return np.array(sequences), np.array(labels)
 
 
 class BatteryDataset(Dataset):
@@ -87,7 +78,6 @@ def load_battery_dataset(
     classification_label="eol_class",
     batch_size=64,
     sequence_length=32,
-    num_classes=None,
 ):
     
     df = pd.read_csv(csv_path)
@@ -103,43 +93,16 @@ def load_battery_dataset(
         cycle numbering does not start at 0 or 1."""
         group = group.sort_values("cycle_number")
         n_cycles = len(group)
-        cutoff_idx = int(np.ceil(n_cycles * 0.25))
+        cutoff_idx = int(np.ceil(n_cycles * 0.50))
         return group.iloc[:cutoff_idx]
 
     if classification_label not in df.columns:
         raise ValueError(f"Missing classification label: {classification_label}")
     if "cathode" not in df.columns:
         raise ValueError("'cathode' column missing in CSV.")
-        
-    # Optionally rebin the target column into a different number of classes.
-    # This is useful when the raw label is numeric and a user wants to
-    # evaluate a coarser or finer-grained classification task without
-    # regenerating the CSV file.
-    if num_classes is not None:
-        if pd.api.types.is_numeric_dtype(df[classification_label]):
-            try:
-                df[classification_label] = pd.qcut(
-                    df[classification_label],
-                    q=num_classes,
-                    labels=False,
-                    duplicates="drop",
-                )
-            except Exception as exc:  # pragma: no cover - defensive, feature optional
-                raise ValueError(
-                    f"Failed to bin '{classification_label}' into {num_classes} classes"
-                ) from exc
-        else:
-            print(
-                f"⚠️ classification label '{classification_label}' is non-numeric; "
-                "skipping quantile binning and using existing categories."
-            )
-
-
 
     # Encode labels
-    df[classification_label + "_encoded"] = LabelEncoder().fit_transform(
-        df[classification_label]
-    )
+    df[classification_label + "_encoded"] = LabelEncoder().fit_transform(df[classification_label])
 
     print("🔢 Class distribution:\n", df[classification_label + "_encoded"].value_counts())
     print("🔬 Cathode distribution:\n", df["cathode"].value_counts())
@@ -166,8 +129,7 @@ def load_battery_dataset(
                     'capacity_discharge', 'cycle_start', 'cycle_duration']
 
     scaler = StandardScaler()
-    scaler.fit(df[feature_cols])
-    source_df[feature_cols] = scaler.transform(source_df[feature_cols])
+    source_df[feature_cols] = scaler.fit_transform(source_df[feature_cols])
     if not target_df.empty:
         target_df[feature_cols] = scaler.transform(target_df[feature_cols])
 
@@ -184,14 +146,14 @@ def load_battery_dataset(
         else:
             train_files, val_files = train_test_split(
                 files,
-                test_size=0.25,
+                test_size=0.2,
                 random_state=42,
             )
 
     else:
         train_files, val_files = train_test_split(
             files,
-            test_size=0.25,
+            test_size=0.2,
             stratify=labels,
             random_state=42,
         )
@@ -235,12 +197,11 @@ def load_battery_dataset(
         tgt_train_df = target_df[target_df["filename"].isin(tgt_train_files)].reset_index(drop=True)
         tgt_val_df = target_df[target_df["filename"].isin(tgt_val_files)].reset_index(drop=True)
 
-        X_tgt_train, y_tgt_train, g_tgt_train = build_sequences(
-            tgt_train_df, feature_cols, label_col, seq_len=sequence_length, group_col="cathode"
-        )
-        X_tgt_val, y_tgt_val = build_sequences(
-            tgt_val_df, feature_cols, label_col, seq_len=sequence_length
-        )
+        X_tgt_train, y_tgt_train = build_sequences(tgt_train_df, feature_cols, label_col, seq_len=sequence_length)
+        X_tgt_val, y_tgt_val = build_sequences(tgt_val_df, feature_cols, label_col, seq_len=sequence_length)
+        
+        
+        
 
         # When very few target samples are available, augment and oversample
         if len(y_tgt_train) > 0 and len(y_tgt_train) < 100:
@@ -248,27 +209,23 @@ def load_battery_dataset(
                 RandomAddGaussian(sigma=0.05),
                 RandomScale(sigma=0.1),
                 RandomStretch(sigma=0.3),
-                RandomTimeShift(shift_ratio=0.2),
                 Reshape(),
             ])
             class_counts = np.bincount(y_tgt_train)
             class_weights = 1.0 / class_counts
-            cathode_counts = Counter(g_tgt_train)
-            cathode_weights = {c: 1.0 / cnt for c, cnt in cathode_counts.items()}
-            sample_weights = class_weights[y_tgt_train] * np.array([cathode_weights[g] for g in g_tgt_train])
+            sample_weights = class_weights[y_tgt_train]
             sample_weights = torch.from_numpy(sample_weights).float()
-            sampler = WeightedRandomSampler(
-                sample_weights,
-                num_samples=len(sample_weights) * 10,
-                replacement=True,
-            )
+            sampler = WeightedRandomSampler(sample_weights,
+                                            num_samples=len(sample_weights) * 10,
+                                            replacement=True)
             target_train_dataset = BatteryDataset(X_tgt_train, y_tgt_train, aug_transform)
             target_train = DataLoader(target_train_dataset, batch_size=batch_size, sampler=sampler)
         else:
             target_train_dataset = BatteryDataset(X_tgt_train, y_tgt_train, transform)
             target_train = DataLoader(target_train_dataset, batch_size=batch_size, shuffle=True)
-        
+
         target_val = DataLoader(BatteryDataset(X_tgt_val, y_tgt_val, transform), batch_size=batch_size, shuffle=False)
+        
     else:
         target_train, target_val = None, None
 

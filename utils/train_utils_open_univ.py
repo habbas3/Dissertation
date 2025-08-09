@@ -441,11 +441,11 @@ class train_utils_open_univ(object):
                 parameter_list.append({"params": model_params, "lr": args.lr})
             if args.bottleneck:
                 parameter_list.append({"params": self.bottleneck_layer.parameters(), "lr": args.lr})
-            parameter_list.extend([
-                {"params": self.classifier_layer.parameters(), "lr": args.lr},
-                {"params": self.AdversarialNet_auxiliary.parameters(), "lr": args.lr},
-                {"params": self.AdversarialNet.parameters(), "lr": args.lr},
-            ])
+            parameter_list.append({"params": self.classifier_layer.parameters(), "lr": args.lr})
+            if self.AdversarialNet_auxiliary is not None:
+                parameter_list.append({"params": self.AdversarialNet_auxiliary.parameters(), "lr": args.lr})
+            if self.AdversarialNet is not None:
+                parameter_list.append({"params": self.AdversarialNet.parameters(), "lr": args.lr})
                 
         # Ensure SNGP (or deterministic head) parameters are optimized.
         sngp_params = [p for name, p in self.sngp_model.named_parameters()

@@ -317,15 +317,19 @@ def main():
             transfer_args = argparse.Namespace(**vars(args))
             transfer_args.pretrained = True
             transfer_args.pretrained_model_path = os.path.join(pre_dir, "best_model.pth")
-            transfer_args.source_cathode = target_cathodes
-            transfer_args.target_cathode = []
+            # During fine-tuning we keep the original source cathodes and
+            # provide the new target cathodes so that `load_battery_dataset`
+            # returns target loaders and enables transfer_mode.
+            transfer_args.source_cathode = source_cathodes
+            transfer_args.target_cathode = target_cathodes
             ft_dir = os.path.join(
                 args.checkpoint_dir,
                 f"transfer_{model_name}_{'-'.join(source_cathodes)}_to_{'-'.join(target_cathodes)}_{datetime.now().strftime('%m%d')}",
             )
             os.makedirs(ft_dir, exist_ok=True)
             model_ft, transfer_acc, _ = run_experiment(transfer_args, ft_dir)
-            tr_labels, tr_preds = evaluate_model(model_ft, transfer_args, baseline=True)
+            # Evaluate on the held-out target validation split
+            tr_labels, tr_preds = evaluate_model(model_ft, transfer_args, baseline=False)
             if len(tr_labels):
                 transfer_acc = accuracy_score(tr_labels, tr_preds)
             print(

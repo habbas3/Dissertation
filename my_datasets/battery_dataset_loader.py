@@ -71,7 +71,7 @@ def load_battery_transfer_task(
     sequence_length: int = 30,
     batch_size: int = 64,
     num_classes: int = 3,
-    target_train_ratio: float = 0.8,
+    target_train_ratio: float = 0.75,
     shuffle: bool = True,
 ):
     """Prepare loaders for source training and target fine-tuning/eval.
