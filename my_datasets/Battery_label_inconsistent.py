@@ -116,17 +116,24 @@ def load_battery_dataset(
     # evaluate a coarser or finer-grained classification task without
     # regenerating the CSV file.
     if num_classes is not None:
-        try:
-            df[classification_label] = pd.qcut(
-                df[classification_label],
-                q=num_classes,
-                labels=False,
-                duplicates="drop",
+        if pd.api.types.is_numeric_dtype(df[classification_label]):
+            try:
+                df[classification_label] = pd.qcut(
+                    df[classification_label],
+                    q=num_classes,
+                    labels=False,
+                    duplicates="drop",
+                )
+            except Exception as exc:  # pragma: no cover - defensive, feature optional
+                raise ValueError(
+                    f"Failed to bin '{classification_label}' into {num_classes} classes"
+                ) from exc
+        else:
+            print(
+                f"⚠️ classification label '{classification_label}' is non-numeric; "
+                "skipping quantile binning and using existing categories."
             )
-        except Exception as exc:  # pragma: no cover - defensive, feature optional
-            raise ValueError(
-                f"Failed to bin '{classification_label}' into {num_classes} classes"
-            ) from exc
+
 
 
     # Encode labels

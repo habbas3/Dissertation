@@ -332,6 +332,11 @@ def main():
                 f"✅ Transfer {source_cathodes} → {target_cathodes}: {transfer_acc:.4f} ({len(tr_labels)} samples)"
             )
             
+            improvement = transfer_acc - baseline_acc
+            print(
+                f"📊 {source_cathodes} → {target_cathodes}: baseline={baseline_acc:.4f}, "
+                f"transfer={transfer_acc:.4f}, improvement={improvement:+.4f}"
+            )
             if transfer_acc < baseline_acc:
                 print(
                     f"⚠️ Transfer did not improve over baseline for {source_cathodes} → {target_cathodes}"
@@ -344,7 +349,7 @@ def main():
                     "target": "-".join(target_cathodes),
                     "baseline_acc": baseline_acc,
                     "transfer_acc": transfer_acc,
-                    "improvement": transfer_acc - baseline_acc,
+                    "improvement": improvement,
                 }
             )
 
@@ -356,6 +361,7 @@ def main():
         )
         summary_df.to_csv(summary_path, index=False)
         print(f"Saved summary to {summary_path}")
+        print(summary_df[["source", "target", "baseline_acc", "transfer_acc", "improvement"]])
             
 
 
