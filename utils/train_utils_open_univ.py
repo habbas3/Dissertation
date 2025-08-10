@@ -610,13 +610,26 @@ class train_utils_open_univ(object):
 
                         logits = self.sngp_model.forward_classifier(features) if features is not None else model_logits
 
-                        loss = self.criterion(logits, labels)
+                        # Filter out any labels that fall outside the known class
+                        # range when computing the loss.  The CWRU dataset contains
+                        # explicit outlier classes labeled with an index >=
+                        # ``self.num_classes``.  These should not contribute to the
+                        # supervised loss since the model has no corresponding output
+                        # nodes for them.  Battery datasets, on the other hand, do
+                        # not include such labels, so this masking becomes a no-op.
+                        known_mask_batch = labels < self.num_classes
+                        if known_mask_batch.any():
+                            loss = self.criterion(logits[known_mask_batch], labels[known_mask_batch])
+                            if phase.endswith('train'):
+                                loss.backward()
+                                self.optimizer.step()
+                            running_loss += loss.item() * known_mask_batch.sum().item()
+                        else:
+                            # No valid known-class samples in this batch; skip the
+                            # optimization step to avoid ``IndexError``.
+                            loss = torch.tensor(0.0, device=self.device)
 
-                        if phase.endswith('train'):
-                            loss.backward()
-                            self.optimizer.step()
-    
-                    running_loss += loss.item() * inputs.size(0)
+                       
                     _, preds = torch.max(logits, 1)
                     
                     

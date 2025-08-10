@@ -228,6 +228,34 @@ def evaluate_model(model, val_loader):
     return np.array(all_labels), np.array(all_preds)
 
 
+def compute_open_set_metrics(labels, preds, num_known):
+    """Compute common-class accuracy, outlier accuracy and the harmonic score.
+
+    ``num_known`` specifies how many class indices are considered *known*.
+    Any label greater than or equal to ``num_known`` is treated as an outlier.
+    The function gracefully handles cases where one of the groups is empty,
+    which is useful for datasets like the Battery dataset that do not contain
+    explicit outlier classes.
+    """
+
+    labels_np = np.array(labels)
+    preds_np = np.array(preds)
+    known_mask = labels_np < num_known
+    out_mask = labels_np >= num_known
+
+    common_acc = accuracy_score(labels_np[known_mask], preds_np[known_mask]) if known_mask.any() else 0.0
+    outlier_acc = accuracy_score(labels_np[out_mask], preds_np[out_mask]) if out_mask.any() else 0.0
+
+    if not out_mask.any():
+        hscore = common_acc
+    elif not known_mask.any():
+        hscore = outlier_acc
+    else:
+        denom = common_acc + outlier_acc
+        hscore = 2 * common_acc * outlier_acc / denom if denom > 0 else 0.0
+
+    return common_acc, outlier_acc, hscore
+
 def run_battery_experiments(args):
     cathode_groups = build_cathode_groups(args.csv)
 
@@ -390,7 +418,13 @@ def run_cwru_experiments(args):
             bl_labels, bl_preds = evaluate_model(model_bl, bl_loader)
             if len(bl_labels):
                 baseline_acc = accuracy_score(bl_labels, bl_preds)
-            print(f"✅ Baseline {tgt_str}: {baseline_acc:.4f} ({len(bl_labels)} samples)")
+                b_common, b_out, b_h = compute_open_set_metrics(bl_labels, bl_preds, baseline_args.num_classes)
+                print(
+                    f"✅ Baseline {tgt_str}: {baseline_acc:.4f} ({len(bl_labels)} samples)\n"
+                    f"   ↳ common_acc={b_common:.4f}, outlier_acc={b_out:.4f}, hscore={b_h:.4f}"
+                )
+            else:
+                print(f"✅ Baseline {tgt_str}: {baseline_acc:.4f} (0 samples)")
 
             transfer_args = argparse.Namespace(**vars(args))
             transfer_args.transfer_task = transfer_task
@@ -405,7 +439,14 @@ def run_cwru_experiments(args):
             tr_labels, tr_preds = evaluate_model(model_ft, tr_loader)
             if len(tr_labels):
                 transfer_acc = accuracy_score(tr_labels, tr_preds)
-            print(f"✅ Transfer {src_str} → {tgt_str}: {transfer_acc:.4f} ({len(tr_labels)} samples)")
+                t_common, t_out, t_h = compute_open_set_metrics(tr_labels, tr_preds, transfer_args.num_classes)
+                print(
+                    f"✅ Transfer {src_str} → {tgt_str}: {transfer_acc:.4f} ({len(tr_labels)} samples)\n"
+                    f"   ↳ common_acc={t_common:.4f}, outlier_acc={t_out:.4f}, hscore={t_h:.4f}"
+                )
+            else:
+                print(f"✅ Transfer {src_str} → {tgt_str}: {transfer_acc:.4f} (0 samples)")
+            
 
             improvement = transfer_acc - baseline_acc
             print(
