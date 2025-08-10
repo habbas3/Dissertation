@@ -513,13 +513,42 @@ class train_utils_open_univ(object):
         if args.inconsistent == "OSBP":
             self.inconsistent_loss = nn.BCELoss()
 
-        # self.criterion = nn.CrossEntropyLoss()
-        classification_label = args.classification_label
-        all_labels = df[classification_label].values
-        class_weights = compute_class_weight('balanced', classes=np.unique(all_labels), y=all_labels)
-        weights_tensor = torch.tensor(class_weights, dtype=torch.float).to(self.device)
-        # self.criterion = nn.CrossEntropyLoss(weight=weights_tensor)
-        self.criterion = nn.CrossEntropyLoss()
+        # ---------------------------------------------
+        # Determine class weights for imbalanced data.
+        # Earlier revisions assumed the presence of a local
+        # ``df`` variable containing the original dataframe,
+        # which is not available when dataloaders are passed
+        # directly (e.g. for the CWRU dataset).  We now fall
+        # back to dataset or dataloader labels if ``df`` is
+        # missing so both Battery and CWRU paths work.
+        # ---------------------------------------------
+        classification_label = getattr(args, "classification_label", None)
+        all_labels = None
+
+        # 1) Preferred source: dataframe stored during battery loading
+        if hasattr(self, "df") and classification_label and classification_label in self.df.columns:
+            all_labels = self.df[classification_label].values
+
+        # 2) Fallback: labels attribute on the source dataset
+        if all_labels is None:
+            src_dataset = self.datasets.get('source_train')
+            if hasattr(src_dataset, 'labels') and src_dataset.labels is not None:
+                all_labels = np.array(src_dataset.labels)
+
+        # 3) Final fallback: iterate over the dataloader to collect labels
+        if all_labels is None and self.dataloaders.get('source_train') is not None:
+            collected = []
+            for _, lbl in self.dataloaders['source_train']:
+                collected.extend(lbl.numpy().tolist() if isinstance(lbl, torch.Tensor) else lbl)
+            if collected:
+                all_labels = np.array(collected)
+
+        if all_labels is not None and len(all_labels) > 0:
+            class_weights = compute_class_weight('balanced', classes=np.unique(all_labels), y=all_labels)
+            weights_tensor = torch.tensor(class_weights, dtype=torch.float).to(self.device)
+            self.criterion = nn.CrossEntropyLoss(weight=weights_tensor)
+        else:
+            self.criterion = nn.CrossEntropyLoss()
         
 
     def train(self):

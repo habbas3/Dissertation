@@ -18,20 +18,35 @@ class Compose(object):
 
 class Reshape(object):
     def __call__(self, seq):
-        # Convert to numpy array
+        """Ensure sequences have shape (channels, length) and float32 dtype.
+
+        Earlier versions returned a ``torch.Tensor`` directly, which broke
+        subsequent numpy-based augmentations (e.g. ``Retype``) that expect
+        ``ndarray`` inputs.  We now keep the data as a numpy array so that all
+        augmentation steps operate on a consistent type, deferring conversion to
+        ``torch.Tensor`` until the dataset's ``__getitem__``.
+        """
+
+        # Convert to numpy array and drop any singleton dimensions introduced
+        # by certain loaders (e.g. ``(length, 1)`` windows).
         seq = np.array(seq)
+
+        if seq.ndim == 3:
+            # squeeze trailing dimension, keeping (N, L)
+            if seq.shape[-1] == 1:
+                seq = np.squeeze(seq, axis=-1)
+            else:
+                # For unexpected 3D shapes, flatten first dimension(s)
+                seq = seq.reshape(seq.shape[0], -1)
 
         # Handle different shapes dynamically
         if seq.ndim == 1:
             # (N,) → (1, N)
             seq = seq[np.newaxis, :]
-        elif seq.ndim == 2:
-            if seq.shape[0] > seq.shape[1]:
-                seq = seq.T  # Transpose if needed
+        elif seq.ndim == 2 and seq.shape[0] > seq.shape[1]:
+            seq = seq.T  # Transpose if needed
 
-        # Ensure it's float32 tensor
-        return torch.tensor(seq, dtype=torch.float32)
-
+        return seq.astype(np.float32)
 
 
 

@@ -3,10 +3,8 @@
 
 import torch
 from torch.utils.data import Dataset
-import os
-from PIL import Image
-from torchvision import transforms
 import numpy as np
+import pandas as pd
 from my_datasets.sequence_aug import *
 
 class dataset(Dataset):
@@ -15,12 +13,28 @@ class dataset(Dataset):
         self.test = bool(test)
         self.sequence_length = sequence_length
         self.transforms = transform if transform else Compose([Reshape()])
-        self.labels = list_data.get('label')
-        self.seq_data = list_data['data']
 
-        # Convert to numpy array to easily slice sequences
-        self.seq_data = np.array(self.seq_data)
-        self.labels = np.array(self.labels) if self.labels is not None else None
+        # ``list_data`` may arrive as a pandas ``DataFrame`` (typical for our
+        # loaders) or as a simple ``dict``/list pair.  Converting the ``data``
+        # column of a DataFrame directly via ``np.array`` produces an ``object``
+        # dtype array, which later breaks ``torch.tensor`` conversion.  Instead
+        # we explicitly stack the underlying numpy arrays to obtain a numeric
+        # ``float`` array.  This keeps the dataset backend agnostic while
+        # preventing the ``numpy.object_`` error reported during CWRU runs.
+        if isinstance(list_data, pd.DataFrame):
+            data_series = list_data['data']
+            # Some sources store each window as ``(length, 1)`` which would
+            # otherwise introduce an extra singleton dimension when stacked.
+            self.seq_data = np.stack([np.asarray(x).squeeze() for x in data_series.to_list()])
+            self.labels = list_data['label'].to_numpy() if 'label' in list_data else None
+        elif isinstance(list_data, dict):
+            self.seq_data = np.stack([np.asarray(x).squeeze() for x in list_data['data']])
+            self.labels = np.array(list_data.get('label')) if list_data.get('label') is not None else None
+        else:  # assume a tuple/list like [data, labels]
+            self.seq_data = np.stack([np.asarray(x).squeeze() for x in list_data[0]])
+            self.labels = np.array(list_data[1]) if len(list_data) > 1 else None
+
+
 
     def __len__(self):
         """Return the number of available sequences.
@@ -38,10 +52,17 @@ class dataset(Dataset):
         seq = self.seq_data[item:item + self.sequence_length]
         seq = self.transforms(seq)
 
+        # ``sequence_aug`` transformations operate on numpy arrays.  After the
+        # pipeline finishes we convert to a tensor unless a tensor was already
+        # produced (e.g. by a user-provided transform).
+        if not isinstance(seq, torch.Tensor):
+            seq = torch.tensor(seq, dtype=torch.float32)
+
         if self.test:
             return seq, item
         else:
             label = self.labels[item + self.sequence_length - 1]  # predict last label
             return seq, label
+
 
 
