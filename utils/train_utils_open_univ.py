@@ -552,7 +552,14 @@ class train_utils_open_univ(object):
             # to avoid a size mismatch in ``nn.CrossEntropyLoss``.  Battery
             # datasets contain no such labels, making the mask a harmless no-op.
             # -------------------------------------------------------------
-            known_mask = all_labels < self.num_classes
+            if hasattr(self.sngp_model, 'fc') and hasattr(self.sngp_model.fc, 'out_features'):
+                num_output_classes = self.sngp_model.fc.out_features
+            else:
+                num_output_classes = self.num_classes + (1 if args.inconsistent == 'OSBP' else 0)
+
+            known_class_count = num_output_classes - 1 if args.inconsistent == 'OSBP' else num_output_classes
+            self.num_classes = known_class_count
+            known_mask = all_labels < known_class_count
             if np.any(known_mask):
                 present_classes = np.unique(all_labels[known_mask])
                 balanced_weights = compute_class_weight(
@@ -561,7 +568,7 @@ class train_utils_open_univ(object):
                     y=all_labels[known_mask]
                 )
 
-                full_weights = np.ones(self.num_classes, dtype=np.float32)
+                full_weights = np.ones(num_output_classes, dtype=np.float32)
                 for cls, w in zip(present_classes, balanced_weights):
                     full_weights[int(cls)] = w
 
