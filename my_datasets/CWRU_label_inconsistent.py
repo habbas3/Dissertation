@@ -162,15 +162,24 @@ class CWRU_inconsistent(object):
             target_val = dataset(list_data=val_pd, transform=self.data_transforms['val'])
             return source_train, source_val, target_train, target_val, num_classes
         else:
-            #get source train and val
-            list_data = get_files(self.data_dir, self.source_N)
+            # Baseline: load all classes with consistent labeling
+            all_names = list(range(len(dataname[0])))
+            all_labels = list(range(len(dataname[0])))
+
+            # get source train and val
+            list_data = get_files(self.data_dir, self.source_N, all_names, all_labels)
             data_pd = pd.DataFrame({"data": list_data[0], "label": list_data[1]})
-            train_pd, val_pd = train_test_split(data_pd, test_size=0.2, random_state=40, stratify=data_pd["label"])
+            train_pd, val_pd = train_test_split(
+                data_pd,
+                test_size=0.2,
+                random_state=40,
+                stratify=data_pd["label"],
+            )
             source_train = dataset(list_data=train_pd, transform=self.data_transforms['train'])
             source_val = dataset(list_data=val_pd, transform=self.data_transforms['val'])
 
-            # get target train and val
-            list_data = get_files(self.data_dir, self.target_N)
+            # get target val (entire target domain with same labels)
+            list_data = get_files(self.data_dir, self.target_N, all_names, all_labels)
             data_pd = pd.DataFrame({"data": list_data[0], "label": list_data[1]})
             target_val = dataset(list_data=data_pd, transform=self.data_transforms['val'])
             return source_train, source_val, target_val
