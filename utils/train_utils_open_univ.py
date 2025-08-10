@@ -544,9 +544,33 @@ class train_utils_open_univ(object):
                 all_labels = np.array(collected)
 
         if all_labels is not None and len(all_labels) > 0:
-            class_weights = compute_class_weight('balanced', classes=np.unique(all_labels), y=all_labels)
-            weights_tensor = torch.tensor(class_weights, dtype=torch.float).to(self.device)
-            self.criterion = nn.CrossEntropyLoss(weight=weights_tensor)
+            # -------------------------------------------------------------
+            # Some datasets (e.g. CWRU) include explicit *outlier* classes
+            # whose label index is greater than or equal to ``self.num_classes``.
+            # The model, however, only outputs ``self.num_classes`` logits, so
+            # class weights must be computed only over the known-class labels
+            # to avoid a size mismatch in ``nn.CrossEntropyLoss``.  Battery
+            # datasets contain no such labels, making the mask a harmless no-op.
+            # -------------------------------------------------------------
+            known_mask = all_labels < self.num_classes
+            if np.any(known_mask):
+                present_classes = np.unique(all_labels[known_mask])
+                balanced_weights = compute_class_weight(
+                    'balanced',
+                    classes=present_classes,
+                    y=all_labels[known_mask]
+                )
+
+                full_weights = np.ones(self.num_classes, dtype=np.float32)
+                for cls, w in zip(present_classes, balanced_weights):
+                    full_weights[int(cls)] = w
+
+                weights_tensor = torch.tensor(full_weights, dtype=torch.float).to(self.device)
+                self.criterion = nn.CrossEntropyLoss(weight=weights_tensor)
+            else:
+                # All labels correspond to outlier classes; fall back to
+                # an unweighted loss to keep training functional.
+                self.criterion = nn.CrossEntropyLoss()
         else:
             self.criterion = nn.CrossEntropyLoss()
         
