@@ -152,56 +152,74 @@ class train_utils_open_univ(object):
             logging.info('using {} cpu'.format(self.device_count))
 
 
-        # Load the datasets
-        if args.data_name == 'Battery_inconsistent':
-            self.datasets = {}
-            if hasattr(args, 'target_cathode') and args.target_cathode:
-                target_label = args.target_cathode[0] if isinstance(args.target_cathode, list) else args.target_cathode
-                print("Target Labels Sample:", str(target_label)[:5])
+        # Load datasets only if not already provided
+        if self.source_train_loader is None or self.source_val_loader is None:
+            if args.data_name == 'Battery_inconsistent':
+                self.datasets = {}
+                if hasattr(args, 'target_cathode') and args.target_cathode:
+                    target_label = args.target_cathode[0] if isinstance(args.target_cathode, list) else args.target_cathode
+                    print("Target Labels Sample:", str(target_label)[:5])
+                else:
+                    print("No target cathode provided — pretraining mode.")
+
+                source_train, source_val, target_train, target_val, label_names, df = load_battery_dataset(
+                    csv_path=self.args.csv,
+                    source_cathodes=self.args.source_cathode,
+                    target_cathodes=self.args.target_cathode,
+                    classification_label=self.args.classification_label,
+                    batch_size=self.args.batch_size,
+                    sequence_length=self.args.sequence_length,
+                )
+
+                self.datasets['source_train'] = source_train
+                self.datasets['source_val'] = source_val
+                self.datasets['target_train'] = target_train
+                self.datasets['target_val'] = target_val
+                self.label_names = label_names
+                self.df = df
+                self.num_classes = len(label_names)
+                self.dataloaders = {
+                    'source_train': source_train,
+                    'source_val': source_val,
+                    'target_train': target_train,
+                    'target_val': target_val
+                }
             else:
-                print("No target cathode provided — pretraining mode.")
-
-        
-            source_train, source_val, target_train, target_val, label_names, df = load_battery_dataset(
-                csv_path=self.args.csv,
-                source_cathodes=self.args.source_cathode,
-                target_cathodes=self.args.target_cathode,
-                classification_label=self.args.classification_label,
-                batch_size=self.args.batch_size,
-                sequence_length=self.args.sequence_length,
-            )
-            
-            self.datasets['source_train'] = source_train
-            self.datasets['source_val'] = source_val
-            self.datasets['target_train'] = target_train
-            self.datasets['target_val'] = target_val
-            self.label_names = label_names
-            self.df = df
-              
-            self.num_classes = len(label_names)
+                if isinstance(args.transfer_task[0], str):
+                    args.transfer_task = eval("".join(args.transfer_task))
+                src_tr, src_val, tgt_tr, tgt_val, self.num_classes = Dataset(
+                    args.data_dir, args.transfer_task, args.inconsistent, args.normlizetype
+                ).data_split(transfer_learning=True)
+                self.datasets = {
+                    'source_train': src_tr,
+                    'source_val': src_val,
+                    'target_train': tgt_tr,
+                    'target_val': tgt_val
+                }
+                self.dataloaders = {x: torch.utils.data.DataLoader(self.datasets[x], batch_size=args.batch_size,
+                                                                   shuffle=(True if x.split('_')[1] == 'train' else False),
+                                                                   num_workers=args.num_workers,
+                                                                   pin_memory=(True if self.device == 'cuda' else False),
+                                                                   drop_last=(True if args.last_batch and x.split('_')[1] == 'train' else False),
+                                                                   generator=g)
+                                    for x in ['source_train', 'source_val', 'target_train', 'target_val']}
 
         else:
-            if isinstance(args.transfer_task[0], str):
-                args.transfer_task = eval("".join(args.transfer_task))
-            self.datasets['source_train'], self.datasets['source_val'], self.datasets['target_train'], self.datasets['target_val'], self.num_classes = \
-                Dataset(args.data_dir, args.transfer_task, args.inconsistent, args.normlizetype).data_split(transfer_learning=True)
-
-        if args.data_name == 'Battery_inconsistent':
-            # Already returned as DataLoaders from load_battery_dataset
-            self.dataloaders = {
-                'source_train': self.datasets['source_train'],
-                'source_val': self.datasets['source_val'],
-                'target_train': self.datasets['target_train'],
-                'target_val': self.datasets['target_val']
+            self.datasets = {
+                'source_train': self.source_train_loader.dataset,
+                'source_val': self.source_val_loader.dataset,
             }
-        else:
-            self.dataloaders = {x: torch.utils.data.DataLoader(self.datasets[x], batch_size=args.batch_size,
-                                                               shuffle=(True if x.split('_')[1] == 'train' else False),
-                                                               num_workers=args.num_workers,
-                                                               pin_memory=(True if self.device == 'cuda' else False),
-                                                               drop_last=(True if args.last_batch and x.split('_')[1] == 'train' else False),
-                                                               generator=g)
-                                for x in ['source_train', 'source_val', 'target_train', 'target_val']}
+            if self.target_train_loader is not None:
+                self.datasets['target_train'] = self.target_train_loader.dataset
+            if self.target_val_loader is not None:
+                self.datasets['target_val'] = self.target_val_loader.dataset
+            self.dataloaders = {
+                'source_train': self.source_train_loader,
+                'source_val': self.source_val_loader,
+                'target_train': self.target_train_loader,
+                'target_val': self.target_val_loader,
+            }
+            self.num_classes = args.num_classes
             
         self.target_sample_count = 0
         if self.dataloaders.get('target_train') is not None:

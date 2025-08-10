@@ -62,9 +62,12 @@ def reset_seed(seed=SEED):
 
 def parse_args():
     parser = argparse.ArgumentParser(description='Train')
-    parser.add_argument('--data_name', type=str, default='Battery_inconsistent')
-    parser.add_argument('--data_dir', type=str, default='./my_datasets/Battery')
-    parser.add_argument('--csv', type=str, default='./my_datasets/Battery/battery_data_labeled.csv')
+    parser.add_argument('--data_name', type=str, default='Battery_inconsistent',
+                        choices=['Battery_inconsistent', 'CWRU_inconsistent'])
+    parser.add_argument('--data_dir', type=str, default='./my_datasets/Battery',
+                        help='Root directory for datasets')
+    parser.add_argument('--csv', type=str, default='./my_datasets/Battery/battery_data_labeled.csv',
+                        help='CSV file for Battery dataset')
     parser.add_argument('--normlizetype', type=str, default='mean-std')
     parser.add_argument('--method', type=str, default='sngp', choices=['deterministic', 'sngp'])
     parser.add_argument('--gp_hidden_dim', type=int, default=2048)
@@ -93,17 +96,17 @@ def parse_args():
     parser.add_argument('--lr_scheduler', type=str, default='step')
     parser.add_argument('--gamma', type=float, default=0.1)
     parser.add_argument('--steps', type=str, default='150, 250')
-    parser.add_argument('--middle_epoch', type=int, default=30) #30
-    parser.add_argument('--max_epoch', type=int, default=100) #100
-    parser.add_argument('--print_step', type=int, default=50) #50
+    parser.add_argument('--middle_epoch', type=int, default=15) #30
+    parser.add_argument('--max_epoch', type=int, default=50) #100
+    parser.add_argument('--print_step', type=int, default=25) #50
     parser.add_argument('--inconsistent', type=str, default='UAN')
     parser.add_argument('--model_name', type=str, default='cnn_features_1d')
     parser.add_argument('--th', type=float, default=0.5)
     parser.add_argument('--input_channels', type=int, default=7)
     parser.add_argument('--classification_label', type=str, default='eol_class')
     parser.add_argument('--sequence_length', type=int, default=32)
-    # parser.add_argument('--source_cathode', nargs='+', default=["NMC532", "NMC811", "HE5050", "NMC111"])
-    # parser.add_argument('--target_cathode', nargs='+', default=["NMC622", "5Vspinel"])
+    parser.add_argument('--transfer_task', type=str, default='[[0],[1]]',
+                        help='CWRU transfer task as [[source],[target]]')
     parser.add_argument('--source_cathode', nargs='+', default=[])
     parser.add_argument('--target_cathode', nargs='+', default=[])
     parser.add_argument('--num_classes', type=int, default=None,
@@ -112,7 +115,15 @@ def parse_args():
                             help='Temperature scaling for domain predictions')
     parser.add_argument('--class_temperature', type=float, default=10.0,
                             help='Temperature scaling for class predictions')
-    return parser.parse_args()
+    args = parser.parse_args()
+    if args.data_name == 'CWRU_inconsistent' and args.data_dir == './my_datasets/Battery':
+        args.data_dir = './my_datasets/CWRU_dataset'
+    if isinstance(args.transfer_task, str):
+        try:
+            args.transfer_task = eval(args.transfer_task)
+        except Exception:
+            pass
+    return args
 
 def build_cathode_groups(csv_path):
     """Dynamically group cathodes into NMC-based and high-voltage pools.
@@ -129,7 +140,7 @@ def build_cathode_groups(csv_path):
     }
     return groups
 
-def run_experiment(args, save_dir, trial=None):
+def run_experiment(args, save_dir, trial=None, baseline=False):
     reset_seed()
     setlogger(os.path.join(save_dir, 'train.log'))
     for k, v in vars(args).items():
@@ -137,17 +148,26 @@ def run_experiment(args, save_dir, trial=None):
         
     start_time = time.time()
 
-    # ✅ Load dataset using cathode filters
-    source_train_dataset, source_val_dataset, target_train_dataset, target_val_dataset, label_names, df = load_battery_dataset(
-        csv_path=args.csv,
-        source_cathodes=args.source_cathode,
-        target_cathodes=args.target_cathode,
-        classification_label=args.classification_label,
-        batch_size=args.batch_size,
-        sequence_length=args.sequence_length,
-        num_classes=args.num_classes,
-    )
-    args.num_classes = len(label_names)
+    if args.data_name == 'Battery_inconsistent':
+        source_train_dataset, source_val_dataset, target_train_dataset, target_val_dataset, label_names, df = load_battery_dataset(
+            csv_path=args.csv,
+            source_cathodes=args.source_cathode,
+            target_cathodes=args.target_cathode,
+            classification_label=args.classification_label,
+            batch_size=args.batch_size,
+            sequence_length=args.sequence_length,
+            num_classes=args.num_classes,
+        )
+        args.num_classes = len(label_names)
+    else:
+        cwru_dataset = CWRU_inconsistent(args.data_dir, args.transfer_task, args.inconsistent, args.normlizetype)
+        if baseline:
+            source_train_dataset, source_val_dataset, target_val_dataset = cwru_dataset.data_split(transfer_learning=False)
+            target_train_dataset = None
+            args.num_classes = len(np.unique(source_train_dataset.labels))
+        else:
+            source_train_dataset, source_val_dataset, target_train_dataset, target_val_dataset, num_classes = cwru_dataset.data_split(transfer_learning=True)
+            args.num_classes = num_classes
 
     # ✅ Build dataloaders
     source_train_loader = DataLoader(source_train_dataset, batch_size=args.batch_size, shuffle=True, drop_last=True)
@@ -182,38 +202,11 @@ def run_experiment(args, save_dir, trial=None):
     trainer.setup()
     model, acc = trainer.train()
     elapsed = time.time() - start_time
-    return model, acc, elapsed
+    return model, acc, elapsed, source_val_loader, target_val_loader
 
 
-def evaluate_model(model, args, baseline=False):
-    """Run inference on the validation set and return labels and predictions.
-
-    When ``baseline`` is True, the evaluation is performed on the validation
-    split of the target cathode data without any transfer learning.  Otherwise
-    the function evaluates the fine-tuned model on the held-out target split.
-    """
-    if baseline:
-        # Load only the target cathode data (treated as source within the
-        # loader) so that we can evaluate a model trained from scratch.
-        _, val_loader, _, _, _, _ = load_battery_dataset(
-            csv_path=args.csv,
-            source_cathodes=args.source_cathode,
-            target_cathodes=[],
-            classification_label=args.classification_label,
-            batch_size=args.batch_size,
-            sequence_length=args.sequence_length,
-            num_classes=args.num_classes,
-        )
-    else:
-        _, _, _, val_loader, _, _ = load_battery_dataset(
-            csv_path=args.csv,
-            source_cathodes=args.source_cathode,
-            target_cathodes=args.target_cathode,
-            classification_label=args.classification_label,
-            batch_size=args.batch_size,
-            sequence_length=args.sequence_length,
-            num_classes=args.num_classes,
-        )
+def evaluate_model(model, val_loader):
+    """Run inference on the provided validation loader and return predictions."""
 
     if val_loader is None:
         return np.array([]), np.array([])
@@ -235,12 +228,7 @@ def evaluate_model(model, args, baseline=False):
     return np.array(all_labels), np.array(all_preds)
 
 
-def main():
-    args = parse_args()
-    os.environ["CUDA_VISIBLE_DEVICES"] = args.cuda_device.strip()
-
-    # Dynamically build cathode groups from the CSV so new cathode types are
-    # picked up automatically without modifying this script.
+def run_battery_experiments(args):
     cathode_groups = build_cathode_groups(args.csv)
 
     # Baseline architecture defaults to CNN-1D but other models can be
@@ -305,13 +293,11 @@ def main():
                 f"baseline_{model_name}_{'-'.join(target_cathodes)}_{datetime.now().strftime('%m%d')}",
             )
             os.makedirs(baseline_dir, exist_ok=True)
-            model_bl, baseline_acc, _ = run_experiment(baseline_args, baseline_dir)
-            bl_labels, bl_preds = evaluate_model(model_bl, baseline_args, baseline=True)
+            model_bl, baseline_acc, _, bl_loader, _ = run_experiment(baseline_args, baseline_dir, baseline=True)
+            bl_labels, bl_preds = evaluate_model(model_bl, bl_loader)
             if len(bl_labels):
                 baseline_acc = accuracy_score(bl_labels, bl_preds)
-            print(
-                f"✅ Baseline {target_cathodes}: {baseline_acc:.4f} ({len(bl_labels)} samples)"
-            )
+            print(f"✅ Baseline {target_cathodes}: {baseline_acc:.4f} ({len(bl_labels)} samples)")
 
             # ---------------- Transfer learning ----------------
             transfer_args = argparse.Namespace(**vars(args))
@@ -327,14 +313,11 @@ def main():
                 f"transfer_{model_name}_{'-'.join(source_cathodes)}_to_{'-'.join(target_cathodes)}_{datetime.now().strftime('%m%d')}",
             )
             os.makedirs(ft_dir, exist_ok=True)
-            model_ft, transfer_acc, _ = run_experiment(transfer_args, ft_dir)
-            # Evaluate on the held-out target validation split
-            tr_labels, tr_preds = evaluate_model(model_ft, transfer_args, baseline=False)
+            model_ft, transfer_acc, _, _, tr_loader = run_experiment(transfer_args, ft_dir)
+            tr_labels, tr_preds = evaluate_model(model_ft, tr_loader)
             if len(tr_labels):
                 transfer_acc = accuracy_score(tr_labels, tr_preds)
-            print(
-                f"✅ Transfer {source_cathodes} → {target_cathodes}: {transfer_acc:.4f} ({len(tr_labels)} samples)"
-            )
+            print(f"✅ Transfer {source_cathodes} → {target_cathodes}: {transfer_acc:.4f} ({len(tr_labels)} samples)")
             
             improvement = transfer_acc - baseline_acc
             print(
@@ -342,9 +325,7 @@ def main():
                 f"transfer={transfer_acc:.4f}, improvement={improvement:+.4f}"
             )
             if transfer_acc < baseline_acc:
-                print(
-                    f"⚠️ Transfer did not improve over baseline for {source_cathodes} → {target_cathodes}"
-                )
+                print(f"⚠️ Transfer did not improve over baseline for {source_cathodes} → {target_cathodes}")
 
             results.append(
                 {
@@ -366,6 +347,104 @@ def main():
         summary_df.to_csv(summary_path, index=False)
         print(f"Saved summary to {summary_path}")
         print(summary_df[["source", "target", "baseline_acc", "transfer_acc", "improvement"]])
+        
+        
+def run_cwru_experiments(args):
+    model_architectures = [
+        "cnn_features_1d",
+        "cnn_features_1d_sa",
+        "cnn_openmax",
+        "WideResNet",
+        "WideResNet_sa",
+        "WideResNet_edited",
+    ]
+    transfer_tasks = [args.transfer_task]
+    results = []
+    for model_name in model_architectures:
+        for transfer_task in transfer_tasks:
+            global_habbas3.init()
+            args.model_name = model_name
+            args.transfer_task = transfer_task
+            src_str = '-'.join(map(str, transfer_task[0]))
+            tgt_str = '-'.join(map(str, transfer_task[1]))
+
+            pre_args = argparse.Namespace(**vars(args))
+            pre_args.transfer_task = [transfer_task[0], transfer_task[0]]
+            pre_args.pretrained = False
+            pre_dir = os.path.join(
+                args.checkpoint_dir,
+                f"pretrain_{model_name}_{src_str}_{datetime.now().strftime('%m%d')}",
+            )
+            os.makedirs(pre_dir, exist_ok=True)
+            run_experiment(pre_args, pre_dir, baseline=True)
+
+            baseline_args = argparse.Namespace(**vars(args))
+            baseline_args.transfer_task = [transfer_task[1], transfer_task[1]]
+            baseline_args.pretrained = False
+            baseline_dir = os.path.join(
+                args.checkpoint_dir,
+                f"baseline_{model_name}_{tgt_str}_{datetime.now().strftime('%m%d')}",
+            )
+            os.makedirs(baseline_dir, exist_ok=True)
+            model_bl, baseline_acc, _, bl_loader, _ = run_experiment(baseline_args, baseline_dir, baseline=True)
+            bl_labels, bl_preds = evaluate_model(model_bl, bl_loader)
+            if len(bl_labels):
+                baseline_acc = accuracy_score(bl_labels, bl_preds)
+            print(f"✅ Baseline {tgt_str}: {baseline_acc:.4f} ({len(bl_labels)} samples)")
+
+            transfer_args = argparse.Namespace(**vars(args))
+            transfer_args.transfer_task = transfer_task
+            transfer_args.pretrained = True
+            transfer_args.pretrained_model_path = os.path.join(pre_dir, "best_model.pth")
+            ft_dir = os.path.join(
+                args.checkpoint_dir,
+                f"transfer_{model_name}_{src_str}_to_{tgt_str}_{datetime.now().strftime('%m%d')}",
+            )
+            os.makedirs(ft_dir, exist_ok=True)
+            model_ft, transfer_acc, _, _, tr_loader = run_experiment(transfer_args, ft_dir)
+            tr_labels, tr_preds = evaluate_model(model_ft, tr_loader)
+            if len(tr_labels):
+                transfer_acc = accuracy_score(tr_labels, tr_preds)
+            print(f"✅ Transfer {src_str} → {tgt_str}: {transfer_acc:.4f} ({len(tr_labels)} samples)")
+
+            improvement = transfer_acc - baseline_acc
+            print(
+                f"📊 {src_str} → {tgt_str}: baseline={baseline_acc:.4f}, "
+                f"transfer={transfer_acc:.4f}, improvement={improvement:+.4f}"
+            )
+            if transfer_acc < baseline_acc:
+                print(f"⚠️ Transfer did not improve over baseline for {src_str} → {tgt_str}")
+
+            results.append(
+                {
+                    "model": model_name,
+                    "source": src_str,
+                    "target": tgt_str,
+                    "baseline_acc": baseline_acc,
+                    "transfer_acc": transfer_acc,
+                    "improvement": improvement,
+                }
+            )
+
+    if results:
+        summary_df = pd.DataFrame(results)
+        summary_path = os.path.join(
+            args.checkpoint_dir,
+            f"summary_{datetime.now().strftime('%m%d')}.csv",
+        )
+        summary_df.to_csv(summary_path, index=False)
+        print(f"Saved summary to {summary_path}")
+        print(summary_df[["source", "target", "baseline_acc", "transfer_acc", "improvement"]])
+
+
+def main():
+    args = parse_args()
+    os.environ["CUDA_VISIBLE_DEVICES"] = args.cuda_device.strip()
+
+    if args.data_name == 'Battery_inconsistent':
+        run_battery_experiments(args)
+    else:
+        run_cwru_experiments(args)
             
 
 
