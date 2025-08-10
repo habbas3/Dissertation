@@ -560,11 +560,16 @@ class train_utils_open_univ(object):
             if hasattr(self.sngp_model, 'fc') and hasattr(self.sngp_model.fc, 'out_features'):
                 num_output_classes = self.sngp_model.fc.out_features
             else:
-                num_output_classes = self.num_classes + (1 if args.inconsistent == 'OSBP' else 0)
+                num_output_classes = getattr(self.args, 'num_classes', self.num_classes)
 
-            known_class_count = num_output_classes - 1 if args.inconsistent == 'OSBP' else num_output_classes
-            self.num_classes = known_class_count
-            known_mask = all_labels < known_class_count
+            # ``self.num_classes`` reflects the dimensionality of the model's
+            # output layer.  Any label with an index equal to or larger than
+            # this value is treated as an outlier and ignored during the
+            # weighted-loss computation below.
+            self.num_classes = num_output_classes
+            known_mask = all_labels < num_output_classes
+
+            
             if np.any(known_mask):
                 present_classes = np.unique(all_labels[known_mask])
                 balanced_weights = compute_class_weight(
@@ -577,8 +582,16 @@ class train_utils_open_univ(object):
                 for cls, w in zip(present_classes, balanced_weights):
                     full_weights[int(cls)] = w
 
-                weights_tensor = torch.tensor(full_weights, dtype=torch.float).to(self.device)
-                self.criterion = nn.CrossEntropyLoss(weight=weights_tensor)
+                weights_tensor = torch.tensor(full_weights, dtype=torch.float, device=self.device)
+
+                # ``CrossEntropyLoss`` requires that the provided weight vector
+                # matches the number of model outputs.  If anything goes wrong
+                # in the above bookkeeping (e.g. missing class indices), fall
+                # back to an unweighted loss rather than raising an exception.
+                if weights_tensor.numel() == num_output_classes:
+                    self.criterion = nn.CrossEntropyLoss(weight=weights_tensor)
+                else:
+                    self.criterion = nn.CrossEntropyLoss()
             else:
                 # All labels correspond to outlier classes; fall back to
                 # an unweighted loss to keep training functional.
