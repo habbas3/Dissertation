@@ -129,6 +129,25 @@ class train_utils_open_univ(object):
         activation_vectors = np.concatenate(activation_vectors, axis=0)
         labels_vector = np.concatenate(labels_vector, axis=0)
         return activation_vectors, labels_vector
+    
+    def _load_pretrained_weights(self, pretrained_path):
+        print(f"🔁 Loading pretrained model from: {pretrained_path}")
+        state_dict = torch.load(pretrained_path, map_location=self.device)
+        model_state = self.model.state_dict()
+        filtered_state_dict = {}
+        skipped_keys = []
+        for k, v in state_dict.items():
+            if k in model_state and model_state[k].shape == v.shape:
+                filtered_state_dict[k] = v
+            else:
+                skipped_keys.append(k)
+        if skipped_keys:
+            print(f"⚠️ Skipped keys due to size mismatch: {skipped_keys}")
+        incompatible = self.model.load_state_dict(filtered_state_dict, strict=False)
+        if incompatible.missing_keys:
+            print(f"⚠️ Missing keys when loading pretrained model: {incompatible.missing_keys}")
+        if incompatible.unexpected_keys:
+            print(f"⚠️ Unexpected keys when loading pretrained model: {incompatible.unexpected_keys}")
 
     def setup(self):
         """
@@ -283,14 +302,7 @@ class train_utils_open_univ(object):
             backbone_output_dim = self.model.output_num()
             pretrained_path = getattr(args, "pretrained_model_path", None)
             if pretrained_path and os.path.isfile(pretrained_path):
-                print(f"🔁 Loading pretrained model from: {pretrained_path}")
-                state_dict = torch.load(pretrained_path, map_location=self.device)
-                incompatible = self.model.load_state_dict(state_dict, strict=False)
-                if incompatible.missing_keys:
-                    print(f"⚠️ Missing keys when loading pretrained model: {incompatible.missing_keys}")
-                if incompatible.unexpected_keys:
-                    print(f"⚠️ Unexpected keys when loading pretrained model: {incompatible.unexpected_keys}")
-                # self.model.load_state_dict(torch.load(pretrained_path, map_location=self.device))
+                self._load_pretrained_weights(pretrained_path)
             
             # if getattr(self.args, "transfer", False) and getattr(self.args, "pretrained_model_path", None):
             #     print(f"🔁 Loading pretrained model from {self.args.pretrained_model_path}")
@@ -326,14 +338,7 @@ class train_utils_open_univ(object):
             backbone_output_dim = self.model.output_num()
             pretrained_path = getattr(args, "pretrained_model_path", None)
             if pretrained_path and os.path.isfile(pretrained_path):
-                print(f"🔁 Loading pretrained model from: {pretrained_path}")
-                state_dict = torch.load(pretrained_path, map_location=self.device)
-                incompatible = self.model.load_state_dict(state_dict, strict=False)
-                if incompatible.missing_keys:
-                    print(f"⚠️ Missing keys when loading pretrained model: {incompatible.missing_keys}")
-                if incompatible.unexpected_keys:
-                    print(f"⚠️ Unexpected keys when loading pretrained model: {incompatible.unexpected_keys}")
-                # self.model.load_state_dict(torch.load(pretrained_path, map_location=self.device))
+                self._load_pretrained_weights(pretrained_path)
                 
             if args.bottleneck:
                 self.bottleneck_layer = nn.Sequential(
