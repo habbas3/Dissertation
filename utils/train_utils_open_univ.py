@@ -568,13 +568,30 @@ class train_utils_open_univ(object):
             # to avoid a size mismatch in ``nn.CrossEntropyLoss``.  Battery
             # datasets contain no such labels, making the mask a harmless no-op.
             # -------------------------------------------------------------
-            if hasattr(self.classifier_layer, 'fc') and hasattr(self.classifier_layer.fc, 'out_features'):
-                num_output_classes = self.classifier_layer.fc.out_features
-            elif hasattr(self.classifier_layer, 'out_features'):
-                num_output_classes = self.classifier_layer.out_features
-            elif hasattr(self.sngp_model, 'fc') and hasattr(self.sngp_model.fc, 'out_features'):
-                num_output_classes = self.sngp_model.fc.out_features
-            else:
+            # Determine the number of output classes directly from the
+            # classification head.  Relying on ``args.num_classes`` can be
+            # misleading for setups such as OSBP where the classifier outputs
+            # an additional ``unknown`` class.  Inspect the modules (while
+            # unwrapping any DataParallel containers) and fall back to
+            # ``self.num_classes`` only if no explicit ``out_features`` attribute
+            # is found.
+
+            def _unwrap(module):
+                return module.module if hasattr(module, 'module') else module
+
+            num_output_classes = None
+            for head in (_unwrap(getattr(self, 'classifier_layer', None)),
+                         _unwrap(getattr(self, 'sngp_model', None))):
+                if head is None:
+                    continue
+                if hasattr(head, 'fc') and hasattr(head.fc, 'out_features'):
+                    num_output_classes = head.fc.out_features
+                    break
+                if hasattr(head, 'out_features'):
+                    num_output_classes = head.out_features
+                    break
+
+            if num_output_classes is None:
                 num_output_classes = getattr(self.args, 'num_classes', self.num_classes)
 
             # ``self.num_classes`` tracks the number of *known* classes. Any
