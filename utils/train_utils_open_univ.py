@@ -132,7 +132,18 @@ class train_utils_open_univ(object):
     
     def _load_pretrained_weights(self, pretrained_path):
         print(f"🔁 Loading pretrained model from: {pretrained_path}")
-        state_dict = torch.load(pretrained_path, map_location=self.device)
+        raw_state = torch.load(pretrained_path, map_location=self.device)
+
+        # Some checkpoints wrap the actual state dict in another dict
+        # (e.g. {"model_state_dict": ..., "optimizer": ...}).  When this is
+        # the case we try to extract the state dict; otherwise we assume the
+        # loaded object already represents a state dict.
+        if isinstance(raw_state, dict) and "state_dict" in raw_state:
+            state_dict = raw_state["state_dict"]
+        elif isinstance(raw_state, dict) and "model_state_dict" in raw_state:
+            state_dict = raw_state["model_state_dict"]
+        else:
+            state_dict = raw_state
         model_state = self.model.state_dict()
         filtered_state_dict = {}
         skipped_keys = []
@@ -557,17 +568,19 @@ class train_utils_open_univ(object):
             # to avoid a size mismatch in ``nn.CrossEntropyLoss``.  Battery
             # datasets contain no such labels, making the mask a harmless no-op.
             # -------------------------------------------------------------
-            if hasattr(self.sngp_model, 'fc') and hasattr(self.sngp_model.fc, 'out_features'):
+            if hasattr(self.classifier_layer, 'fc') and hasattr(self.classifier_layer.fc, 'out_features'):
+                num_output_classes = self.classifier_layer.fc.out_features
+            elif hasattr(self.classifier_layer, 'out_features'):
+                num_output_classes = self.classifier_layer.out_features
+            elif hasattr(self.sngp_model, 'fc') and hasattr(self.sngp_model.fc, 'out_features'):
                 num_output_classes = self.sngp_model.fc.out_features
             else:
                 num_output_classes = getattr(self.args, 'num_classes', self.num_classes)
 
-            # ``self.num_classes`` reflects the dimensionality of the model's
-            # output layer.  Any label with an index equal to or larger than
-            # this value is treated as an outlier and ignored during the
-            # weighted-loss computation below.
-            self.num_classes = num_output_classes
-            known_mask = all_labels < num_output_classes
+            # ``self.num_classes`` tracks the number of *known* classes. Any
+            # label >= this is treated as an outlier when computing the
+            # supervised loss.
+            known_mask = all_labels < self.num_classes
 
             
             if np.any(known_mask):
