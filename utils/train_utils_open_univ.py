@@ -717,6 +717,39 @@ class train_utils_open_univ(object):
                         # not include such labels, so this masking becomes a no-op.
                         known_mask_batch = labels < self.num_classes
                         if known_mask_batch.any():
+                            # --- Defensive fix for class-weight size mismatches ---
+                            # If the loss has a weight vector whose length doesn't match the
+                            # classifier's number of logits (e.g., OSBP adds an 'unknown' logit),
+                            # rebuild a correct-length weight vector on-the-fly.
+                            try:
+                                ce_weight = getattr(self.criterion, 'weight', None)
+                                if ce_weight is not None and ce_weight.numel() != logits.shape[1]:
+                                    with torch.no_grad():
+                                        import numpy as _np
+                                        from sklearn.utils.class_weight import compute_class_weight as _ccw
+                                        num_logits = logits.shape[1]
+                            
+                                        # Recompute balanced weights using only *known-class* labels
+                                        _mask = labels < self.num_classes
+                                        if _mask.any():
+                                            present = _np.unique(labels[_mask].detach().cpu().numpy()).astype(int)
+                                            balanced = _ccw('balanced', classes=present,
+                                                            y=labels[_mask].detach().cpu().numpy())
+                            
+                                            # Expand to full length (unknown logit stays at 1.0)
+                                            full = _np.ones(num_logits, dtype=_np.float32)
+                                            for cls, w in zip(present, balanced):
+                                                if int(cls) < num_logits:
+                                                    full[int(cls)] = float(w)
+                            
+                                            new_w = torch.tensor(full, device=self.device, dtype=torch.float)
+                                            self.criterion = nn.CrossEntropyLoss(weight=new_w)
+                                        else:
+                                            # No known-class samples this batch → unweighted
+                                            self.criterion = nn.CrossEntropyLoss()
+                            except Exception:
+                                # If anything goes wrong, fall back to unweighted to keep training running.
+                                self.criterion = nn.CrossEntropyLoss()
                             loss = self.criterion(logits[known_mask_batch], labels[known_mask_batch])
                             if phase.endswith('train'):
                                 loss.backward()
