@@ -592,7 +592,26 @@ class train_utils_open_univ(object):
                     break
 
             if num_output_classes is None:
-                num_output_classes = getattr(self.args, 'num_classes', self.num_classes)
+                # As a final fallback, infer the output dimension directly
+                # from the model's forward pass.  This covers architectures
+                # where the backbone itself produces logits (e.g., when the
+                # classifier head is fused into the model or an extra unknown
+                # class is appended).  Running a tiny batch through the model
+                # allows us to determine the true number of logits so that the
+                # class-weight vector can be sized correctly for all classes.
+                try:
+                    sample = next(iter(self.dataloaders['source_train']))[0][:1].to(self.device)
+                    prev_mode = self.model.training
+                    self.model.eval()
+                    with torch.no_grad():
+                        out = self.model(sample)
+                        if isinstance(out, tuple):
+                            out = out[0]
+                        num_output_classes = out.shape[1]
+                    if prev_mode:
+                        self.model.train()
+                except Exception:
+                    num_output_classes = getattr(self.args, 'num_classes', self.num_classes)
 
             # ``self.num_classes`` tracks the number of *known* classes. Any
             # label >= this is treated as an outlier when computing the
