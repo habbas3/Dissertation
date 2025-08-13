@@ -1,0 +1,615 @@
+filename,battery_name,nominal_capacity,anode,cathode,electrolyte,dataset_name
+batch_B14B_cell_5.h5,CAMP_batch_B14B_cell_5,0.3,C,HE5050,Gen 2,camp_2023
+batch_B38C_cell_4.h5,CAMP_batch_B38C_cell_4,,C,NMC622,Gen 2,camp_2023
+batch_B14B_cell_5.h5,CAMP_batch_B14B_cell_5,0.3,C,HE5050,Gen 2,camp_2023
+batch_B38C_cell_4.h5,CAMP_batch_B38C_cell_4,,C,NMC622,Gen 2,camp_2023
+batch_B26T_cell_2.h5,CAMP_batch_B26T_cell_2,0.25,C,5Vspinel,E16,camp_2023
+batch_B28A_cell_48.h5,CAMP_batch_B28A_cell_48,0.3,C_Si,NMC532,Gen 2,camp_2023
+batch_B16A_cell_9.h5,CAMP_batch_B16A_cell_9,0.4,C_Si,NMC532,Gen 2,camp_2023
+batch_B19A_cell_12.h5,CAMP_batch_B19A_cell_12,0.5,C,FCG,Gen 2,camp_2023
+batch_B7A_cell_20.h5,CAMP_batch_B7A_cell_20,0.3,C,NMC532,Gen 2,camp_2023
+batch_B34B_cell_3.h5,CAMP_batch_B34B_cell_3,0.02,C,NMC811,Gen 2,camp_2023
+batch_B11B_cell_4.h5,CAMP_batch_B11B_cell_4,0.2,LTO,5Vspinel,R&D,camp_2023
+batch_B12A_cell_1.h5,CAMP_batch_B12A_cell_1,0.3,C,HE5050,Gen 2,camp_2023
+batch_B13A_cell_8.h5,CAMP_batch_B13A_cell_8,0.4,C, Li1.35Ni0.33Mn0.67O2.35,Gen 2,camp_2023
+batch_B19A_cell_7.h5,CAMP_batch_B19A_cell_7,0.5,C,FCG,Gen 2,camp_2023
+batch_B26AA_cell_1.h5,CAMP_batch_B26AA_cell_1,0.25,C,5Vspinel,Gen 2,camp_2023
+batch_B28B_cell_3.h5,CAMP_batch_B28B_cell_3,0.3,C,NMC532,Gen 2,camp_2023
+batch_B20B_cell_6.h5,CAMP_batch_B20B_cell_6,,C_Si,NMC532,Gen2,camp_2023
+batch_B35H_cell_1.h5,CAMP_batch_B35H_cell_1,,C_LICGC,NMC532,Gen 2,camp_2023
+batch_B26W_cell_4.h5,CAMP_batch_B26W_cell_4,0.25,C,5Vspinel,E19,camp_2023
+batch_B7B_cell_8.h5,CAMP_batch_B7B_cell_8,0.3,C,NMC532,Gen 2,camp_2023
+batch_B26Y_cell_2.h5,CAMP_batch_B26Y_cell_2,0.25,C,5Vspinel,E21,camp_2023
+batch_B17A_cell_4.h5,CAMP_batch_B17A_cell_4,0.2,C_Si,NMC532,Gen 2,camp_2023
+batch_B7A_cell_24.h5,CAMP_batch_B7A_cell_24,0.3,C,NMC532,Gen 2,camp_2023
+batch_B14B_cell_1.h5,CAMP_batch_B14B_cell_1,0.3,C,HE5050,Gen 2,camp_2023
+batch_B12A_cell_5.h5,CAMP_batch_B12A_cell_5,0.3,C,HE5050,Gen 2,camp_2023
+batch_B26O_cell_4.h5,CAMP_batch_B26O_cell_4,0.25,C,5Vspinel,E11,camp_2023
+batch_B26Q_cell_5.h5,CAMP_batch_B26Q_cell_5,0.25,C,5Vspinel,E13,camp_2023
+batch_B9A_cell_9.h5,CAMP_batch_B9A_cell_9,0.3,C,HE5050,Gen 2,camp_2023
+batch_B9C_cell_5.h5,CAMP_batch_B9C_cell_5,0.3,C,HE5050,Gen 2,camp_2023
+batch_B34A_cell_1.h5,CAMP_batch_B34A_cell_1,0.02,C,NMC811,Gen 2,camp_2023
+batch_B26L_cell_2.h5,CAMP_batch_B26L_cell_2,0.25,C,5Vspinel,E8,camp_2023
+batch_B12B_cell_3.h5,CAMP_batch_B12B_cell_3,0.3,C,HE5050,Gen 2,camp_2023
+batch_B14D_cell_4.h5,CAMP_batch_B14D_cell_4,0.3,C,HE5050,Gen 2,camp_2023
+batch_B37B_cell_4.h5,CAMP_batch_B37B_cell_4,,C_Si,NMC622,Gen 2,camp_2023
+batch_B26R_cell_3.h5,CAMP_batch_B26R_cell_3,0.25,C,5Vspinel,E14,camp_2023
+batch_B35E_cell_1.h5,CAMP_batch_B35E_cell_1,,C_BN,NMC532,Gen 2,camp_2023
+batch_B28A_cell_39.h5,CAMP_batch_B28A_cell_39,0.3,C_Si,NMC532,Gen 2,camp_2023
+batch_B34D_cell_2.h5,CAMP_batch_B34D_cell_2,0.02,C,NMC811,Gen 2,camp_2023
+batch_B26Y_cell_3.h5,CAMP_batch_B26Y_cell_3,0.25,C,5Vspinel,E21,camp_2023
+batch_B17A_cell_5.h5,CAMP_batch_B17A_cell_5,0.2,C_Si,NMC532,Gen 2,camp_2023
+batch_B38C_cell_1.h5,CAMP_batch_B38C_cell_1,,C,NMC622,Gen 2,camp_2023
+batch_B5A_cell_5.h5,CAMP_batch_B5A_cell_5,0.3,C,5Vspinel,Gen 2,camp_2023
+batch_B26O_cell_5.h5,CAMP_batch_B26O_cell_5,0.25,C,5Vspinel,E11,camp_2023
+batch_B12A_cell_4.h5,CAMP_batch_B12A_cell_4,0.3,C,HE5050,Gen 2,camp_2023
+batch_B3B_cell_1.h5,CAMP_batch_B3B_cell_1,0.3,C, Li1.2Ni0.3Mn0.6O2,Gen 2,camp_2023
+batch_B27B_cell_8.h5,CAMP_batch_B27B_cell_8,0.4,C,NMC111,Gen 2,camp_2023
+batch_B9A_cell_8.h5,CAMP_batch_B9A_cell_8,0.3,C,HE5050,Gen 2,camp_2023
+batch_B8A_cell_1.h5,CAMP_batch_B8A_cell_1,0.4,C, Li1.35Ni0.33Mn0.67O2.35,Gen 2,camp_2023
+batch_B19A_cell_2.h5,CAMP_batch_B19A_cell_2,0.5,C,FCG,Gen 2,camp_2023
+batch_B26AA_cell_4.h5,CAMP_batch_B26AA_cell_4,0.25,C,5Vspinel,Gen 2,camp_2023
+batch_B14D_cell_5.h5,CAMP_batch_B14D_cell_5,0.3,C,HE5050,Gen 2,camp_2023
+batch_B26R_cell_2.h5,CAMP_batch_B26R_cell_2,0.25,C,5Vspinel,E14,camp_2023
+batch_B6A_cell_28.h5,CAMP_batch_B6A_cell_28,0.3,C,NMC111,Gen 2,camp_2023
+batch_B26W_cell_1.h5,CAMP_batch_B26W_cell_1,0.25,C,5Vspinel,E19,camp_2023
+batch_B28B_cell_6.h5,CAMP_batch_B28B_cell_6,0.3,C,NMC532,Gen 2,camp_2023
+batch_B28A_cell_38.h5,CAMP_batch_B28A_cell_38,0.3,C_Si,NMC532,Gen 2,camp_2023
+batch_B34D_cell_3.h5,CAMP_batch_B34D_cell_3,0.02,C,NMC811,Gen 2,camp_2023
+batch_B14B_cell_4.h5,CAMP_batch_B14B_cell_4,0.3,C,HE5050,Gen 2,camp_2023
+batch_B9A_cell_22.h5,CAMP_batch_B9A_cell_22,0.3,C,HE5050,Gen 2,camp_2023
+batch_B4A_cell_8.h5,CAMP_batch_B4A_cell_8,0.3,C,HE5050,Gen 2,camp_2023
+batch_B5A_cell_1.h5,CAMP_batch_B5A_cell_1,0.3,C,5Vspinel,Gen 2,camp_2023
+batch_B28A_cell_49.h5,CAMP_batch_B28A_cell_49,0.3,C_Si,NMC532,Gen 2,camp_2023
+batch_B35F_cell_2.h5,CAMP_batch_B35F_cell_2,,C_Al2O3,NMC532,Gen 2,camp_2023
+batch_B16A_cell_8.h5,CAMP_batch_B16A_cell_8,0.4,C_Si,NMC532,Gen 2,camp_2023
+batch_B19A_cell_13.h5,CAMP_batch_B19A_cell_13,0.5,C,FCG,Gen 2,camp_2023
+batch_B17A_cell_1.h5,CAMP_batch_B17A_cell_1,0.2,C_Si,NMC532,Gen 2,camp_2023
+batch_B7A_cell_21.h5,CAMP_batch_B7A_cell_21,0.3,C,NMC532,Gen 2,camp_2023
+batch_B35C_cell_1.h5,CAMP_batch_B35C_cell_1,,C_AlSiO4,NMC532,Gen 2,camp_2023
+batch_B34B_cell_2.h5,CAMP_batch_B34B_cell_2,0.02,C,NMC811,Gen 2,camp_2023
+batch_B26O_cell_1.h5,CAMP_batch_B26O_cell_1,0.25,C,5Vspinel,E11,camp_2023
+batch_B3B_cell_5.h5,CAMP_batch_B3B_cell_5,0.3,C, Li1.2Ni0.3Mn0.6O2,Gen 2,camp_2023
+batch_B14D_cell_1.h5,CAMP_batch_B14D_cell_1,0.3,C,HE5050,Gen 2,camp_2023
+batch_B37B_cell_1.h5,CAMP_batch_B37B_cell_1,,C_Si,NMC622,Gen 2,camp_2023
+batch_B34A_cell_4.h5,CAMP_batch_B34A_cell_4,0.02,C,NMC811,Gen 2,camp_2023
+batch_B26Z_cell_1.h5,CAMP_batch_B26Z_cell_1,0.25,C,5Vspinel,E22,camp_2023
+batch_B28B_cell_2.h5,CAMP_batch_B28B_cell_2,0.3,C,NMC532,Gen 2,camp_2023
+batch_B26W_cell_5.h5,CAMP_batch_B26W_cell_5,0.25,C,5Vspinel,E19,camp_2023
+batch_B27B_cell_7.h5,CAMP_batch_B27B_cell_7,0.4,C,NMC111,Gen 2,camp_2023
+batch_B34C_cell_3.h5,CAMP_batch_B34C_cell_3,0.02,C,NMC811,Gen 2,camp_2023
+batch_B38B_cell_4.h5,CAMP_batch_B38B_cell_4,,C,NMC622,Gen 2,camp_2023
+batch_B4A_cell_3.h5,CAMP_batch_B4A_cell_3,0.3,C,HE5050,Gen 2,camp_2023
+batch_B28A_cell_42.h5,CAMP_batch_B28A_cell_42,0.3,C_Si,NMC532,Gen 2,camp_2023
+batch_B14C_cell_5.h5,CAMP_batch_B14C_cell_5,0.3,C,HE5050,Gen 2,camp_2023
+batch_B30B_cell_1.h5,CAMP_batch_B30B_cell_1,0.45,C,NMC532,Gen 2,camp_2023
+batch_B16A_cell_3.h5,CAMP_batch_B16A_cell_3,0.4,C_Si,NMC532,Gen 2,camp_2023
+batch_B21A_cell_3.h5,CAMP_batch_B21A_cell_3,0.1,C,NMC111,Gen 2,camp_2023
+batch_B7B_cell_6.h5,CAMP_batch_B7B_cell_6,0.3,C,NMC532,Gen 2,camp_2023
+batch_B28B_cell_10.h5,CAMP_batch_B28B_cell_10,0.3,C,NMC532,Gen 2,camp_2023
+batch_B28A_cell_37.h5,CAMP_batch_B28A_cell_37,0.3,C_Si,NMC532,Gen 2,camp_2023
+batch_B6A_cell_42.h5,CAMP_batch_B6A_cell_42,0.3,C,NMC111,Gen 2,camp_2023
+batch_B28B_cell_9.h5,CAMP_batch_B28B_cell_9,0.3,C,NMC532,Gen 2,camp_2023
+batch_B38A_cell_2.h5,CAMP_batch_B38A_cell_2,,C,NMC622,Gen 2,camp_2023
+batch_B26V_cell_4.h5,CAMP_batch_B26V_cell_4,0.25,C,5Vspinel,E18,camp_2023
+batch_B38D_cell_1.h5,CAMP_batch_B38D_cell_1,,C,NMC622,Gen 2,camp_2023
+batch_B14A_cell_10.h5,CAMP_batch_B14A_cell_10,0.3,C,HE5050,Gen 2,camp_2023
+batch_B9B_cell_1.h5,CAMP_batch_B9B_cell_1,0.3,C,HE5050,Gen 2,camp_2023
+batch_B9A_cell_3.h5,CAMP_batch_B9A_cell_3,0.3,C,HE5050,Gen 2,camp_2023
+batch_B26X_cell_2.h5,CAMP_batch_B26X_cell_2,0.25,C,5Vspinel,E20,camp_2023
+batch_B16A_cell_7.h5,CAMP_batch_B16A_cell_7,0.4,C_Si,NMC532,Gen 2,camp_2023
+batch_B7B_cell_2.h5,CAMP_batch_B7B_cell_2,0.3,C,NMC532,Gen 2,camp_2023
+batch_B9A_cell_19.h5,CAMP_batch_B9A_cell_19,0.3,C,HE5050,Gen 2,camp_2023
+batch_B14C_cell_1.h5,CAMP_batch_B14C_cell_1,0.3,C,HE5050,Gen 2,camp_2023
+batch_B28A_cell_46.h5,CAMP_batch_B28A_cell_46,0.3,C_Si,NMC532,Gen 2,camp_2023
+batch_B4A_cell_7.h5,CAMP_batch_B4A_cell_7,0.3,C,HE5050,Gen 2,camp_2023
+batch_B30A_cell_3.h5,CAMP_batch_B30A_cell_3,1.5,C,NMC532,Gen 2,camp_2023
+batch_B35D_cell_1.h5,CAMP_batch_B35D_cell_1,,C_ZrSiO4,NMC532,Gen 2,camp_2023
+batch_B16A_cell_12.h5,CAMP_batch_B16A_cell_12,0.4,C_Si,NMC532,Gen 2,camp_2023
+batch_B28B_cell_14.h5,CAMP_batch_B28B_cell_14,0.3,C,NMC532,Gen 2,camp_2023
+batch_B7A_cell_4.h5,CAMP_batch_B7A_cell_4,0.3,C,NMC532,Gen 2,camp_2023
+batch_B35A_cell_2.h5,CAMP_batch_B35A_cell_2,,C,NMC532,Gen 2,camp_2023
+batch_B9B_cell_5.h5,CAMP_batch_B9B_cell_5,0.3,C,HE5050,Gen 2,camp_2023
+batch_B13A_cell_13.h5,CAMP_batch_B13A_cell_13,0.4,C, Li1.35Ni0.33Mn0.67O2.35,Gen 2,camp_2023
+batch_B26M_cell_2.h5,CAMP_batch_B26M_cell_2,0.25,C,5Vspinel,E9,camp_2023
+batch_B26S_cell_3.h5,CAMP_batch_B26S_cell_3,0.25,C,5Vspinel,E15,camp_2023
+batch_B26P_cell_4.h5,CAMP_batch_B26P_cell_4,0.25,C,5Vspinel,E12,camp_2023
+batch_B9A_cell_2.h5,CAMP_batch_B9A_cell_2,0.3,C,HE5050,Gen 2,camp_2023
+batch_B26X_cell_3.h5,CAMP_batch_B26X_cell_3,0.25,C,5Vspinel,E20,camp_2023
+batch_B16A_cell_6.h5,CAMP_batch_B16A_cell_6,0.4,C_Si,NMC532,Gen 2,camp_2023
+batch_B7B_cell_3.h5,CAMP_batch_B7B_cell_3,0.3,C,NMC532,Gen 2,camp_2023
+batch_B9A_cell_18.h5,CAMP_batch_B9A_cell_18,0.3,C,HE5050,Gen 2,camp_2023
+batch_B28A_cell_47.h5,CAMP_batch_B28A_cell_47,0.3,C_Si,NMC532,Gen 2,camp_2023
+batch_B6A_cell_32.h5,CAMP_batch_B6A_cell_32,0.3,C,NMC111,Gen 2,camp_2023
+batch_B38B_cell_1.h5,CAMP_batch_B38B_cell_1,,C,NMC622,Gen 2,camp_2023
+batch_B4A_cell_6.h5,CAMP_batch_B4A_cell_6,0.3,C,HE5050,Gen 2,camp_2023
+batch_B30B_cell_4.h5,CAMP_batch_B30B_cell_4,0.45,C,NMC532,Gen 2,camp_2023
+batch_B30A_cell_2.h5,CAMP_batch_B30A_cell_2,1.5,C,NMC532,Gen 2,camp_2023
+batch_B26V_cell_1.h5,CAMP_batch_B26V_cell_1,0.25,C,5Vspinel,E18,camp_2023
+batch_B28B_cell_15.h5,CAMP_batch_B28B_cell_15,0.3,C,NMC532,Gen 2,camp_2023
+batch_B7A_cell_5.h5,CAMP_batch_B7A_cell_5,0.3,C,NMC532,Gen 2,camp_2023
+batch_B10A_cell_4.h5,CAMP_batch_B10A_cell_4,1.5,C,NMC532,Gen 2,camp_2023
+batch_B9B_cell_4.h5,CAMP_batch_B9B_cell_4,0.3,C,HE5050,Gen 2,camp_2023
+batch_B38D_cell_4.h5,CAMP_batch_B38D_cell_4,,C,NMC622,Gen 2,camp_2023
+batch_B14B_cell_12.h5,CAMP_batch_B14B_cell_12,0.3,C,HE5050,Gen 2,camp_2023
+batch_B27B_cell_6.h5,CAMP_batch_B27B_cell_6,0.4,C,NMC111,Gen 2,camp_2023
+batch_B35B_cell_1.h5,CAMP_batch_B35B_cell_1,,C_ZrO,NMC532,Gen 2,camp_2023
+batch_B9A_cell_6.h5,CAMP_batch_B9A_cell_6,0.3,C,HE5050,Gen 2,camp_2023
+batch_B34C_cell_2.h5,CAMP_batch_B34C_cell_2,0.02,C,NMC811,Gen 2,camp_2023
+batch_B26N_cell_1.h5,CAMP_batch_B26N_cell_1,0.25,C,5Vspinel,E10,camp_2023
+batch_B38B_cell_5.h5,CAMP_batch_B38B_cell_5,,C,NMC622,Gen 2,camp_2023
+batch_B26K_cell_2.h5,CAMP_batch_B26K_cell_2,0.25,C,5Vspinel,E7,camp_2023
+batch_B4A_cell_2.h5,CAMP_batch_B4A_cell_2,0.3,C,HE5050,Gen 2,camp_2023
+batch_B14C_cell_4.h5,CAMP_batch_B14C_cell_4,0.3,C,HE5050,Gen 2,camp_2023
+batch_B28A_cell_43.h5,CAMP_batch_B28A_cell_43,0.3,C_Si,NMC532,Gen 2,camp_2023
+batch_B21A_cell_16.h5,CAMP_batch_B21A_cell_16,0.1,C,NMC111,Gen 2,camp_2023
+batch_B35G_cell_2.h5,CAMP_batch_B35G_cell_2,,C_AlN,NMC532,Gen 2,camp_2023
+batch_B16A_cell_2.h5,CAMP_batch_B16A_cell_2,0.4,C_Si,NMC532,Gen 2,camp_2023
+batch_B21A_cell_2.h5,CAMP_batch_B21A_cell_2,0.1,C,NMC111,Gen 2,camp_2023
+batch_B7B_cell_7.h5,CAMP_batch_B7B_cell_7,0.3,C,NMC532,Gen 2,camp_2023
+batch_B28A_cell_36.h5,CAMP_batch_B28A_cell_36,0.3,C_Si,NMC532,Gen 2,camp_2023
+batch_B28B_cell_11.h5,CAMP_batch_B28B_cell_11,0.3,C,NMC532,Gen 2,camp_2023
+batch_B6A_cell_43.h5,CAMP_batch_B6A_cell_43,0.3,C,NMC111,Gen 2,camp_2023
+batch_B7A_cell_1.h5,CAMP_batch_B7A_cell_1,0.3,C,NMC532,Gen 2,camp_2023
+batch_B28B_cell_8.h5,CAMP_batch_B28B_cell_8,0.3,C,NMC532,Gen 2,camp_2023
+batch_B38A_cell_3.h5,CAMP_batch_B38A_cell_3,,C,NMC622,Gen 2,camp_2023
+batch_B4B_cell_4.h5,CAMP_batch_B4B_cell_4,0.3,C,HE5050,Gen 2,camp_2023
+batch_B26V_cell_5.h5,CAMP_batch_B26V_cell_5,0.25,C,5Vspinel,E18,camp_2023
+batch_B14A_cell_11.h5,CAMP_batch_B14A_cell_11,0.3,C,HE5050,Gen 2,camp_2023
+batch_B13A_cell_4.h5,CAMP_batch_B13A_cell_4,0.4,C, Li1.35Ni0.33Mn0.67O2.35,Gen 2,camp_2023
+batch_B1A_cell_4.h5,CAMP_batch_B1A_cell_4,0.375,C,HE5050,Gen 2,camp_2023
+batch_B27B_cell_1.h5,CAMP_batch_B27B_cell_1,0.4,C,NMC111,Gen 2,camp_2023
+batch_B9A_cell_1.h5,CAMP_batch_B9A_cell_1,0.3,C,HE5050,Gen 2,camp_2023
+batch_B14B_cell_9.h5,CAMP_batch_B14B_cell_9,0.3,C,HE5050,Gen 2,camp_2023
+batch_B7A_cell_18.h5,CAMP_batch_B7A_cell_18,0.3,C,NMC532,Gen 2,camp_2023
+batch_B38B_cell_2.h5,CAMP_batch_B38B_cell_2,,C,NMC622,Gen 2,camp_2023
+batch_B4A_cell_5.h5,CAMP_batch_B4A_cell_5,0.3,C,HE5050,Gen 2,camp_2023
+batch_B28A_cell_44.h5,CAMP_batch_B28A_cell_44,0.3,C_Si,NMC532,Gen 2,camp_2023
+batch_B14C_cell_3.h5,CAMP_batch_B14C_cell_3,0.3,C,HE5050,Gen 2,camp_2023
+batch_B26V_cell_2.h5,CAMP_batch_B26V_cell_2,0.25,C,5Vspinel,E18,camp_2023
+batch_B30A_cell_1.h5,CAMP_batch_B30A_cell_1,1.5,C,NMC532,Gen 2,camp_2023
+batch_B38A_cell_4.h5,CAMP_batch_B38A_cell_4,,C,NMC622,Gen 2,camp_2023
+batch_B4B_cell_3.h5,CAMP_batch_B4B_cell_3,0.3,C,HE5050,Gen 2,camp_2023
+batch_B28B_cell_16.h5,CAMP_batch_B28B_cell_16,0.3,C,NMC532,Gen 2,camp_2023
+batch_B7A_cell_6.h5,CAMP_batch_B7A_cell_6,0.3,C,NMC532,Gen 2,camp_2023
+batch_B16A_cell_10.h5,CAMP_batch_B16A_cell_10,0.4,C_Si,NMC532,Gen 2,camp_2023
+batch_B9B_cell_7.h5,CAMP_batch_B9B_cell_7,0.3,C,HE5050,Gen 2,camp_2023
+batch_B34C_cell_1.h5,CAMP_batch_B34C_cell_1,0.02,C,NMC811,Gen 2,camp_2023
+batch_B35B_cell_2.h5,CAMP_batch_B35B_cell_2,,C_ZrO,NMC532,Gen 2,camp_2023
+batch_B9A_cell_5.h5,CAMP_batch_B9A_cell_5,0.3,C,HE5050,Gen 2,camp_2023
+batch_B14B_cell_11.h5,CAMP_batch_B14B_cell_11,0.3,C,HE5050,Gen 2,camp_2023
+batch_B26P_cell_3.h5,CAMP_batch_B26P_cell_3,0.25,C,5Vspinel,E12,camp_2023
+batch_B21A_cell_15.h5,CAMP_batch_B21A_cell_15,0.1,C,NMC111,Gen 2,camp_2023
+batch_B28A_cell_40.h5,CAMP_batch_B28A_cell_40,0.3,C_Si,NMC532,Gen 2,camp_2023
+batch_B26K_cell_1.h5,CAMP_batch_B26K_cell_1,0.25,C,5Vspinel,E7,camp_2023
+batch_B4A_cell_1.h5,CAMP_batch_B4A_cell_1,0.3,C,HE5050,Gen 2,camp_2023
+batch_B7B_cell_4.h5,CAMP_batch_B7B_cell_4,0.3,C,NMC532,Gen 2,camp_2023
+batch_B17A_cell_8.h5,CAMP_batch_B17A_cell_8,0.2,C_Si,NMC532,Gen 2,camp_2023
+batch_B26X_cell_4.h5,CAMP_batch_B26X_cell_4,0.25,C,5Vspinel,E20,camp_2023
+batch_B35G_cell_1.h5,CAMP_batch_B35G_cell_1,,C_AlN,NMC532,Gen 2,camp_2023
+batch_B16A_cell_1.h5,CAMP_batch_B16A_cell_1,0.4,C_Si,NMC532,Gen 2,camp_2023
+batch_B28A_cell_35.h5,CAMP_batch_B28A_cell_35,0.3,C_Si,NMC532,Gen 2,camp_2023
+batch_B28B_cell_12.h5,CAMP_batch_B28B_cell_12,0.3,C,NMC532,Gen 2,camp_2023
+batch_B7A_cell_2.h5,CAMP_batch_B7A_cell_2,0.3,C,NMC532,Gen 2,camp_2023
+batch_B26S_cell_5.h5,CAMP_batch_B26S_cell_5,0.25,C,5Vspinel,E15,camp_2023
+batch_B14D_cell_8.h5,CAMP_batch_B14D_cell_8,0.3,C,HE5050,Gen 2,camp_2023
+batch_B14A_cell_12.h5,CAMP_batch_B14A_cell_12,0.3,C,HE5050,Gen 2,camp_2023
+batch_B38D_cell_3.h5,CAMP_batch_B38D_cell_3,,C,NMC622,Gen 2,camp_2023
+batch_B10A_cell_3.h5,CAMP_batch_B10A_cell_3,1.5,C,NMC532,Gen 2,camp_2023
+batch_B9B_cell_3.h5,CAMP_batch_B9B_cell_3,0.3,C,HE5050,Gen 2,camp_2023
+batch_B27B_cell_4.h5,CAMP_batch_B27B_cell_4,0.4,C,NMC111,Gen 2,camp_2023
+batch_B9A_cell_4.h5,CAMP_batch_B9A_cell_4,0.3,C,HE5050,Gen 2,camp_2023
+batch_B14B_cell_10.h5,CAMP_batch_B14B_cell_10,0.3,C,HE5050,Gen 2,camp_2023
+batch_B26P_cell_2.h5,CAMP_batch_B26P_cell_2,0.25,C,5Vspinel,E12,camp_2023
+batch_B12A_cell_8.h5,CAMP_batch_B12A_cell_8,0.3,C,HE5050,Gen 2,camp_2023
+batch_B30B_cell_2.h5,CAMP_batch_B30B_cell_2,0.45,C,NMC532,Gen 2,camp_2023
+batch_B28A_cell_41.h5,CAMP_batch_B28A_cell_41,0.3,C_Si,NMC532,Gen 2,camp_2023
+batch_B14C_cell_6.h5,CAMP_batch_B14C_cell_6,0.3,C,HE5050,Gen 2,camp_2023
+batch_B7B_cell_5.h5,CAMP_batch_B7B_cell_5,0.3,C,NMC532,Gen 2,camp_2023
+batch_B28B_cell_13.h5,CAMP_batch_B28B_cell_13,0.3,C,NMC532,Gen 2,camp_2023
+batch_B28A_cell_34.h5,CAMP_batch_B28A_cell_34,0.3,C_Si,NMC532,Gen 2,camp_2023
+batch_B7A_cell_3.h5,CAMP_batch_B7A_cell_3,0.3,C,NMC532,Gen 2,camp_2023
+batch_B30A_cell_4.h5,CAMP_batch_B30A_cell_4,1.5,C,NMC532,Gen 2,camp_2023
+batch_B38A_cell_1.h5,CAMP_batch_B38A_cell_1,,C,NMC622,Gen 2,camp_2023
+batch_B4B_cell_6.h5,CAMP_batch_B4B_cell_6,0.3,C,HE5050,Gen 2,camp_2023
+batch_B26S_cell_4.h5,CAMP_batch_B26S_cell_4,0.25,C,5Vspinel,E15,camp_2023
+batch_B14A_cell_13.h5,CAMP_batch_B14A_cell_13,0.3,C,HE5050,Gen 2,camp_2023
+batch_B38D_cell_2.h5,CAMP_batch_B38D_cell_2,,C,NMC622,Gen 2,camp_2023
+batch_B9C_cell_8.h5,CAMP_batch_B9C_cell_8,0.3,C,HE5050,Gen 2,camp_2023
+batch_B9B_cell_2.h5,CAMP_batch_B9B_cell_2,0.3,C,HE5050,Gen 2,camp_2023
+batch_B26P_cell_6.h5,CAMP_batch_B26P_cell_6,0.25,C,5Vspinel,E12,camp_2023
+batch_B34C_cell_4.h5,CAMP_batch_B34C_cell_4,0.02,C,NMC811,Gen 2,camp_2023
+batch_B7B_cell_1.h5,CAMP_batch_B7B_cell_1,0.3,C,NMC532,Gen 2,camp_2023
+batch_B16A_cell_4.h5,CAMP_batch_B16A_cell_4,0.4,C_Si,NMC532,Gen 2,camp_2023
+batch_B26X_cell_1.h5,CAMP_batch_B26X_cell_1,0.25,C,5Vspinel,E20,camp_2023
+batch_B14B_cell_8.h5,CAMP_batch_B14B_cell_8,0.3,C,HE5050,Gen 2,camp_2023
+batch_B21A_cell_10.h5,CAMP_batch_B21A_cell_10,0.1,C,NMC111,Gen 2,camp_2023
+batch_B26U_cell_5.h5,CAMP_batch_B26U_cell_5,0.25,C,5Vspinel,E17,camp_2023
+batch_B7A_cell_19.h5,CAMP_batch_B7A_cell_19,0.3,C,NMC532,Gen 2,camp_2023
+batch_B14C_cell_2.h5,CAMP_batch_B14C_cell_2,0.3,C,HE5050,Gen 2,camp_2023
+batch_B28A_cell_45.h5,CAMP_batch_B28A_cell_45,0.3,C_Si,NMC532,Gen 2,camp_2023
+batch_B26V_cell_3.h5,CAMP_batch_B26V_cell_3,0.25,C,5Vspinel,E18,camp_2023
+batch_B4B_cell_2.h5,CAMP_batch_B4B_cell_2,0.3,C,HE5050,Gen 2,camp_2023
+batch_B7A_cell_7.h5,CAMP_batch_B7A_cell_7,0.3,C,NMC532,Gen 2,camp_2023
+batch_B16A_cell_11.h5,CAMP_batch_B16A_cell_11,0.4,C_Si,NMC532,Gen 2,camp_2023
+batch_B35D_cell_2.h5,CAMP_batch_B35D_cell_2,,C_ZrSiO4,NMC532,Gen 2,camp_2023
+batch_B35A_cell_1.h5,CAMP_batch_B35A_cell_1,,C,NMC532,Gen 2,camp_2023
+batch_B9B_cell_6.h5,CAMP_batch_B9B_cell_6,0.3,C,HE5050,Gen 2,camp_2023
+batch_B17A_cell_6.h5,CAMP_batch_B17A_cell_6,0.2,C_Si,NMC532,Gen 2,camp_2023
+batch_B19A_cell_14.h5,CAMP_batch_B19A_cell_14,0.5,C,FCG,Gen 2,camp_2023
+batch_B26T_cell_4.h5,CAMP_batch_B26T_cell_4,0.25,C,5Vspinel,E16,camp_2023
+batch_B14B_cell_3.h5,CAMP_batch_B14B_cell_3,0.3,C,HE5050,Gen 2,camp_2023
+batch_B38C_cell_2.h5,CAMP_batch_B38C_cell_2,,C,NMC622,Gen 2,camp_2023
+batch_B3B_cell_2.h5,CAMP_batch_B3B_cell_2,0.3,C, Li1.2Ni0.3Mn0.6O2,Gen 2,camp_2023
+batch_B12A_cell_7.h5,CAMP_batch_B12A_cell_7,0.3,C,HE5050,Gen 2,camp_2023
+batch_B34A_cell_3.h5,CAMP_batch_B34A_cell_3,0.02,C,NMC811,Gen 2,camp_2023
+batch_B19A_cell_1.h5,CAMP_batch_B19A_cell_1,0.5,C,FCG,Gen 2,camp_2023
+batch_B6D_cell_6.h5,CAMP_batch_B6D_cell_6,0.3,C,NMC111,Gen 2,camp_2023
+batch_B9C_cell_7.h5,CAMP_batch_B9C_cell_7,0.3,C,HE5050,Gen 2,camp_2023
+batch_B26R_cell_1.h5,CAMP_batch_B26R_cell_1,0.25,C,5Vspinel,E14,camp_2023
+batch_B3A_cell_4.h5,CAMP_batch_B3A_cell_4,0.3,C, Li1.2Ni0.3Mn0.6O2,Gen 2,camp_2023
+batch_B14D_cell_6.h5,CAMP_batch_B14D_cell_6,0.3,C,HE5050,Gen 2,camp_2023
+batch_B12B_cell_1.h5,CAMP_batch_B12B_cell_1,0.3,C,HE5050,Gen 2,camp_2023
+batch_B28B_cell_5.h5,CAMP_batch_B28B_cell_5,0.3,C,NMC532,Gen 2,camp_2023
+batch_B5A_cell_2.h5,CAMP_batch_B5A_cell_2,0.3,C,5Vspinel,Gen 2,camp_2023
+batch_B9A_cell_21.h5,CAMP_batch_B9A_cell_21,0.3,C,HE5050,Gen 2,camp_2023
+batch_B14B_cell_7.h5,CAMP_batch_B14B_cell_7,0.3,C,HE5050,Gen 2,camp_2023
+batch_B19A_cell_10.h5,CAMP_batch_B19A_cell_10,0.5,C,FCG,Gen 2,camp_2023
+batch_B17A_cell_2.h5,CAMP_batch_B17A_cell_2,0.2,C_Si,NMC532,Gen 2,camp_2023
+batch_B7A_cell_22.h5,CAMP_batch_B7A_cell_22,0.3,C,NMC532,Gen 2,camp_2023
+batch_B35F_cell_1.h5,CAMP_batch_B35F_cell_1,,C_Al2O3,NMC532,Gen 2,camp_2023
+batch_B26Y_cell_4.h5,CAMP_batch_B26Y_cell_4,0.25,C,5Vspinel,E21,camp_2023
+batch_B34B_cell_1.h5,CAMP_batch_B34B_cell_1,0.02,C,NMC811,Gen 2,camp_2023
+batch_B35C_cell_2.h5,CAMP_batch_B35C_cell_2,,C_AlSiO4,NMC532,Gen 2,camp_2023
+batch_B26Q_cell_3.h5,CAMP_batch_B26Q_cell_3,0.25,C,5Vspinel,E13,camp_2023
+batch_B12A_cell_3.h5,CAMP_batch_B12A_cell_3,0.3,C,HE5050,Gen 2,camp_2023
+batch_B14D_cell_2.h5,CAMP_batch_B14D_cell_2,0.3,C,HE5050,Gen 2,camp_2023
+batch_B37B_cell_2.h5,CAMP_batch_B37B_cell_2,,C_Si,NMC622,Gen 2,camp_2023
+batch_B34D_cell_4.h5,CAMP_batch_B34D_cell_4,0.02,C,NMC811,Gen 2,camp_2023
+batch_B26Z_cell_2.h5,CAMP_batch_B26Z_cell_2,0.25,C,5Vspinel,E22,camp_2023
+batch_B28B_cell_1.h5,CAMP_batch_B28B_cell_1,0.3,C,NMC532,Gen 2,camp_2023
+batch_B7A_cell_8.h5,CAMP_batch_B7A_cell_8,0.3,C,NMC532,Gen 2,camp_2023
+batch_B7A_cell_17.h5,CAMP_batch_B7A_cell_17,0.3,C,NMC532,Gen 2,camp_2023
+batch_B9A_cell_20.h5,CAMP_batch_B9A_cell_20,0.3,C,HE5050,Gen 2,camp_2023
+batch_B14B_cell_6.h5,CAMP_batch_B14B_cell_6,0.3,C,HE5050,Gen 2,camp_2023
+batch_B17A_cell_3.h5,CAMP_batch_B17A_cell_3,0.2,C_Si,NMC532,Gen 2,camp_2023
+batch_B19A_cell_11.h5,CAMP_batch_B19A_cell_11,0.5,C,FCG,Gen 2,camp_2023
+batch_B7A_cell_23.h5,CAMP_batch_B7A_cell_23,0.3,C,NMC532,Gen 2,camp_2023
+batch_B26Y_cell_5.h5,CAMP_batch_B26Y_cell_5,0.25,C,5Vspinel,E21,camp_2023
+batch_B3B_cell_7.h5,CAMP_batch_B3B_cell_7,0.3,C, Li1.2Ni0.3Mn0.6O2,Gen 2,camp_2023
+batch_B12A_cell_2.h5,CAMP_batch_B12A_cell_2,0.3,C,HE5050,Gen 2,camp_2023
+batch_B26R_cell_4.h5,CAMP_batch_B26R_cell_4,0.25,C,5Vspinel,E14,camp_2023
+batch_B14D_cell_3.h5,CAMP_batch_B14D_cell_3,0.3,C,HE5050,Gen 2,camp_2023
+batch_B37B_cell_3.h5,CAMP_batch_B37B_cell_3,,C_Si,NMC622,Gen 2,camp_2023
+batch_B9B_cell_8.h5,CAMP_batch_B9B_cell_8,0.3,C,HE5050,Gen 2,camp_2023
+batch_B6D_cell_3.h5,CAMP_batch_B6D_cell_3,0.3,C,NMC111,Gen 2,camp_2023
+batch_B26Z_cell_3.h5,CAMP_batch_B26Z_cell_3,0.25,C,5Vspinel,E22,camp_2023
+batch_B35H_cell_2.h5,CAMP_batch_B35H_cell_2,,C_LICGC,NMC532,Gen 2,camp_2023
+batch_B17A_cell_7.h5,CAMP_batch_B17A_cell_7,0.2,C_Si,NMC532,Gen 2,camp_2023
+batch_B26T_cell_5.h5,CAMP_batch_B26T_cell_5,0.25,C,5Vspinel,E16,camp_2023
+batch_B5A_cell_7.h5,CAMP_batch_B5A_cell_7,0.3,C,5Vspinel,Gen 2,camp_2023
+batch_B14C_cell_8.h5,CAMP_batch_B14C_cell_8,0.3,C,HE5050,Gen 2,camp_2023
+batch_B14B_cell_2.h5,CAMP_batch_B14B_cell_2,0.3,C,HE5050,Gen 2,camp_2023
+batch_B38C_cell_3.h5,CAMP_batch_B38C_cell_3,,C,NMC622,Gen 2,camp_2023
+batch_B3B_cell_3.h5,CAMP_batch_B3B_cell_3,0.3,C, Li1.2Ni0.3Mn0.6O2,Gen 2,camp_2023
+batch_B12A_cell_6.h5,CAMP_batch_B12A_cell_6,0.3,C,HE5050,Gen 2,camp_2023
+batch_B34B_cell_4.h5,CAMP_batch_B34B_cell_4,0.02,C,NMC811,Gen 2,camp_2023
+batch_B34A_cell_2.h5,CAMP_batch_B34A_cell_2,0.02,C,NMC811,Gen 2,camp_2023
+batch_B14D_cell_7.h5,CAMP_batch_B14D_cell_7,0.3,C,HE5050,Gen 2,camp_2023
+batch_B26L_cell_1.h5,CAMP_batch_B26L_cell_1,0.25,C,5Vspinel,E8,camp_2023
+batch_B26W_cell_3.h5,CAMP_batch_B26W_cell_3,0.25,C,5Vspinel,E19,camp_2023
+batch_B4B_cell_8.h5,CAMP_batch_B4B_cell_8,0.3,C,HE5050,Gen 2,camp_2023
+batch_B35E_cell_2.h5,CAMP_batch_B35E_cell_2,,C_BN,NMC532,Gen 2,camp_2023
+batch_B28B_cell_4.h5,CAMP_batch_B28B_cell_4,0.3,C,NMC532,Gen 2,camp_2023
+batch_B26J_cell_3.h5,CAMP_batch_B26J_cell_3,0.25,C,5Vspinel,E6,camp_2023
+batch_B31B_cell_2.h5,CAMP_batch_B31B_cell_2,0.4,C,NMC111,Gen 2,camp_2023
+batch_B7A_cell_14.h5,CAMP_batch_B7A_cell_14,0.3,C,NMC532,Gen 2,camp_2023
+batch_B9A_cell_17.h5,CAMP_batch_B9A_cell_17,0.3,C,HE5050,Gen 2,camp_2023
+batch_B21A_cell_9.h5,CAMP_batch_B21A_cell_9,0.1,C,NMC111,Gen 2,camp_2023
+batch_B5A_cell_12.h5,CAMP_batch_B5A_cell_12,0.3,C,5Vspinel,Gen 2,camp_2023
+batch_B1A_cell_8.h5,CAMP_batch_B1A_cell_8,0.375,C,HE5050,Gen 2,camp_2023
+batch_B8A_cell_4.h5,CAMP_batch_B8A_cell_4,0.4,C, Li1.35Ni0.33Mn0.67O2.35,Gen 2,camp_2023
+batch_B26B_cell_4.h5,CAMP_batch_B26B_cell_4,0.25,C,5Vspinel,Gen 2,camp_2023
+batch_B12A_cell_10.h5,CAMP_batch_B12A_cell_10,0.3,C,HE5050,Gen 2,camp_2023
+batch_B3B_cell_4.h5,CAMP_batch_B3B_cell_4,0.3,C, Li1.2Ni0.3Mn0.6O2,Gen 2,camp_2023
+batch_B3A_cell_2.h5,CAMP_batch_B3A_cell_2,0.3,C, Li1.2Ni0.3Mn0.6O2,Gen 2,camp_2023
+batch_B9C_cell_1.h5,CAMP_batch_B9C_cell_1,0.3,C,HE5050,Gen 2,camp_2023
+batch_B11A_cell_2.h5,CAMP_batch_B11A_cell_2,0.2,LTO,5Vspinel,Gen 2,camp_2023
+batch_B26A_cell_2.h5,CAMP_batch_B26A_cell_2,0.25,C,5Vspinel,Gen 2,camp_2023
+batch_B6A_cell_3.h5,CAMP_batch_B6A_cell_3,0.3,C,NMC111,Gen 2,camp_2023
+batch_B34D_cell_6.h5,CAMP_batch_B34D_cell_6,0.02,C,NMC811,Gen 2,camp_2023
+batch_B26D_cell_1.h5,CAMP_batch_B26D_cell_1,0.25,C,5Vspinel,Gen 2,camp_2023
+batch_B32B_cell_1.h5,CAMP_batch_B32B_cell_1,0.4,C,NMC532,Gen 2,camp_2023
+batch_B31A_cell_4.h5,CAMP_batch_B31A_cell_4,0.4,C,NMC111,Gen 2,camp_2023
+batch_B14A_cell_3.h5,CAMP_batch_B14A_cell_3,0.3,C,HE5050,Gen 2,camp_2023
+batch_B39A_cell_1.h5,CAMP_batch_B39A_cell_1,0.5,C,NMC622,Gen 2,camp_2023
+batch_B9A_cell_13.h5,CAMP_batch_B9A_cell_13,0.3,C,HE5050,Gen 2,camp_2023
+batch_B19A_cell_16.h5,CAMP_batch_B19A_cell_16,0.5,C,FCG,Gen 2,camp_2023
+batch_B26G_cell_3.h5,CAMP_batch_B26G_cell_3,0.25,C,5Vspinel,E3,camp_2023
+batch_B32A_cell_3.h5,CAMP_batch_B32A_cell_3,0.4,C,NMC532,Gen 2,camp_2023
+batch_B5A_cell_4.h5,CAMP_batch_B5A_cell_4,0.3,C,5Vspinel,Gen 2,camp_2023
+batch_B6A_cell_39.h5,CAMP_batch_B6A_cell_39,0.3,C,NMC111,Gen 2,camp_2023
+batch_B7A_cell_10.h5,CAMP_batch_B7A_cell_10,0.3,C,NMC532,Gen 2,camp_2023
+batch_B19A_cell_22.h5,CAMP_batch_B19A_cell_22,0.5,C,FCG,Gen 2,camp_2023
+batch_B37A_cell_2.h5,CAMP_batch_B37A_cell_2,,C_Si,NMC622,Gen 2,camp_2023
+batch_B2A_cell_11.h5,CAMP_batch_B2A_cell_11,0.3,C, Li1.2Ni0.3Mn0.6O2,Gen 2,camp_2023
+batch_B6D_cell_4.h5,CAMP_batch_B6D_cell_4,0.3,C,NMC111,Gen 2,camp_2023
+batch_B26AA_cell_5.h5,CAMP_batch_B26AA_cell_5,0.25,C,5Vspinel,Gen 2,camp_2023
+batch_B19A_cell_3.h5,CAMP_batch_B19A_cell_3,0.5,C,FCG,Gen 2,camp_2023
+batch_B11A_cell_6.h5,CAMP_batch_B11A_cell_6,0.2,LTO,5Vspinel,Gen 2,camp_2023
+batch_B31D_cell_3.h5,CAMP_batch_B31D_cell_3,0.4,C,NMC111,Gen 2,camp_2023
+batch_B3A_cell_6.h5,CAMP_batch_B3A_cell_6,0.3,C, Li1.2Ni0.3Mn0.6O2,Gen 2,camp_2023
+batch_B14A_cell_7.h5,CAMP_batch_B14A_cell_7,0.3,C,HE5050,Gen 2,camp_2023
+batch_B6A_cell_29.h5,CAMP_batch_B6A_cell_29,0.3,C,NMC111,Gen 2,camp_2023
+batch_B26I_cell_1.h5,CAMP_batch_B26I_cell_1,0.25,C,5Vspinel,E5,camp_2023
+batch_B6A_cell_7.h5,CAMP_batch_B6A_cell_7,0.3,C,NMC111,Gen 2,camp_2023
+batch_B26Z_cell_4.h5,CAMP_batch_B26Z_cell_4,0.25,C,5Vspinel,E22,camp_2023
+batch_B28B_cell_7.h5,CAMP_batch_B28B_cell_7,0.3,C,NMC532,Gen 2,camp_2023
+batch_B20B_cell_2.h5,CAMP_batch_B20B_cell_2,,C_Si,NMC532,Gen2,camp_2023
+batch_B9A_cell_12.h5,CAMP_batch_B9A_cell_12,0.3,C,HE5050,Gen 2,camp_2023
+batch_B19A_cell_17.h5,CAMP_batch_B19A_cell_17,0.5,C,FCG,Gen 2,camp_2023
+batch_B26G_cell_2.h5,CAMP_batch_B26G_cell_2,0.25,C,5Vspinel,E3,camp_2023
+batch_B32A_cell_2.h5,CAMP_batch_B32A_cell_2,0.4,C,NMC532,Gen 2,camp_2023
+batch_B21A_cell_18.h5,CAMP_batch_B21A_cell_18,0.1,C,NMC111,Gen 2,camp_2023
+batch_B6A_cell_38.h5,CAMP_batch_B6A_cell_38,0.3,C,NMC111,Gen 2,camp_2023
+batch_B7A_cell_11.h5,CAMP_batch_B7A_cell_11,0.3,C,NMC532,Gen 2,camp_2023
+batch_B19A_cell_23.h5,CAMP_batch_B19A_cell_23,0.5,C,FCG,Gen 2,camp_2023
+batch_B37A_cell_3.h5,CAMP_batch_B37A_cell_3,,C_Si,NMC622,Gen 2,camp_2023
+batch_B2A_cell_10.h5,CAMP_batch_B2A_cell_10,0.3,C, Li1.2Ni0.3Mn0.6O2,Gen 2,camp_2023
+batch_B26Q_cell_4.h5,CAMP_batch_B26Q_cell_4,0.25,C,5Vspinel,E13,camp_2023
+batch_B11B_cell_1.h5,CAMP_batch_B11B_cell_1,0.2,LTO,5Vspinel,R&D,camp_2023
+batch_B32D_cell_1.h5,CAMP_batch_B32D_cell_1,0.4,C,NMC111,Gen 2,camp_2023
+batch_B26B_cell_1.h5,CAMP_batch_B26B_cell_1,0.25,C,5Vspinel,Gen 2,camp_2023
+batch_B9C_cell_4.h5,CAMP_batch_B9C_cell_4,0.3,C,HE5050,Gen 2,camp_2023
+batch_B6D_cell_5.h5,CAMP_batch_B6D_cell_5,0.3,C,NMC111,Gen 2,camp_2023
+batch_B11A_cell_7.h5,CAMP_batch_B11A_cell_7,0.2,LTO,5Vspinel,Gen 2,camp_2023
+batch_B12B_cell_2.h5,CAMP_batch_B12B_cell_2,0.3,C,HE5050,Gen 2,camp_2023
+batch_B31D_cell_2.h5,CAMP_batch_B31D_cell_2,0.4,C,NMC111,Gen 2,camp_2023
+batch_B3A_cell_7.h5,CAMP_batch_B3A_cell_7,0.3,C, Li1.2Ni0.3Mn0.6O2,Gen 2,camp_2023
+batch_B14A_cell_6.h5,CAMP_batch_B14A_cell_6,0.3,C,HE5050,Gen 2,camp_2023
+batch_B31A_cell_1.h5,CAMP_batch_B31A_cell_1,0.4,C,NMC111,Gen 2,camp_2023
+batch_B39A_cell_4.h5,CAMP_batch_B39A_cell_4,0.5,C,NMC622,Gen 2,camp_2023
+batch_B6A_cell_6.h5,CAMP_batch_B6A_cell_6,0.3,C,NMC111,Gen 2,camp_2023
+batch_B26Z_cell_5.h5,CAMP_batch_B26Z_cell_5,0.25,C,5Vspinel,E22,camp_2023
+batch_B20B_cell_3.h5,CAMP_batch_B20B_cell_3,,C_Si,NMC532,Gen2,camp_2023
+batch_B26D_cell_4.h5,CAMP_batch_B26D_cell_4,0.25,C,5Vspinel,Gen 2,camp_2023
+batch_B26J_cell_2.h5,CAMP_batch_B26J_cell_2,0.25,C,5Vspinel,E6,camp_2023
+batch_B31B_cell_3.h5,CAMP_batch_B31B_cell_3,0.4,C,NMC111,Gen 2,camp_2023
+batch_B7A_cell_15.h5,CAMP_batch_B7A_cell_15,0.3,C,NMC532,Gen 2,camp_2023
+batch_B9A_cell_16.h5,CAMP_batch_B9A_cell_16,0.3,C,HE5050,Gen 2,camp_2023
+batch_B21A_cell_8.h5,CAMP_batch_B21A_cell_8,0.1,C,NMC111,Gen 2,camp_2023
+batch_B1A_cell_9.h5,CAMP_batch_B1A_cell_9,0.375,C,HE5050,Gen 2,camp_2023
+batch_B8A_cell_5.h5,CAMP_batch_B8A_cell_5,0.4,C, Li1.35Ni0.33Mn0.67O2.35,Gen 2,camp_2023
+batch_B11B_cell_5.h5,CAMP_batch_B11B_cell_5,0.2,LTO,5Vspinel,R&D,camp_2023
+batch_B13A_cell_9.h5,CAMP_batch_B13A_cell_9,0.4,C, Li1.35Ni0.33Mn0.67O2.35,Gen 2,camp_2023
+batch_B12A_cell_11.h5,CAMP_batch_B12A_cell_11,0.3,C,HE5050,Gen 2,camp_2023
+batch_B3A_cell_3.h5,CAMP_batch_B3A_cell_3,0.3,C, Li1.2Ni0.3Mn0.6O2,Gen 2,camp_2023
+batch_B6D_cell_1.h5,CAMP_batch_B6D_cell_1,0.3,C,NMC111,Gen 2,camp_2023
+batch_B19A_cell_6.h5,CAMP_batch_B19A_cell_6,0.5,C,FCG,Gen 2,camp_2023
+batch_B11A_cell_3.h5,CAMP_batch_B11A_cell_3,0.2,LTO,5Vspinel,Gen 2,camp_2023
+batch_B26A_cell_3.h5,CAMP_batch_B26A_cell_3,0.25,C,5Vspinel,Gen 2,camp_2023
+batch_B6A_cell_2.h5,CAMP_batch_B6A_cell_2,0.3,C,NMC111,Gen 2,camp_2023
+batch_B34D_cell_7.h5,CAMP_batch_B34D_cell_7,0.02,C,NMC811,Gen 2,camp_2023
+batch_B26I_cell_4.h5,CAMP_batch_B26I_cell_4,0.25,C,5Vspinel,E5,camp_2023
+batch_B14A_cell_2.h5,CAMP_batch_B14A_cell_2,0.3,C,HE5050,Gen 2,camp_2023
+batch_B9A_cell_7.h5,CAMP_batch_B9A_cell_7,0.3,C,HE5050,Gen 2,camp_2023
+batch_B26C_cell_4.h5,CAMP_batch_B26C_cell_4,0.25,C,5Vspinel,Gen 2,camp_2023
+batch_B26P_cell_1.h5,CAMP_batch_B26P_cell_1,0.25,C,5Vspinel,E12,camp_2023
+batch_B13A_cell_2.h5,CAMP_batch_B13A_cell_2,0.4,C, Li1.35Ni0.33Mn0.67O2.35,Gen 2,camp_2023
+batch_B31C_cell_2.h5,CAMP_batch_B31C_cell_2,0.4,C,NMC111,Gen 2,camp_2023
+batch_B6A_cell_37.h5,CAMP_batch_B6A_cell_37,0.3,C,NMC111,Gen 2,camp_2023
+batch_B21A_cell_17.h5,CAMP_batch_B21A_cell_17,0.1,C,NMC111,Gen 2,camp_2023
+batch_B26U_cell_2.h5,CAMP_batch_B26U_cell_2,0.25,C,5Vspinel,E17,camp_2023
+batch_B19A_cell_18.h5,CAMP_batch_B19A_cell_18,0.5,C,FCG,Gen 2,camp_2023
+batch_B32C_cell_1.h5,CAMP_batch_B32C_cell_1,0.4,C,NMC532,Gen 2,camp_2023
+batch_B6A_cell_9.h5,CAMP_batch_B6A_cell_9,0.3,C,NMC111,Gen 2,camp_2023
+batch_B26E_cell_1.h5,CAMP_batch_B26E_cell_1,0.25,C,5Vspinel,E1,camp_2023
+batch_B6A_cell_13.h5,CAMP_batch_B6A_cell_13,0.3,C,NMC111,Gen 2,camp_2023
+batch_B11A_cell_11.h5,CAMP_batch_B11A_cell_11,0.2,LTO,5Vspinel,Gen 2,camp_2023
+batch_B4B_cell_5.h5,CAMP_batch_B4B_cell_5,0.3,C,HE5050,Gen 2,camp_2023
+batch_B3A_cell_8.h5,CAMP_batch_B3A_cell_8,0.3,C, Li1.2Ni0.3Mn0.6O2,Gen 2,camp_2023
+batch_B6D_cell_12.h5,CAMP_batch_B6D_cell_12,0.3,C,NMC111,Gen 2,camp_2023
+batch_B11A_cell_8.h5,CAMP_batch_B11A_cell_8,0.2,LTO,5Vspinel,Gen 2,camp_2023
+batch_B27A_cell_1.h5,CAMP_batch_B27A_cell_1,0.4,C,NMC111,Gen 2,camp_2023
+batch_B32F_cell_2.h5,CAMP_batch_B32F_cell_2,0.4,C,NMC111,Gen 2,camp_2023
+batch_B13A_cell_6.h5,CAMP_batch_B13A_cell_6,0.4,C, Li1.35Ni0.33Mn0.67O2.35,Gen 2,camp_2023
+batch_B27B_cell_3.h5,CAMP_batch_B27B_cell_3,0.4,C,NMC111,Gen 2,camp_2023
+batch_B21A_cell_7.h5,CAMP_batch_B21A_cell_7,0.1,C,NMC111,Gen 2,camp_2023
+batch_B6A_cell_33.h5,CAMP_batch_B6A_cell_33,0.3,C,NMC111,Gen 2,camp_2023
+batch_B21A_cell_13.h5,CAMP_batch_B21A_cell_13,0.1,C,NMC111,Gen 2,camp_2023
+batch_B26H_cell_1.h5,CAMP_batch_B26H_cell_1,0.25,C,5Vspinel,E4,camp_2023
+batch_B4B_cell_1.h5,CAMP_batch_B4B_cell_1,0.3,C,HE5050,Gen 2,camp_2023
+batch_B1A_cell_10.h5,CAMP_batch_B1A_cell_10,0.375,C,HE5050,Gen 2,camp_2023
+batch_B34E_cell_2.h5,CAMP_batch_B34E_cell_2,0.02,C,NMC622,Gen 2,camp_2023
+batch_B27A_cell_5.h5,CAMP_batch_B27A_cell_5,0.4,C,NMC111,Gen 2,camp_2023
+batch_B19A_cell_9.h5,CAMP_batch_B19A_cell_9,0.5,C,FCG,Gen 2,camp_2023
+batch_B2A_cell_5.h5,CAMP_batch_B2A_cell_5,0.3,C, Li1.2Ni0.3Mn0.6O2,Gen 2,camp_2023
+batch_B26N_cell_5.h5,CAMP_batch_B26N_cell_5,0.25,C,5Vspinel,E10,camp_2023
+batch_B13A_cell_7.h5,CAMP_batch_B13A_cell_7,0.4,C, Li1.35Ni0.33Mn0.67O2.35,Gen 2,camp_2023
+batch_B1A_cell_7.h5,CAMP_batch_B1A_cell_7,0.375,C,HE5050,Gen 2,camp_2023
+batch_B26C_cell_1.h5,CAMP_batch_B26C_cell_1,0.25,C,5Vspinel,Gen 2,camp_2023
+batch_B32E_cell_1.h5,CAMP_batch_B32E_cell_1,0.4,C,NMC111,Gen 2,camp_2023
+batch_B21A_cell_6.h5,CAMP_batch_B21A_cell_6,0.1,C,NMC111,Gen 2,camp_2023
+batch_B26F_cell_2.h5,CAMP_batch_B26F_cell_2,0.25,C,5Vspinel,E2,camp_2023
+batch_B21A_cell_12.h5,CAMP_batch_B21A_cell_12,0.1,C,NMC111,Gen 2,camp_2023
+batch_B34E_cell_3.h5,CAMP_batch_B34E_cell_3,0.02,C,NMC622,Gen 2,camp_2023
+batch_B27A_cell_4.h5,CAMP_batch_B27A_cell_4,0.4,C,NMC111,Gen 2,camp_2023
+batch_B19A_cell_8.h5,CAMP_batch_B19A_cell_8,0.5,C,FCG,Gen 2,camp_2023
+batch_B13A_cell_12.h5,CAMP_batch_B13A_cell_12,0.4,C, Li1.35Ni0.33Mn0.67O2.35,Gen 2,camp_2023
+batch_B2A_cell_4.h5,CAMP_batch_B2A_cell_4,0.3,C, Li1.2Ni0.3Mn0.6O2,Gen 2,camp_2023
+batch_B26S_cell_2.h5,CAMP_batch_B26S_cell_2,0.25,C,5Vspinel,E15,camp_2023
+batch_B13A_cell_3.h5,CAMP_batch_B13A_cell_3,0.4,C, Li1.35Ni0.33Mn0.67O2.35,Gen 2,camp_2023
+batch_B31C_cell_3.h5,CAMP_batch_B31C_cell_3,0.4,C,NMC111,Gen 2,camp_2023
+batch_B6A_cell_36.h5,CAMP_batch_B6A_cell_36,0.3,C,NMC111,Gen 2,camp_2023
+batch_B26U_cell_3.h5,CAMP_batch_B26U_cell_3,0.25,C,5Vspinel,E17,camp_2023
+batch_B19A_cell_19.h5,CAMP_batch_B19A_cell_19,0.5,C,FCG,Gen 2,camp_2023
+batch_B21A_cell_22.h5,CAMP_batch_B21A_cell_22,0.1,C,NMC111,Gen 2,camp_2023
+batch_B6A_cell_8.h5,CAMP_batch_B6A_cell_8,0.3,C,NMC111,Gen 2,camp_2023
+batch_B6A_cell_12.h5,CAMP_batch_B6A_cell_12,0.3,C,NMC111,Gen 2,camp_2023
+batch_B11A_cell_10.h5,CAMP_batch_B11A_cell_10,0.2,LTO,5Vspinel,Gen 2,camp_2023
+batch_B26H_cell_4.h5,CAMP_batch_B26H_cell_4,0.25,C,5Vspinel,E4,camp_2023
+batch_B11A_cell_9.h5,CAMP_batch_B11A_cell_9,0.2,LTO,5Vspinel,Gen 2,camp_2023
+batch_B13A_cell_16.h5,CAMP_batch_B13A_cell_16,0.4,C, Li1.35Ni0.33Mn0.67O2.35,Gen 2,camp_2023
+batch_B32F_cell_3.h5,CAMP_batch_B32F_cell_3,0.4,C,NMC111,Gen 2,camp_2023
+batch_B3B_cell_8.h5,CAMP_batch_B3B_cell_8,0.3,C, Li1.2Ni0.3Mn0.6O2,Gen 2,camp_2023
+batch_B32E_cell_2.h5,CAMP_batch_B32E_cell_2,0.4,C,NMC111,Gen 2,camp_2023
+batch_B26C_cell_2.h5,CAMP_batch_B26C_cell_2,0.25,C,5Vspinel,Gen 2,camp_2023
+batch_B8A_cell_8.h5,CAMP_batch_B8A_cell_8,0.4,C, Li1.35Ni0.33Mn0.67O2.35,Gen 2,camp_2023
+batch_B11B_cell_8.h5,CAMP_batch_B11B_cell_8,0.2,LTO,5Vspinel,R&D,camp_2023
+batch_B26F_cell_1.h5,CAMP_batch_B26F_cell_1,0.25,C,5Vspinel,E2,camp_2023
+batch_B21A_cell_11.h5,CAMP_batch_B21A_cell_11,0.1,C,NMC111,Gen 2,camp_2023
+batch_B26U_cell_4.h5,CAMP_batch_B26U_cell_4,0.25,C,5Vspinel,E17,camp_2023
+batch_B31C_cell_4.h5,CAMP_batch_B31C_cell_4,0.4,C,NMC111,Gen 2,camp_2023
+batch_B6A_cell_31.h5,CAMP_batch_B6A_cell_31,0.3,C,NMC111,Gen 2,camp_2023
+batch_B26H_cell_3.h5,CAMP_batch_B26H_cell_3,0.25,C,5Vspinel,E4,camp_2023
+batch_B6A_cell_15.h5,CAMP_batch_B6A_cell_15,0.3,C,NMC111,Gen 2,camp_2023
+batch_B13A_cell_11.h5,CAMP_batch_B13A_cell_11,0.4,C, Li1.35Ni0.33Mn0.67O2.35,Gen 2,camp_2023
+batch_B27A_cell_7.h5,CAMP_batch_B27A_cell_7,0.4,C,NMC111,Gen 2,camp_2023
+batch_B26S_cell_1.h5,CAMP_batch_B26S_cell_1,0.25,C,5Vspinel,E15,camp_2023
+batch_B2A_cell_7.h5,CAMP_batch_B2A_cell_7,0.3,C, Li1.2Ni0.3Mn0.6O2,Gen 2,camp_2023
+batch_B27B_cell_5.h5,CAMP_batch_B27B_cell_5,0.4,C,NMC111,Gen 2,camp_2023
+batch_B12A_cell_9.h5,CAMP_batch_B12A_cell_9,0.3,C,HE5050,Gen 2,camp_2023
+batch_B26N_cell_2.h5,CAMP_batch_B26N_cell_2,0.25,C,5Vspinel,E10,camp_2023
+batch_B30B_cell_3.h5,CAMP_batch_B30B_cell_3,0.45,C,NMC532,Gen 2,camp_2023
+batch_B14C_cell_7.h5,CAMP_batch_B14C_cell_7,0.3,C,HE5050,Gen 2,camp_2023
+batch_B6A_cell_35.h5,CAMP_batch_B6A_cell_35,0.3,C,NMC111,Gen 2,camp_2023
+batch_B21A_cell_21.h5,CAMP_batch_B21A_cell_21,0.1,C,NMC111,Gen 2,camp_2023
+batch_B21A_cell_1.h5,CAMP_batch_B21A_cell_1,0.1,C,NMC111,Gen 2,camp_2023
+batch_B6A_cell_11.h5,CAMP_batch_B6A_cell_11,0.3,C,NMC111,Gen 2,camp_2023
+batch_B34E_cell_4.h5,CAMP_batch_B34E_cell_4,0.02,C,NMC622,Gen 2,camp_2023
+batch_B32C_cell_3.h5,CAMP_batch_B32C_cell_3,0.4,C,NMC532,Gen 2,camp_2023
+batch_B6A_cell_40.h5,CAMP_batch_B6A_cell_40,0.3,C,NMC111,Gen 2,camp_2023
+batch_B4B_cell_7.h5,CAMP_batch_B4B_cell_7,0.3,C,HE5050,Gen 2,camp_2023
+batch_B2A_cell_3.h5,CAMP_batch_B2A_cell_3,0.3,C, Li1.2Ni0.3Mn0.6O2,Gen 2,camp_2023
+batch_B6D_cell_10.h5,CAMP_batch_B6D_cell_10,0.3,C,NMC111,Gen 2,camp_2023
+batch_B6D_cell_8.h5,CAMP_batch_B6D_cell_8,0.3,C,NMC111,Gen 2,camp_2023
+batch_B13A_cell_15.h5,CAMP_batch_B13A_cell_15,0.4,C, Li1.35Ni0.33Mn0.67O2.35,Gen 2,camp_2023
+batch_B27A_cell_3.h5,CAMP_batch_B27A_cell_3,0.4,C,NMC111,Gen 2,camp_2023
+batch_B13A_cell_1.h5,CAMP_batch_B13A_cell_1,0.4,C, Li1.35Ni0.33Mn0.67O2.35,Gen 2,camp_2023
+batch_B21A_cell_14.h5,CAMP_batch_B21A_cell_14,0.1,C,NMC111,Gen 2,camp_2023
+batch_B5A_cell_9.h5,CAMP_batch_B5A_cell_9,0.3,C,5Vspinel,Gen 2,camp_2023
+batch_B6A_cell_34.h5,CAMP_batch_B6A_cell_34,0.3,C,NMC111,Gen 2,camp_2023
+batch_B31C_cell_1.h5,CAMP_batch_B31C_cell_1,0.4,C,NMC111,Gen 2,camp_2023
+batch_B21A_cell_20.h5,CAMP_batch_B21A_cell_20,0.1,C,NMC111,Gen 2,camp_2023
+batch_B26X_cell_5.h5,CAMP_batch_B26X_cell_5,0.25,C,5Vspinel,E20,camp_2023
+batch_B26E_cell_2.h5,CAMP_batch_B26E_cell_2,0.25,C,5Vspinel,E1,camp_2023
+batch_B6A_cell_10.h5,CAMP_batch_B6A_cell_10,0.3,C,NMC111,Gen 2,camp_2023
+batch_B32C_cell_2.h5,CAMP_batch_B32C_cell_2,0.4,C,NMC532,Gen 2,camp_2023
+batch_B6A_cell_41.h5,CAMP_batch_B6A_cell_41,0.3,C,NMC111,Gen 2,camp_2023
+batch_B11A_cell_12.h5,CAMP_batch_B11A_cell_12,0.2,LTO,5Vspinel,Gen 2,camp_2023
+batch_B6D_cell_11.h5,CAMP_batch_B6D_cell_11,0.3,C,NMC111,Gen 2,camp_2023
+batch_B32F_cell_1.h5,CAMP_batch_B32F_cell_1,0.4,C,NMC111,Gen 2,camp_2023
+batch_B6D_cell_9.h5,CAMP_batch_B6D_cell_9,0.3,C,NMC111,Gen 2,camp_2023
+batch_B13A_cell_14.h5,CAMP_batch_B13A_cell_14,0.4,C, Li1.35Ni0.33Mn0.67O2.35,Gen 2,camp_2023
+batch_B27A_cell_2.h5,CAMP_batch_B27A_cell_2,0.4,C,NMC111,Gen 2,camp_2023
+batch_B13A_cell_5.h5,CAMP_batch_B13A_cell_5,0.4,C, Li1.35Ni0.33Mn0.67O2.35,Gen 2,camp_2023
+batch_B32E_cell_3.h5,CAMP_batch_B32E_cell_3,0.4,C,NMC111,Gen 2,camp_2023
+batch_B26C_cell_3.h5,CAMP_batch_B26C_cell_3,0.25,C,5Vspinel,Gen 2,camp_2023
+batch_B11B_cell_9.h5,CAMP_batch_B11B_cell_9,0.2,LTO,5Vspinel,R&D,camp_2023
+batch_B21A_cell_4.h5,CAMP_batch_B21A_cell_4,0.1,C,NMC111,Gen 2,camp_2023
+batch_B38B_cell_3.h5,CAMP_batch_B38B_cell_3,,C,NMC622,Gen 2,camp_2023
+batch_B6A_cell_30.h5,CAMP_batch_B6A_cell_30,0.3,C,NMC111,Gen 2,camp_2023
+batch_B26H_cell_2.h5,CAMP_batch_B26H_cell_2,0.25,C,5Vspinel,E4,camp_2023
+batch_B6A_cell_14.h5,CAMP_batch_B6A_cell_14,0.3,C,NMC111,Gen 2,camp_2023
+batch_B34E_cell_1.h5,CAMP_batch_B34E_cell_1,0.02,C,NMC622,Gen 2,camp_2023
+batch_B13A_cell_10.h5,CAMP_batch_B13A_cell_10,0.4,C, Li1.35Ni0.33Mn0.67O2.35,Gen 2,camp_2023
+batch_B27A_cell_6.h5,CAMP_batch_B27A_cell_6,0.4,C,NMC111,Gen 2,camp_2023
+batch_B2A_cell_6.h5,CAMP_batch_B2A_cell_6,0.3,C, Li1.2Ni0.3Mn0.6O2,Gen 2,camp_2023
+batch_B32A_cell_1.h5,CAMP_batch_B32A_cell_1,0.4,C,NMC532,Gen 2,camp_2023
+batch_B26G_cell_1.h5,CAMP_batch_B26G_cell_1,0.25,C,5Vspinel,E3,camp_2023
+batch_B1_cell_5.h5,CAMP_batch_B1_cell_5,0.375,C,HE5050,Gen 2,camp_2023
+batch_B9A_cell_11.h5,CAMP_batch_B9A_cell_11,0.3,C,HE5050,Gen 2,camp_2023
+batch_B7A_cell_12.h5,CAMP_batch_B7A_cell_12,0.3,C,NMC532,Gen 2,camp_2023
+batch_B19A_cell_20.h5,CAMP_batch_B19A_cell_20,0.5,C,FCG,Gen 2,camp_2023
+batch_B5A_cell_6.h5,CAMP_batch_B5A_cell_6,0.3,C,5Vspinel,Gen 2,camp_2023
+batch_B31B_cell_4.h5,CAMP_batch_B31B_cell_4,0.4,C,NMC111,Gen 2,camp_2023
+batch_B8A_cell_2.h5,CAMP_batch_B8A_cell_2,0.4,C, Li1.35Ni0.33Mn0.67O2.35,Gen 2,camp_2023
+batch_B26B_cell_2.h5,CAMP_batch_B26B_cell_2,0.25,C,5Vspinel,Gen 2,camp_2023
+batch_B32D_cell_2.h5,CAMP_batch_B32D_cell_2,0.4,C,NMC111,Gen 2,camp_2023
+batch_B11A_cell_4.h5,CAMP_batch_B11A_cell_4,0.2,LTO,5Vspinel,Gen 2,camp_2023
+batch_B26A_cell_4.h5,CAMP_batch_B26A_cell_4,0.25,C,5Vspinel,Gen 2,camp_2023
+batch_B31D_cell_1.h5,CAMP_batch_B31D_cell_1,0.4,C,NMC111,Gen 2,camp_2023
+batch_B7B_cell_Unknown.h5,CAMP_batch_B7B_cell_Unknown,0.3,C,NMC532,Gen 2,camp_2023
+batch_B26I_cell_3.h5,CAMP_batch_B26I_cell_3,0.25,C,5Vspinel,E5,camp_2023
+batch_B31A_cell_2.h5,CAMP_batch_B31A_cell_2,0.4,C,NMC111,Gen 2,camp_2023
+batch_B14A_cell_5.h5,CAMP_batch_B14A_cell_5,0.3,C,HE5050,Gen 2,camp_2023
+batch_B6A_cell_5.h5,CAMP_batch_B6A_cell_5,0.3,C,NMC111,Gen 2,camp_2023
+batch_B7A_cell_16.h5,CAMP_batch_B7A_cell_16,0.3,C,NMC532,Gen 2,camp_2023
+batch_B19A_cell_24.h5,CAMP_batch_B19A_cell_24,0.5,C,FCG,Gen 2,camp_2023
+batch_B26J_cell_1.h5,CAMP_batch_B26J_cell_1,0.25,C,5Vspinel,E6,camp_2023
+batch_B9A_cell_15.h5,CAMP_batch_B9A_cell_15,0.3,C,HE5050,Gen 2,camp_2023
+batch_B11B_cell_6.h5,CAMP_batch_B11B_cell_6,0.2,LTO,5Vspinel,R&D,camp_2023
+batch_B8A_cell_6.h5,CAMP_batch_B8A_cell_6,0.4,C, Li1.35Ni0.33Mn0.67O2.35,Gen 2,camp_2023
+batch_B5A_cell_10.h5,CAMP_batch_B5A_cell_10,0.3,C,5Vspinel,Gen 2,camp_2023
+batch_B3B_cell_6.h5,CAMP_batch_B3B_cell_6,0.3,C, Li1.2Ni0.3Mn0.6O2,Gen 2,camp_2023
+batch_B12A_cell_12.h5,CAMP_batch_B12A_cell_12,0.3,C,HE5050,Gen 2,camp_2023
+batch_B37A_cell_4.h5,CAMP_batch_B37A_cell_4,,C_Si,NMC622,Gen 2,camp_2023
+batch_B26O_cell_2.h5,CAMP_batch_B26O_cell_2,0.25,C,5Vspinel,E11,camp_2023
+batch_B2A_cell_9.h5,CAMP_batch_B2A_cell_9,0.3,C, Li1.2Ni0.3Mn0.6O2,Gen 2,camp_2023
+batch_B26R_cell_5.h5,CAMP_batch_B26R_cell_5,0.25,C,5Vspinel,E14,camp_2023
+batch_B9C_cell_3.h5,CAMP_batch_B9C_cell_3,0.3,C,HE5050,Gen 2,camp_2023
+batch_B6D_cell_2.h5,CAMP_batch_B6D_cell_2,0.3,C,NMC111,Gen 2,camp_2023
+batch_B26AA_cell_3.h5,CAMP_batch_B26AA_cell_3,0.25,C,5Vspinel,Gen 2,camp_2023
+batch_B19A_cell_5.h5,CAMP_batch_B19A_cell_5,0.5,C,FCG,Gen 2,camp_2023
+batch_B32B_cell_3.h5,CAMP_batch_B32B_cell_3,0.4,C,NMC532,Gen 2,camp_2023
+batch_B20B_cell_4.h5,CAMP_batch_B20B_cell_4,,C_Si,NMC532,Gen2,camp_2023
+batch_B26D_cell_3.h5,CAMP_batch_B26D_cell_3,0.25,C,5Vspinel,Gen 2,camp_2023
+batch_B6A_cell_1.h5,CAMP_batch_B6A_cell_1,0.3,C,NMC111,Gen 2,camp_2023
+batch_B39A_cell_3.h5,CAMP_batch_B39A_cell_3,0.5,C,NMC622,Gen 2,camp_2023
+batch_B14A_cell_1.h5,CAMP_batch_B14A_cell_1,0.3,C,HE5050,Gen 2,camp_2023
+batch_B5A_cell_3.h5,CAMP_batch_B5A_cell_3,0.3,C,5Vspinel,Gen 2,camp_2023
+batch_B26T_cell_1.h5,CAMP_batch_B26T_cell_1,0.25,C,5Vspinel,E16,camp_2023
+batch_B31B_cell_1.h5,CAMP_batch_B31B_cell_1,0.4,C,NMC111,Gen 2,camp_2023
+batch_B26G_cell_4.h5,CAMP_batch_B26G_cell_4,0.25,C,5Vspinel,E3,camp_2023
+batch_B9A_cell_14.h5,CAMP_batch_B9A_cell_14,0.3,C,HE5050,Gen 2,camp_2023
+batch_B11B_cell_7.h5,CAMP_batch_B11B_cell_7,0.2,LTO,5Vspinel,R&D,camp_2023
+batch_B8A_cell_7.h5,CAMP_batch_B8A_cell_7,0.4,C, Li1.35Ni0.33Mn0.67O2.35,Gen 2,camp_2023
+batch_B5A_cell_11.h5,CAMP_batch_B5A_cell_11,0.3,C,5Vspinel,Gen 2,camp_2023
+batch_B26Q_cell_2.h5,CAMP_batch_B26Q_cell_2,0.25,C,5Vspinel,E13,camp_2023
+batch_B2A_cell_8.h5,CAMP_batch_B2A_cell_8,0.3,C, Li1.2Ni0.3Mn0.6O2,Gen 2,camp_2023
+batch_B3A_cell_1.h5,CAMP_batch_B3A_cell_1,0.3,C, Li1.2Ni0.3Mn0.6O2,Gen 2,camp_2023
+batch_B12B_cell_4.h5,CAMP_batch_B12B_cell_4,0.3,C,HE5050,Gen 2,camp_2023
+batch_B31D_cell_4.h5,CAMP_batch_B31D_cell_4,0.4,C,NMC111,Gen 2,camp_2023
+batch_B26A_cell_1.h5,CAMP_batch_B26A_cell_1,0.25,C,5Vspinel,Gen 2,camp_2023
+batch_B27A_cell_8.h5,CAMP_batch_B27A_cell_8,0.4,C,NMC111,Gen 2,camp_2023
+batch_B9C_cell_2.h5,CAMP_batch_B9C_cell_2,0.3,C,HE5050,Gen 2,camp_2023
+batch_B19A_cell_4.h5,CAMP_batch_B19A_cell_4,0.5,C,FCG,Gen 2,camp_2023
+batch_B26AA_cell_2.h5,CAMP_batch_B26AA_cell_2,0.25,C,5Vspinel,Gen 2,camp_2023
+batch_B32B_cell_2.h5,CAMP_batch_B32B_cell_2,0.4,C,NMC532,Gen 2,camp_2023
+batch_B20B_cell_5.h5,CAMP_batch_B20B_cell_5,,C_Si,NMC532,Gen2,camp_2023
+batch_B34D_cell_5.h5,CAMP_batch_B34D_cell_5,0.02,C,NMC811,Gen 2,camp_2023
+batch_B26D_cell_2.h5,CAMP_batch_B26D_cell_2,0.25,C,5Vspinel,Gen 2,camp_2023
+batch_B7A_cell_9.h5,CAMP_batch_B7A_cell_9,0.3,C,NMC532,Gen 2,camp_2023
+batch_B39A_cell_2.h5,CAMP_batch_B39A_cell_2,0.5,C,NMC622,Gen 2,camp_2023
+batch_B19A_cell_15.h5,CAMP_batch_B19A_cell_15,0.5,C,FCG,Gen 2,camp_2023
+batch_B1_cell_4.h5,CAMP_batch_B1_cell_4,0.375,C,HE5050,Gen 2,camp_2023
+batch_B9A_cell_10.h5,CAMP_batch_B9A_cell_10,0.3,C,HE5050,Gen 2,camp_2023
+batch_B26Y_cell_1.h5,CAMP_batch_B26Y_cell_1,0.25,C,5Vspinel,E21,camp_2023
+batch_B7A_cell_13.h5,CAMP_batch_B7A_cell_13,0.3,C,NMC532,Gen 2,camp_2023
+batch_B19A_cell_21.h5,CAMP_batch_B19A_cell_21,0.5,C,FCG,Gen 2,camp_2023
+batch_B26J_cell_4.h5,CAMP_batch_B26J_cell_4,0.25,C,5Vspinel,E6,camp_2023
+batch_B37A_cell_1.h5,CAMP_batch_B37A_cell_1,,C_Si,NMC622,Gen 2,camp_2023
+batch_B8A_cell_3.h5,CAMP_batch_B8A_cell_3,0.4,C, Li1.35Ni0.33Mn0.67O2.35,Gen 2,camp_2023
+batch_B26B_cell_3.h5,CAMP_batch_B26B_cell_3,0.25,C,5Vspinel,Gen 2,camp_2023
+batch_B11B_cell_3.h5,CAMP_batch_B11B_cell_3,0.2,LTO,5Vspinel,R&D,camp_2023
+batch_B32D_cell_3.h5,CAMP_batch_B32D_cell_3,0.4,C,NMC111,Gen 2,camp_2023
+batch_B11A_cell_5.h5,CAMP_batch_B11A_cell_5,0.2,LTO,5Vspinel,Gen 2,camp_2023
+batch_B6D_cell_7.h5,CAMP_batch_B6D_cell_7,0.3,C,NMC111,Gen 2,camp_2023
+batch_B9C_cell_6.h5,CAMP_batch_B9C_cell_6,0.3,C,HE5050,Gen 2,camp_2023
+batch_B3A_cell_5.h5,CAMP_batch_B3A_cell_5,0.3,C, Li1.2Ni0.3Mn0.6O2,Gen 2,camp_2023
+batch_B26I_cell_2.h5,CAMP_batch_B26I_cell_2,0.25,C,5Vspinel,E5,camp_2023
+batch_B31A_cell_3.h5,CAMP_batch_B31A_cell_3,0.4,C,NMC111,Gen 2,camp_2023
+batch_B14A_cell_4.h5,CAMP_batch_B14A_cell_4,0.3,C,HE5050,Gen 2,camp_2023
+batch_B34D_cell_1.h5,CAMP_batch_B34D_cell_1,0.02,C,NMC811,Gen 2,camp_2023
+batch_B20B_cell_1.h5,CAMP_batch_B20B_cell_1,,C_Si,NMC532,Gen2,camp_2023
+batch_B6A_cell_4.h5,CAMP_batch_B6A_cell_4,0.3,C,NMC111,Gen 2,camp_2023
+batch_B26T_cell_2.h5,CAMP_batch_B26T_cell_2,0.25,C,5Vspinel,E16,camp_2023
+batch_B28A_cell_48.h5,CAMP_batch_B28A_cell_48,0.3,C_Si,NMC532,Gen 2,camp_2023
+batch_B16A_cell_9.h5,CAMP_batch_B16A_cell_9,0.4,C_Si,NMC532,Gen 2,camp_2023
+batch_B19A_cell_12.h5,CAMP_batch_B19A_cell_12,0.5,C,FCG,Gen 2,camp_2023
+batch_B7A_cell_20.h5,CAMP_batch_B7A_cell_20,0.3,C,NMC532,Gen 2,camp_2023
+batch_B34B_cell_3.h5,CAMP_batch_B34B_cell_3,0.02,C,NMC811,Gen 2,camp_2023
+batch_B11B_cell_4.h5,CAMP_batch_B11B_cell_4,0.2,LTO,5Vspinel,R&D,camp_2023
+batch_B12A_cell_1.h5,CAMP_batch_B12A_cell_1,0.3,C,HE5050,Gen 2,camp_2023
+batch_B13A_cell_8.h5,CAMP_batch_B13A_cell_8,0.4,C, Li1.35Ni0.33Mn0.67O2.35,Gen 2,camp_2023
+batch_B19A_cell_7.h5,CAMP_batch_B19A_cell_7,0.5,C,FCG,Gen 2,camp_2023

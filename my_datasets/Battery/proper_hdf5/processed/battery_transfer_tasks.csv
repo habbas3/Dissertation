@@ -1,0 +1,43 @@
+source_anode,source_cathode,source_electrolyte,target_anode,target_cathode,target_electrolyte
+C, Li1.2Ni0.3Mn0.6O2,Gen 2,C, Li1.35Ni0.33Mn0.67O2.35,Gen 2
+C, Li1.35Ni0.33Mn0.67O2.35,Gen 2,C,5Vspinel,E1
+C,5Vspinel,E1,C,5Vspinel,E10
+C,5Vspinel,E10,C,5Vspinel,E11
+C,5Vspinel,E11,C,5Vspinel,E12
+C,5Vspinel,E12,C,5Vspinel,E13
+C,5Vspinel,E13,C,5Vspinel,E14
+C,5Vspinel,E14,C,5Vspinel,E15
+C,5Vspinel,E15,C,5Vspinel,E16
+C,5Vspinel,E16,C,5Vspinel,E17
+C,5Vspinel,E17,C,5Vspinel,E18
+C,5Vspinel,E18,C,5Vspinel,E19
+C,5Vspinel,E19,C,5Vspinel,E2
+C,5Vspinel,E2,C,5Vspinel,E20
+C,5Vspinel,E20,C,5Vspinel,E21
+C,5Vspinel,E21,C,5Vspinel,E22
+C,5Vspinel,E22,C,5Vspinel,E3
+C,5Vspinel,E3,C,5Vspinel,E4
+C,5Vspinel,E4,C,5Vspinel,E5
+C,5Vspinel,E5,C,5Vspinel,E6
+C,5Vspinel,E6,C,5Vspinel,E7
+C,5Vspinel,E7,C,5Vspinel,E8
+C,5Vspinel,E8,C,5Vspinel,E9
+C,5Vspinel,E9,C,5Vspinel,Gen 2
+C,5Vspinel,Gen 2,C,FCG,Gen 2
+C,FCG,Gen 2,C,HE5050,Gen 2
+C,HE5050,Gen 2,C,NMC111,Gen 2
+C,NMC111,Gen 2,C,NMC532,Gen 2
+C,NMC532,Gen 2,C,NMC622,Gen 2
+C,NMC622,Gen 2,C,NMC811,Gen 2
+C,NMC811,Gen 2,C_Al2O3,NMC532,Gen 2
+C_Al2O3,NMC532,Gen 2,C_AlN,NMC532,Gen 2
+C_AlN,NMC532,Gen 2,C_AlSiO4,NMC532,Gen 2
+C_AlSiO4,NMC532,Gen 2,C_BN,NMC532,Gen 2
+C_BN,NMC532,Gen 2,C_LICGC,NMC532,Gen 2
+C_LICGC,NMC532,Gen 2,C_Si,NMC532,Gen 2
+C_Si,NMC532,Gen 2,C_Si,NMC532,Gen2
+C_Si,NMC532,Gen2,C_Si,NMC622,Gen 2
+C_Si,NMC622,Gen 2,C_ZrO,NMC532,Gen 2
+C_ZrO,NMC532,Gen 2,C_ZrSiO4,NMC532,Gen 2
+C_ZrSiO4,NMC532,Gen 2,LTO,5Vspinel,Gen 2
+LTO,5Vspinel,Gen 2,LTO,5Vspinel,R&D
