@@ -191,7 +191,7 @@ class train_utils_open_univ(object):
                     print("Target Labels Sample:", str(target_label)[:5])
                 else:
                     print("No target cathode provided — pretraining mode.")
-        
+
                 source_train, source_val, target_train, target_val, label_names, df = load_battery_dataset(
                     csv_path=self.args.csv,
                     source_cathodes=self.args.source_cathode,
@@ -200,7 +200,7 @@ class train_utils_open_univ(object):
                     batch_size=self.args.batch_size,
                     sequence_length=self.args.sequence_length,
                 )
-        
+
                 self.datasets['source_train'] = source_train
                 self.datasets['source_val'] = source_val
                 self.datasets['target_train'] = target_train
@@ -226,19 +226,14 @@ class train_utils_open_univ(object):
                     'target_train': tgt_tr,
                     'target_val': tgt_val
                 }
-                self.dataloaders = {
-                    x: torch.utils.data.DataLoader(
-                        self.datasets[x],
-                        batch_size=args.batch_size,
-                        shuffle=(True if x.split('_')[1] == 'train' else False),
-                        num_workers=args.num_workers,
-                        pin_memory=(True if self.device == 'cuda' else False),
-                        drop_last=(True if args.last_batch and x.split('_')[1] == 'train' else False),
-                        generator=g
-                    )
-                    for x in ['source_train', 'source_val', 'target_train', 'target_val']
-                }
-        
+                self.dataloaders = {x: torch.utils.data.DataLoader(self.datasets[x], batch_size=args.batch_size,
+                                                                   shuffle=(True if x.split('_')[1] == 'train' else False),
+                                                                   num_workers=args.num_workers,
+                                                                   pin_memory=(True if self.device == 'cuda' else False),
+                                                                   drop_last=(True if args.last_batch and x.split('_')[1] == 'train' else False),
+                                                                   generator=g)
+                                    for x in ['source_train', 'source_val', 'target_train', 'target_val']}
+
         else:
             self.datasets = {
                 'source_train': self.source_train_loader.dataset,
@@ -255,126 +250,40 @@ class train_utils_open_univ(object):
                 'target_val': self.target_val_loader,
             }
             self.num_classes = args.num_classes
-        
-        # --- NEW: infer input shape early & safely (before any kernel checks) ---
-        def _first_nonempty_batch(dataloader_dict, names):
-            for name in names:
-                ld = dataloader_dict.get(name)
-                if ld is None:
-                    continue
-                try:
-                    it = iter(ld)
-                    batch = next(it)
-                except StopIteration:
-                    # empty loader, try next
-                    continue
-                return name, batch
-            raise RuntimeError(
-                "All provided dataloaders are empty. "
-                "Check Battery_inconsistent filters (source/target cathodes), CSV path, "
-                "and split sizes."
-            )
-        
-        probe_order = ['source_train', 'target_train', 'source_val', 'target_val']
-        chosen_name, first_batch = _first_nonempty_batch(self.dataloaders, probe_order)
-        
-        # Extract input tensor regardless of collate format
-        if isinstance(first_batch, (list, tuple)) and len(first_batch) >= 1:
-            input_tensor = first_batch[0]
-        else:
-            input_tensor = first_batch  # dataset returns just x
-        
-        # Infer channels & length robustly across shapes
-        if input_tensor.dim() == 3:
-            # (B, C, L)
-            args.input_channels = int(input_tensor.shape[1])
-            args.input_size     = int(input_tensor.shape[-1])
-        elif input_tensor.dim() == 2:
-            # (B, F) or (B, L); training loop will permute if needed
-            args.input_channels = int(input_tensor.shape[-1])
-            args.input_size     = 1
-        elif input_tensor.dim() == 1:
-            # Single vector per sample
-            args.input_channels = 1
-            args.input_size     = int(input_tensor.shape[0])
-        else:
-            raise RuntimeError(f"Unexpected input tensor rank {input_tensor.dim()} from '{chosen_name}'.")
-        
-        print("🧪 Input shape before CNN:", tuple(input_tensor.shape),
-              "| inferred channels:", args.input_channels, "length:", args.input_size)
-        # ----------------------------------------------------------------------
-        
+            
         self.target_sample_count = 0
         if self.dataloaders.get('target_train') is not None:
-            try:
-                self.target_sample_count = len(self.dataloaders['target_train'].dataset)
-            except Exception:
-                # some custom loaders may not expose .dataset
-                self.target_sample_count = 0
+            self.target_sample_count = len(self.dataloaders['target_train'].dataset)
             if self.target_sample_count < 100:
                 args.lr = min(args.lr, 1e-4)
                 logging.info(f"Reducing learning rate to {args.lr} for {self.target_sample_count} target samples")
-        
+
         # Determine if we should fine-tune using target data only
         self.transfer_mode = (
             self.dataloaders.get('target_train') is not None and
             getattr(self.args, 'pretrained_model_path', None)
         )
-        
-        # --- Choose a non-empty *train* loader to compute max_iter safely ---
-        def _pick_train_loader(dataloader_dict, primary_names, fallback_names):
-            # Prefer train loaders; if empty, fallback to any non-empty loader
-            for name in primary_names:
-                ld = dataloader_dict.get(name)
-                if ld is None:
-                    continue
-                try:
-                    if len(ld) > 0:
-                        return ld
-                except TypeError:
-                    # len() may not be defined; try a quick probe
-                    try:
-                        _ = next(iter(ld))
-                        return ld
-                    except StopIteration:
-                        pass
-            # fallback
-            for name in fallback_names:
-                ld = dataloader_dict.get(name)
-                if ld is None:
-                    continue
-                try:
-                    if len(ld) > 0:
-                        return ld
-                except TypeError:
-                    try:
-                        _ = next(iter(ld))
-                        return ld
-                    except StopIteration:
-                        pass
-            return None
-        
-        primary_train = ['target_train'] if self.transfer_mode else []
-        primary_train += ['source_train']
-        train_loader_for_iter = _pick_train_loader(
-            self.dataloaders,
-            primary_names=primary_train,
-            fallback_names=['source_val', 'target_val']
+        sample_loader = (
+            self.dataloaders['source_train']
+            if self.dataloaders.get('source_train') is not None
+            else self.dataloaders['target_train']
         )
+        first_batch = next(iter(sample_loader))
+        input_tensor, _ = first_batch
+        args.input_channels = input_tensor.shape[1]  # Automatically infer input channels from data
+        args.input_size = input_tensor.shape[-1]
+        print("🧪 Input shape before CNN:", input_tensor.shape)
         
-        try:
-            steps_per_epoch = len(train_loader_for_iter) if train_loader_for_iter is not None else 0
-        except TypeError:
-            # Some iterable loaders don't implement __len__
-            try:
-                _ = next(iter(train_loader_for_iter))
-                steps_per_epoch = 1
-            except Exception:
-                steps_per_epoch = 0
-        
-        self.max_iter = steps_per_epoch * args.max_epoch
 
 
+        
+        # Define the model
+        train_loader_for_iter = (
+            self.dataloaders['target_train']
+            if self.transfer_mode
+            else self.dataloaders['source_train']
+        )
+        self.max_iter = len(train_loader_for_iter) * args.max_epoch
         if args.model_name in ["cnn_openmax", "cnn_features_1d_sa", "cnn_features_1d","WideResNet", "WideResNet_sa", "WideResNet_mh", "WideResNet_edited"]:
             if args.model_name == "WideResNet":
                 self.model = WideResNet(
