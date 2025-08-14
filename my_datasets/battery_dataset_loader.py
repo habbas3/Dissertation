@@ -117,7 +117,13 @@ def load_battery_transfer_task(
         "energy_discharge", "capacity_discharge", "cycle_capacity"
     ]
     # Fit scaler on source data and apply to both domains
-    scaler = MinMaxScaler().fit(source_df[features])
+    # ``MinMaxScaler`` can produce values outside the [0, 1] range when
+    # transforming data that falls outside the feature bounds it was fit
+    # on.  This leads to all target labels collapsing into a single class
+    # after discretisation, hurting transfer learning.  By enabling
+    # ``clip=True`` we ensure transformed features remain within the
+    # expected range so that label bins retain their intended meaning.
+    scaler = MinMaxScaler(clip=True).fit(source_df[features])
     source_df[features] = scaler.transform(source_df[features])
     target_df[features] = scaler.transform(target_df[features])
 

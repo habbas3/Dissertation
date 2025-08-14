@@ -191,7 +191,7 @@ class train_utils_open_univ(object):
                     print("Target Labels Sample:", str(target_label)[:5])
                 else:
                     print("No target cathode provided — pretraining mode.")
-
+        
                 source_train, source_val, target_train, target_val, label_names, df = load_battery_dataset(
                     csv_path=self.args.csv,
                     source_cathodes=self.args.source_cathode,
@@ -200,7 +200,7 @@ class train_utils_open_univ(object):
                     batch_size=self.args.batch_size,
                     sequence_length=self.args.sequence_length,
                 )
-
+        
                 self.datasets['source_train'] = source_train
                 self.datasets['source_val'] = source_val
                 self.datasets['target_train'] = target_train
@@ -226,14 +226,19 @@ class train_utils_open_univ(object):
                     'target_train': tgt_tr,
                     'target_val': tgt_val
                 }
-                self.dataloaders = {x: torch.utils.data.DataLoader(self.datasets[x], batch_size=args.batch_size,
-                                                                   shuffle=(True if x.split('_')[1] == 'train' else False),
-                                                                   num_workers=args.num_workers,
-                                                                   pin_memory=(True if self.device == 'cuda' else False),
-                                                                   drop_last=(True if args.last_batch and x.split('_')[1] == 'train' else False),
-                                                                   generator=g)
-                                    for x in ['source_train', 'source_val', 'target_train', 'target_val']}
-
+                self.dataloaders = {
+                    x: torch.utils.data.DataLoader(
+                        self.datasets[x],
+                        batch_size=args.batch_size,
+                        shuffle=(True if x.split('_')[1] == 'train' else False),
+                        num_workers=args.num_workers,
+                        pin_memory=(True if self.device == 'cuda' else False),
+                        drop_last=(True if args.last_batch and x.split('_')[1] == 'train' else False),
+                        generator=g
+                    )
+                    for x in ['source_train', 'source_val', 'target_train', 'target_val']
+                }
+        
         else:
             self.datasets = {
                 'source_train': self.source_train_loader.dataset,
@@ -250,47 +255,152 @@ class train_utils_open_univ(object):
                 'target_val': self.target_val_loader,
             }
             self.num_classes = args.num_classes
-            
+        
+        # --- NEW: infer input shape early & safely (before any kernel checks) ---
+        def _first_nonempty_batch(dataloader_dict, names):
+            for name in names:
+                ld = dataloader_dict.get(name)
+                if ld is None:
+                    continue
+                try:
+                    it = iter(ld)
+                    batch = next(it)
+                except StopIteration:
+                    # empty loader, try next
+                    continue
+                return name, batch
+            raise RuntimeError(
+                "All provided dataloaders are empty. "
+                "Check Battery_inconsistent filters (source/target cathodes), CSV path, "
+                "and split sizes."
+            )
+        
+        probe_order = ['source_train', 'target_train', 'source_val', 'target_val']
+        chosen_name, first_batch = _first_nonempty_batch(self.dataloaders, probe_order)
+        
+        # Extract input tensor regardless of collate format
+        if isinstance(first_batch, (list, tuple)) and len(first_batch) >= 1:
+            input_tensor = first_batch[0]
+        else:
+            input_tensor = first_batch  # dataset returns just x
+        
+        # Infer channels & length robustly across shapes
+        if input_tensor.dim() == 3:
+            # (B, C, L)
+            args.input_channels = int(input_tensor.shape[1])
+            args.input_size     = int(input_tensor.shape[-1])
+        elif input_tensor.dim() == 2:
+            # (B, F) or (B, L); training loop will permute if needed
+            args.input_channels = int(input_tensor.shape[-1])
+            args.input_size     = 1
+        elif input_tensor.dim() == 1:
+            # Single vector per sample
+            args.input_channels = 1
+            args.input_size     = int(input_tensor.shape[0])
+        else:
+            raise RuntimeError(f"Unexpected input tensor rank {input_tensor.dim()} from '{chosen_name}'.")
+        
+        print("🧪 Input shape before CNN:", tuple(input_tensor.shape),
+              "| inferred channels:", args.input_channels, "length:", args.input_size)
+        # ----------------------------------------------------------------------
+        
         self.target_sample_count = 0
         if self.dataloaders.get('target_train') is not None:
-            self.target_sample_count = len(self.dataloaders['target_train'].dataset)
+            try:
+                self.target_sample_count = len(self.dataloaders['target_train'].dataset)
+            except Exception:
+                # some custom loaders may not expose .dataset
+                self.target_sample_count = 0
             if self.target_sample_count < 100:
                 args.lr = min(args.lr, 1e-4)
                 logging.info(f"Reducing learning rate to {args.lr} for {self.target_sample_count} target samples")
-
+        
         # Determine if we should fine-tune using target data only
         self.transfer_mode = (
             self.dataloaders.get('target_train') is not None and
             getattr(self.args, 'pretrained_model_path', None)
         )
-        sample_loader = (
-            self.dataloaders['source_train']
-            if self.dataloaders.get('source_train') is not None
-            else self.dataloaders['target_train']
-        )
-        first_batch = next(iter(sample_loader))
-        input_tensor, _ = first_batch
-        args.input_channels = input_tensor.shape[1]  # Automatically infer input channels from data
-        args.input_size = input_tensor.shape[-1]
-        print("🧪 Input shape before CNN:", input_tensor.shape)
         
+        # --- Choose a non-empty *train* loader to compute max_iter safely ---
+        def _pick_train_loader(dataloader_dict, primary_names, fallback_names):
+            # Prefer train loaders; if empty, fallback to any non-empty loader
+            for name in primary_names:
+                ld = dataloader_dict.get(name)
+                if ld is None:
+                    continue
+                try:
+                    if len(ld) > 0:
+                        return ld
+                except TypeError:
+                    # len() may not be defined; try a quick probe
+                    try:
+                        _ = next(iter(ld))
+                        return ld
+                    except StopIteration:
+                        pass
+            # fallback
+            for name in fallback_names:
+                ld = dataloader_dict.get(name)
+                if ld is None:
+                    continue
+                try:
+                    if len(ld) > 0:
+                        return ld
+                except TypeError:
+                    try:
+                        _ = next(iter(ld))
+                        return ld
+                    except StopIteration:
+                        pass
+            return None
+        
+        primary_train = ['target_train'] if self.transfer_mode else []
+        primary_train += ['source_train']
+        train_loader_for_iter = _pick_train_loader(
+            self.dataloaders,
+            primary_names=primary_train,
+            fallback_names=['source_val', 'target_val']
+        )
+        
+        try:
+            steps_per_epoch = len(train_loader_for_iter) if train_loader_for_iter is not None else 0
+        except TypeError:
+            # Some iterable loaders don't implement __len__
+            try:
+                _ = next(iter(train_loader_for_iter))
+                steps_per_epoch = 1
+            except Exception:
+                steps_per_epoch = 0
+        
+        self.max_iter = steps_per_epoch * args.max_epoch
 
 
-        
-        # Define the model
-        train_loader_for_iter = (
-            self.dataloaders['target_train']
-            if self.transfer_mode
-            else self.dataloaders['source_train']
-        )
-        self.max_iter = len(train_loader_for_iter) * args.max_epoch
         if args.model_name in ["cnn_openmax", "cnn_features_1d_sa", "cnn_features_1d","WideResNet", "WideResNet_sa", "WideResNet_mh", "WideResNet_edited"]:
             if args.model_name == "WideResNet":
-                self.model = WideResNet(args.layers, args.widen_factor, args.droprate, self.num_classes)
+                self.model = WideResNet(
+                    args.layers,
+                    args.widen_factor,
+                    args.droprate,
+                    out_features=self.num_classes,
+                    in_channels=args.input_channels,            
+                    bottleneck=args.bottleneck_num
+                )
             elif args.model_name == "WideResNet_sa":
-                self.model = WideResNet_sa(args.layers, args.widen_factor, args.droprate, self.num_classes)
+                self.model = WideResNet_sa(
+                    args.layers,
+                    args.widen_factor,
+                    args.droprate,
+                    num_classes=self.num_classes,
+                    num_input_channels=args.input_channels       
+                )
             elif args.model_name == "WideResNet_edited":
-                self.model = WideResNet_edited(args.layers, args.widen_factor, args.droprate, self.num_classes)
+                self.model = WideResNet_edited(
+                    depth=args.layers,
+                    widen_factor=args.widen_factor,
+                    drop_rate=args.droprate,
+                    num_classes=self.num_classes,
+                    input_channels=args.input_channels          
+                )
             elif args.model_name == "cnn_openmax":
                 self.model = cnn_openmax(args, self.num_classes)
             elif args.model_name == "cnn_features_1d":
@@ -658,6 +768,9 @@ class train_utils_open_univ(object):
         epochs_no_improve = 0
     
         for epoch in range(self.args.max_epoch):
+            source_iter = None
+            if self.transfer_mode and self.dataloaders.get('source_train') is not None:
+                source_iter = cycle(self.dataloaders['source_train'])
             print(f"{datetime.now().strftime('%m-%d %H:%M:%S')} ----- Epoch {epoch + 1}/{self.args.max_epoch} -----")
             print(f"{datetime.now().strftime('%m-%d %H:%M:%S')} Current LR: {self.optimizer.param_groups[0]['lr']:.6f}")
             
@@ -708,57 +821,120 @@ class train_utils_open_univ(object):
 
                         logits = self.sngp_model.forward_classifier(features) if features is not None else model_logits
 
-                        # Filter out any labels that fall outside the known class
-                        # range when computing the loss.  The CWRU dataset contains
-                        # explicit outlier classes labeled with an index >=
-                        # ``self.num_classes``.  These should not contribute to the
-                        # supervised loss since the model has no corresponding output
-                        # nodes for them.  Battery datasets, on the other hand, do
-                        # not include such labels, so this masking becomes a no-op.
                         known_mask_batch = labels < self.num_classes
+
+                        # --- Defensive fix for class-weight size mismatches (unchanged logic) ---
+                        try:
+                            ce_weight = getattr(self.criterion, 'weight', None)
+                            if ce_weight is not None and ce_weight.numel() != logits.shape[1]:
+                                with torch.no_grad():
+                                    import numpy as _np
+                                    from sklearn.utils.class_weight import compute_class_weight as _ccw
+                                    num_logits = logits.shape[1]
+                        
+                                    # Recompute balanced weights using only *known-class* labels
+                                    _mask = labels < self.num_classes
+                                    if _mask.any():
+                                        present = _np.unique(labels[_mask].detach().cpu().numpy()).astype(int)
+                                        balanced = _ccw('balanced', classes=present,
+                                                        y=labels[_mask].detach().cpu().numpy())
+                        
+                                        # Expand to full length (unknown logit stays at 1.0)
+                                        full = _np.ones(num_logits, dtype=_np.float32)
+                                        for cls, w in zip(present, balanced):
+                                            if int(cls) < num_logits:
+                                                full[int(cls)] = float(w)
+                        
+                                        new_w = torch.tensor(full, device=self.device, dtype=torch.float)
+                                        self.criterion = nn.CrossEntropyLoss(weight=new_w)
+                                    else:
+                                        # No known-class samples this batch → unweighted
+                                        self.criterion = nn.CrossEntropyLoss()
+                        except Exception:
+                            # If anything goes wrong, fall back to unweighted to keep training running.
+                            self.criterion = nn.CrossEntropyLoss()
+                        # -----------------------------------------------------------------------
+                        
+                        # Target supervised loss (known classes only)
+                        loss_tgt = None
+                        total_loss = None
                         if known_mask_batch.any():
-                            # --- Defensive fix for class-weight size mismatches ---
-                            # If the loss has a weight vector whose length doesn't match the
-                            # classifier's number of logits (e.g., OSBP adds an 'unknown' logit),
-                            # rebuild a correct-length weight vector on-the-fly.
+                            loss_tgt = self.criterion(logits[known_mask_batch], labels[known_mask_batch])
+                            total_loss = loss_tgt
+                        
+                        # >>> NEW: supervised SOURCE loss mixed in every target step (during transfer) <<<
+                        if self.transfer_mode and phase == 'target_train' and self.dataloaders.get('source_train') is not None:
+                            # Use a persistent iterator so we don't always read the first batch
+                            if not hasattr(self, '_source_iter') or self._source_iter is None:
+                                self._source_iter = iter(self.dataloaders['source_train'])
                             try:
-                                ce_weight = getattr(self.criterion, 'weight', None)
-                                if ce_weight is not None and ce_weight.numel() != logits.shape[1]:
-                                    with torch.no_grad():
-                                        import numpy as _np
-                                        from sklearn.utils.class_weight import compute_class_weight as _ccw
-                                        num_logits = logits.shape[1]
-                            
-                                        # Recompute balanced weights using only *known-class* labels
-                                        _mask = labels < self.num_classes
-                                        if _mask.any():
-                                            present = _np.unique(labels[_mask].detach().cpu().numpy()).astype(int)
-                                            balanced = _ccw('balanced', classes=present,
-                                                            y=labels[_mask].detach().cpu().numpy())
-                            
-                                            # Expand to full length (unknown logit stays at 1.0)
-                                            full = _np.ones(num_logits, dtype=_np.float32)
-                                            for cls, w in zip(present, balanced):
-                                                if int(cls) < num_logits:
-                                                    full[int(cls)] = float(w)
-                            
-                                            new_w = torch.tensor(full, device=self.device, dtype=torch.float)
-                                            self.criterion = nn.CrossEntropyLoss(weight=new_w)
-                                        else:
-                                            # No known-class samples this batch → unweighted
-                                            self.criterion = nn.CrossEntropyLoss()
-                            except Exception:
-                                # If anything goes wrong, fall back to unweighted to keep training running.
-                                self.criterion = nn.CrossEntropyLoss()
-                            loss = self.criterion(logits[known_mask_batch], labels[known_mask_batch])
-                            if phase.endswith('train'):
-                                loss.backward()
-                                self.optimizer.step()
-                            running_loss += loss.item() * known_mask_batch.sum().item()
+                                src_inputs, src_labels = next(self._source_iter)
+                            except StopIteration:
+                                self._source_iter = iter(self.dataloaders['source_train'])
+                                src_inputs, src_labels = next(self._source_iter)
+                        
+                            src_inputs = src_inputs.to(self.device, non_blocking=True)
+                            src_labels = src_labels.to(self.device, non_blocking=True)
+                        
+                            # shape fixes consistent with your target path
+                            if src_inputs.dim() == 2:
+                                src_inputs = src_inputs.unsqueeze(1)
+                            if src_inputs.shape[1] != self.args.input_channels and src_inputs.shape[-1] == self.args.input_channels:
+                                src_inputs = src_inputs.permute(0, 2, 1)
+                        
+                            src_out = self.model(src_inputs)
+                            src_logits = src_out[0] if isinstance(src_out, tuple) else src_out
+                        
+                            # ---- Guard against out-of-bounds source targets ----
+                            src_num_logits = src_logits.shape[1]
+                            valid_src_mask = (src_labels >= 0) & (src_labels < src_num_logits)
+                            if valid_src_mask.any():
+                                src_logits_valid = src_logits[valid_src_mask]
+                                src_labels_valid = src_labels[valid_src_mask]
+                        
+                                # --- Ensure class-weight length matches SRC logits ---
+                                crit_src = self.criterion
+                                try:
+                                    ce_weight = getattr(crit_src, 'weight', None)
+                                    if ce_weight is not None and ce_weight.numel() != src_num_logits:
+                                        with torch.no_grad():
+                                            import numpy as _np
+                                            from sklearn.utils.class_weight import compute_class_weight as _ccw
+                        
+                                            present_src = _np.unique(src_labels_valid.detach().cpu().numpy()).astype(int)
+                                            balanced_src = _ccw('balanced', classes=present_src,
+                                                                y=src_labels_valid.detach().cpu().numpy())
+                        
+                                            full_src = _np.ones(src_num_logits, dtype=_np.float32)
+                                            for cls, w in zip(present_src, balanced_src):
+                                                if int(cls) < src_num_logits:
+                                                    full_src[int(cls)] = float(w)
+                        
+                                            new_w_src = torch.tensor(full_src, device=self.device, dtype=torch.float)
+                                            crit_src = nn.CrossEntropyLoss(weight=new_w_src)
+                                except Exception:
+                                    # If anything goes wrong, fall back to unweighted to keep training running.
+                                    crit_src = nn.CrossEntropyLoss()
+                                # ---------------------------------------------------
+                        
+                                loss_src = crit_src(src_logits_valid, src_labels_valid)
+                                lam_src = getattr(self.args, 'lambda_src', 1.0)
+                                total_loss = loss_src * lam_src if total_loss is None else total_loss + lam_src * loss_src
+                            # If no valid src labels for this step, just skip source loss for this batch.
+                        # <<< END NEW >>>
+                        
+                        # Backprop/step (relies on zero_grad where you already do it in your loop)
+                        if phase.endswith('train') and total_loss is not None:
+                            total_loss.backward()
+                            self.optimizer.step()
+                        
+                        # Accounting based only on target-known supervision for logging
+                        if loss_tgt is not None:
+                            running_loss += loss_tgt.item() * known_mask_batch.sum().item()
                         else:
-                            # No valid known-class samples in this batch; skip the
-                            # optimization step to avoid ``IndexError``.
-                            loss = torch.tensor(0.0, device=self.device)
+                            # No valid known-class samples in this batch; keep loss at 0 for logging
+                            loss_tgt = torch.tensor(0.0, device=self.device)
+
 
                        
                     _, preds = torch.max(logits, 1)
@@ -786,15 +962,18 @@ class train_utils_open_univ(object):
                     labels_np = np.array(labels_all)
                     known_mask = labels_np < self.num_classes
                     out_mask = labels_np >= self.num_classes
-
+                
+                    # Common = exact match on known classes
                     common_acc = (
-                        np.mean(preds_np[known_mask] == labels_np[known_mask])
+                        float(np.mean(preds_np[known_mask] == labels_np[known_mask]))
                         if known_mask.any() else 0.0
                     )
+                    # Outlier = predict any index >= num_known for outlier labels
                     outlier_acc = (
-                        np.mean(preds_np[out_mask] == labels_np[out_mask])
+                        float(np.mean(preds_np[out_mask] >= self.num_classes))
                         if out_mask.any() else 0.0
                     )
+                
                     if not out_mask.any() and known_mask.any():
                         hscore = common_acc
                     elif not known_mask.any() and out_mask.any():
@@ -802,14 +981,22 @@ class train_utils_open_univ(object):
                     else:
                         denom = common_acc + outlier_acc
                         hscore = (2 * common_acc * outlier_acc / denom) if denom > 0 else 0.0
-                    
-                    if common_acc > best_common_acc:
+                
+                    improved_common = common_acc > best_common_acc
+                    improved_h = hscore > best_hscore
+                
+                    if improved_common:
                         best_common_acc = common_acc
-
-                    print(f"{datetime.now().strftime('%m-%d %H:%M:%S')} Epoch: {epoch} {phase}-hscore: {hscore:.4f}")
-                    if hscore > best_hscore:
+                    if improved_h:
                         best_hscore = hscore
-                        print("✓ Best target hscore updated.")
+                
+                    print(f"{datetime.now().strftime('%m-%d %H:%M:%S')} Epoch: {epoch} {phase}-common: {common_acc:.4f} outlier: {outlier_acc:.4f} hscore: {hscore:.4f}")
+                
+                    # Also update BEST MODEL on improved hscore/common so we save the right model for transfer
+                    if improved_h or improved_common:
+                        best_model_wts = copy.deepcopy(self.model.state_dict())
+                        val_improved = True
+                        print("✓ Best target model updated based on hscore/common.")
     
             self.lr_scheduler.step()
             if patience is not None:
@@ -824,7 +1011,8 @@ class train_utils_open_univ(object):
         print("Training complete.")
         self.model.load_state_dict(best_model_wts)
         self.best_source_val_acc = float(best_eval_acc)
-        if self.dataloaders.get('target_val') is not None and not self.transfer_mode:
+        if self.dataloaders.get('target_val') is not None:
+            # Always prefer target-side metric when available (transfer or baseline)
             self.best_val_acc_class = best_common_acc if best_common_acc > 0 else best_hscore
         else:
             self.best_val_acc_class = self.best_source_val_acc

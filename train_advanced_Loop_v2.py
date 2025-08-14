@@ -62,7 +62,7 @@ def reset_seed(seed=SEED):
 
 def parse_args():
     parser = argparse.ArgumentParser(description='Train')
-    parser.add_argument('--data_name', type=str, default='CWRU_inconsistent',
+    parser.add_argument('--data_name', type=str, default='Battery_inconsistent',
                         choices=['Battery_inconsistent', 'CWRU_inconsistent'])
     parser.add_argument('--data_dir', type=str, default='./my_datasets/Battery',
                         help='Root directory for datasets')
@@ -115,6 +115,10 @@ def parse_args():
                             help='Temperature scaling for domain predictions')
     parser.add_argument('--class_temperature', type=float, default=10.0,
                             help='Temperature scaling for class predictions')
+    parser.add_argument('--lambda_src', type=float, default=1.0,
+                    help='Weight for supervised source loss mixed into target steps during transfer')
+    parser.add_argument('--improvement_metric', choices=['common', 'hscore', 'overall'], default='common',
+                        help='Metric used to compare transfer vs baseline on target_val')
     args = parser.parse_args()
     if args.data_name == 'CWRU_inconsistent' and args.data_dir == './my_datasets/Battery':
         args.data_dir = './my_datasets/CWRU_dataset'
@@ -227,6 +231,30 @@ def evaluate_model(model, val_loader):
 
     return np.array(all_labels), np.array(all_preds)
 
+def compute_common_outlier_metrics(labels, preds, num_known):
+    import numpy as np
+    labels = np.asarray(labels)
+    preds  = np.asarray(preds)
+    if labels.size == 0:
+        return 0.0, 0.0, 0.0
+
+    common_mask  = labels < num_known
+    outlier_mask = labels >= num_known
+
+    if common_mask.any():
+        common_acc = float((preds[common_mask] == labels[common_mask]).mean())
+    else:
+        common_acc = 0.0
+
+    # "Correct" for outliers means predicting any index >= num_known (unknown bucket)
+    if outlier_mask.any():
+        outlier_acc = float((preds[outlier_mask] >= num_known).mean())
+    else:
+        outlier_acc = 0.0
+
+    h = (2 * common_acc * outlier_acc) / (common_acc + outlier_acc) if (common_acc + outlier_acc) > 0 else 0.0
+    return common_acc, outlier_acc, h
+
 
 def compute_open_set_metrics(labels, preds, num_known):
     """Compute common-class accuracy, outlier accuracy and the harmonic score.
@@ -321,10 +349,14 @@ def run_battery_experiments(args):
                 f"baseline_{model_name}_{'-'.join(target_cathodes)}_{datetime.now().strftime('%m%d')}",
             )
             os.makedirs(baseline_dir, exist_ok=True)
-            model_bl, baseline_acc, _, bl_loader, _ = run_experiment(baseline_args, baseline_dir, baseline=True)
+            # Return order is: model, acc, elapsed, source_val_loader, target_val_loader
+            model_bl, baseline_acc, _, _, bl_loader = run_experiment(baseline_args, baseline_dir, baseline=True)
             bl_labels, bl_preds = evaluate_model(model_bl, bl_loader)
-            if len(bl_labels):
-                baseline_acc = accuracy_score(bl_labels, bl_preds)
+            # Keep raw arrays for later "common vs outlier" scoring
+            baseline_labels_np = np.array(bl_labels)
+            baseline_preds_np = np.array(bl_preds)
+            if baseline_labels_np.size:
+                baseline_acc = accuracy_score(baseline_labels_np, baseline_preds_np)
             print(f"✅ Baseline {target_cathodes}: {baseline_acc:.4f} ({len(bl_labels)} samples)")
 
             # ---------------- Transfer learning ----------------
@@ -343,17 +375,26 @@ def run_battery_experiments(args):
             os.makedirs(ft_dir, exist_ok=True)
             model_ft, transfer_acc, _, _, tr_loader = run_experiment(transfer_args, ft_dir)
             tr_labels, tr_preds = evaluate_model(model_ft, tr_loader)
-            if len(tr_labels):
-                transfer_acc = accuracy_score(tr_labels, tr_preds)
+            
+            # Use the same num_known (transfer_args.num_classes) to score both runs fairly.
+            num_known = transfer_args.num_classes
+            
+            t_common, t_out, t_h = compute_common_outlier_metrics(tr_labels, tr_preds, num_known)
+            b_common, b_out, b_h = compute_common_outlier_metrics(baseline_labels_np, baseline_preds_np, num_known)
+            
+            # Compare *common-class* accuracy (apples-to-apples). Switch to hscore if you prefer.
+            baseline_acc = b_common
+            transfer_acc = t_common
+            
             print(f"✅ Transfer {source_cathodes} → {target_cathodes}: {transfer_acc:.4f} ({len(tr_labels)} samples)")
+            print(f"   ↳ common_acc={t_common:.4f}, outlier_acc={t_out:.4f}, hscore={t_h:.4f}")
+            print(f"🧪 Baseline scored on same split: common_acc={b_common:.4f}, outlier_acc={b_out:.4f}, hscore={b_h:.4f}")
             
             improvement = transfer_acc - baseline_acc
-            print(
-                f"📊 {source_cathodes} → {target_cathodes}: baseline={baseline_acc:.4f}, "
-                f"transfer={transfer_acc:.4f}, improvement={improvement:+.4f}"
-            )
+            print(f"📊 {source_cathodes} → {target_cathodes}: baseline(common)={baseline_acc:.4f}, transfer(common)={transfer_acc:.4f}, improvement={improvement:+.4f}")
             if transfer_acc < baseline_acc:
                 print(f"⚠️ Transfer did not improve over baseline for {source_cathodes} → {target_cathodes}")
+
 
             results.append(
                 {
@@ -414,22 +455,23 @@ def run_cwru_experiments(args):
                 f"baseline_{model_name}_{tgt_str}_{datetime.now().strftime('%m%d')}",
             )
             os.makedirs(baseline_dir, exist_ok=True)
-            model_bl, baseline_acc, _, bl_loader, _ = run_experiment(baseline_args, baseline_dir, baseline=True)
+            model_bl, baseline_acc, _, _, bl_loader = run_experiment(baseline_args, baseline_dir, baseline=True)
             bl_labels, bl_preds = evaluate_model(model_bl, bl_loader)
-            if len(bl_labels):
-                baseline_acc = accuracy_score(bl_labels, bl_preds)
-                b_common, b_out, b_h = compute_open_set_metrics(bl_labels, bl_preds, baseline_args.num_classes)
-                print(
-                    f"✅ Baseline {tgt_str}: {baseline_acc:.4f} ({len(bl_labels)} samples)\n"
-                    f"   ↳ common_acc={b_common:.4f}, outlier_acc={b_out:.4f}, hscore={b_h:.4f}"
-                )
-            else:
-                print(f"✅ Baseline {tgt_str}: {baseline_acc:.4f} (0 samples)")
-
+            
+            # Stash raw arrays; we’ll score later using the transfer-defined num_known
+            baseline_labels_np = np.array(bl_labels)
+            baseline_preds_np = np.array(bl_preds)
+            
+            if baseline_labels_np.size:
+                baseline_acc = accuracy_score(baseline_labels_np, baseline_preds_np)
+            print(f"✅ Baseline {tgt_str}: {baseline_acc:.4f} ({len(bl_labels)} samples)")
+                
+            # Use the same "known" count that the *transfer* task will use
             transfer_args = argparse.Namespace(**vars(args))
-            transfer_args.transfer_task = transfer_task
             transfer_args.pretrained = True
+            transfer_args.transfer_task = transfer_task
             transfer_args.pretrained_model_path = os.path.join(pre_dir, "best_model.pth")
+
             ft_dir = os.path.join(
                 args.checkpoint_dir,
                 f"transfer_{model_name}_{src_str}_to_{tgt_str}_{datetime.now().strftime('%m%d')}",
@@ -437,24 +479,34 @@ def run_cwru_experiments(args):
             os.makedirs(ft_dir, exist_ok=True)
             model_ft, transfer_acc, _, _, tr_loader = run_experiment(transfer_args, ft_dir)
             tr_labels, tr_preds = evaluate_model(model_ft, tr_loader)
-            if len(tr_labels):
-                transfer_acc = accuracy_score(tr_labels, tr_preds)
-                t_common, t_out, t_h = compute_open_set_metrics(tr_labels, tr_preds, transfer_args.num_classes)
-                print(
-                    f"✅ Transfer {src_str} → {tgt_str}: {transfer_acc:.4f} ({len(tr_labels)} samples)\n"
-                    f"   ↳ common_acc={t_common:.4f}, outlier_acc={t_out:.4f}, hscore={t_h:.4f}"
-                )
-            else:
-                print(f"✅ Transfer {src_str} → {tgt_str}: {transfer_acc:.4f} (0 samples)")
             
-
+            # Score both baseline and transfer on the SAME split:
+            # num_known comes from the transfer configuration (CWRU has no cathodes; this is just the known-class count)
+            num_known = transfer_args.num_classes
+            
+            t_common, t_out, t_h = compute_common_outlier_metrics(tr_labels, tr_preds, num_known)
+            b_common, b_out, b_h = compute_common_outlier_metrics(baseline_labels_np, baseline_preds_np, num_known)
+            
+            # Compare apples-to-apples on common-class accuracy (or switch to hscore if you prefer)
+            baseline_acc = b_common
+            transfer_acc = t_common
+            
+            print(
+                f"✅ Transfer {src_str} → {tgt_str}: {transfer_acc:.4f} ({len(tr_labels)} samples)\n"
+                f"   ↳ common_acc={t_common:.4f}, outlier_acc={t_out:.4f}, hscore={t_h:.4f}"
+            )
+            print(
+                f"🧪 Baseline scored on same split: common_acc={b_common:.4f}, outlier_acc={b_out:.4f}, hscore={b_h:.4f}"
+            )
+            
             improvement = transfer_acc - baseline_acc
             print(
-                f"📊 {src_str} → {tgt_str}: baseline={baseline_acc:.4f}, "
-                f"transfer={transfer_acc:.4f}, improvement={improvement:+.4f}"
+                f"📊 {src_str} → {tgt_str}: baseline(common)={baseline_acc:.4f}, "
+                f"transfer(common)={transfer_acc:.4f}, improvement={improvement:+.4f}"
             )
             if transfer_acc < baseline_acc:
                 print(f"⚠️ Transfer did not improve over baseline for {src_str} → {tgt_str}")
+
 
             results.append(
                 {
