@@ -130,19 +130,64 @@ def parse_args():
     return args
 
 def build_cathode_groups(csv_path):
-    """Dynamically group cathodes into NMC-based and high-voltage pools.
-
-    This allows experiments to automatically span more combinations without
-    manually enumerating every cathode name.  Additional grouping logic can be
-    inserted here as new cathode families are added to the dataset.
     """
+    Group cathodes by chemistry similarity.
+
+    Returns keys compatible with existing code:
+      - 'nmc_pool':   conventional & derivative NMC layered oxides (incl. HE5050, FCG if present)
+      - 'hv_pool':    all non-NMC cathodes (for backward compatibility)
+      - 'li_rich_pool': Li-rich layered (oxygen-redox) NMC variants
+      - 'spinel_pool': high-voltage spinel (e.g., 5Vspinel/LNMO)
+      - 'other_pool': any remaining non-NMC types not caught above
+
+    Upstream that expects only {'nmc_pool','hv_pool'} still works, while you can
+    optionally use the finer pools for better transfer task definitions.
+    """
+    import pandas as pd
+    import re
+
     df = pd.read_csv(csv_path)
     cathodes = df["cathode"].astype(str).str.strip()
+
+    # Unique label universe (whitespace-cleaned)
+    uniq = sorted(cathodes.unique().tolist())
+
+    # --- Detect families by chemistry ---
+    # 1) Conventional / derivative NMC (layered oxides): NMC***, HE5050, FCG (Full Concentration Gradient NMC)
+    nmc_like_mask = (
+        cathodes.str.match(r'^(?i:nmc)') |
+        cathodes.str.fullmatch(r'(?i:HE5050)') |
+        cathodes.str.fullmatch(r'(?i:FCG)')
+    )
+    nmc_pool = sorted(cathodes[nmc_like_mask].unique().tolist())
+
+    # 2) Li-rich layered oxides (oxygen-redox), e.g., Li1.2Ni0.3Mn0.6O2, Li1.35Ni0.33Mn0.67O2.35
+    #    Heuristic: starts with Li1.xNi...O2*
+    li_rich_mask = cathodes.str.match(r'(?i)^Li1\.\d+Ni', na=False)
+    li_rich_pool = sorted(cathodes[li_rich_mask].unique().tolist())
+
+    # 3) High-voltage spinel (LNMO), e.g., "5Vspinel"
+    spinel_mask = cathodes.str.contains(r'(?i)spinel', na=False)
+    spinel_pool = sorted(cathodes[spinel_mask].unique().tolist())
+
+    # Backward-compatible 'hv_pool' = non-NMC (union of Li-rich, Spinel, and any other non-NMC)
+    non_nmc = [x for x in uniq if x not in set(nmc_pool)]
+    hv_pool = sorted(non_nmc)
+
+    # 'other_pool' = non-NMC that are neither Li-rich nor Spinel (kept separate if significantly different)
+    li_rich_set = set(li_rich_pool)
+    spinel_set = set(spinel_pool)
+    other_pool = sorted([x for x in non_nmc if x not in li_rich_set | spinel_set])
+
     groups = {
-        "nmc_pool": sorted(cathodes[cathodes.str.contains("NMC", case=False)].unique().tolist()),
-        "hv_pool": sorted(cathodes[~cathodes.str.contains("NMC", case=False)].unique().tolist()),
+        "nmc_pool": nmc_pool,
+        "hv_pool": hv_pool,                 # keeps old callers working (all non-NMC)
+        "li_rich_pool": li_rich_pool,       # finer grouping you can use now
+        "spinel_pool": spinel_pool,         # finer grouping you can use now
+        "other_pool": other_pool,           # anything non-NMC not in the two above
     }
     return groups
+
 
 def run_experiment(args, save_dir, trial=None, baseline=False):
     reset_seed()
@@ -153,7 +198,7 @@ def run_experiment(args, save_dir, trial=None, baseline=False):
     start_time = time.time()
 
     if args.data_name == 'Battery_inconsistent':
-        source_train_dataset, source_val_dataset, target_train_dataset, target_val_dataset, label_names, df = load_battery_dataset(
+        source_train_loader, source_val_loader, target_train_loader, target_val_loader, label_names, df = load_battery_dataset(
             csv_path=args.csv,
             source_cathodes=args.source_cathode,
             target_cathodes=args.target_cathode,
@@ -162,6 +207,11 @@ def run_experiment(args, save_dir, trial=None, baseline=False):
             sequence_length=args.sequence_length,
             num_classes=args.num_classes,
         )
+        # keep dataset references for later use
+        source_train_dataset = source_train_loader.dataset
+        source_val_dataset = source_val_loader.dataset
+        target_train_dataset = target_train_loader.dataset if target_train_loader is not None else None
+        target_val_dataset = target_val_loader.dataset if target_val_loader is not None else None
         args.num_classes = len(label_names)
     else:
         cwru_dataset = CWRU_inconsistent(args.data_dir, args.transfer_task, args.inconsistent, args.normlizetype)

@@ -183,6 +183,7 @@ class train_utils_open_univ(object):
 
 
         # Load datasets only if not already provided
+        # Load datasets only if not already provided
         if self.source_train_loader is None or self.source_val_loader is None:
             if args.data_name == 'Battery_inconsistent':
                 self.datasets = {}
@@ -191,7 +192,7 @@ class train_utils_open_univ(object):
                     print("Target Labels Sample:", str(target_label)[:5])
                 else:
                     print("No target cathode provided — pretraining mode.")
-
+        
                 source_train, source_val, target_train, target_val, label_names, df = load_battery_dataset(
                     csv_path=self.args.csv,
                     source_cathodes=self.args.source_cathode,
@@ -200,7 +201,7 @@ class train_utils_open_univ(object):
                     batch_size=self.args.batch_size,
                     sequence_length=self.args.sequence_length,
                 )
-
+        
                 self.datasets['source_train'] = source_train
                 self.datasets['source_val'] = source_val
                 self.datasets['target_train'] = target_train
@@ -226,14 +227,16 @@ class train_utils_open_univ(object):
                     'target_train': tgt_tr,
                     'target_val': tgt_val
                 }
-                self.dataloaders = {x: torch.utils.data.DataLoader(self.datasets[x], batch_size=args.batch_size,
-                                                                   shuffle=(True if x.split('_')[1] == 'train' else False),
-                                                                   num_workers=args.num_workers,
-                                                                   pin_memory=(True if self.device == 'cuda' else False),
-                                                                   drop_last=(True if args.last_batch and x.split('_')[1] == 'train' else False),
-                                                                   generator=g)
+                self.dataloaders = {x: torch.utils.data.DataLoader(
+                                        self.datasets[x],
+                                        batch_size=args.batch_size,
+                                        shuffle=(True if x.split('_')[1] == 'train' else False),
+                                        num_workers=args.num_workers,
+                                        pin_memory=(True if self.device == 'cuda' else False),
+                                        drop_last=(True if args.last_batch and x.split('_')[1] == 'train' else False),
+                                        generator=g)
                                     for x in ['source_train', 'source_val', 'target_train', 'target_val']}
-
+        
         else:
             self.datasets = {
                 'source_train': self.source_train_loader.dataset,
@@ -250,40 +253,100 @@ class train_utils_open_univ(object):
                 'target_val': self.target_val_loader,
             }
             self.num_classes = args.num_classes
-            
+        
+        # ---------- Helpers ----------
+        def _has_batches(dl):
+            if dl is None:
+                return False
+            try:
+                return len(dl) > 0
+            except TypeError:
+                return False
+        
+        def _dataset_len(dl):
+            ds = getattr(dl, 'dataset', None)
+            try:
+                return len(ds) if ds is not None else 0
+            except Exception:
+                return 0
+        
+        def _rebuild_nonempty_train_loader(name):
+            """If a train loader has data but 0 batches (drop_last ate it), rebuild with drop_last=False."""
+            dl = self.dataloaders.get(name)
+            if dl is None:
+                return
+            if _has_batches(dl):
+                return
+            ds_len = _dataset_len(dl)
+            if ds_len > 0:
+                bs = min(args.batch_size, ds_len)
+                self.dataloaders[name] = torch.utils.data.DataLoader(
+                    dl.dataset,
+                    batch_size=bs,
+                    shuffle=True,  # keep train shuffle behavior
+                    num_workers=args.num_workers,
+                    pin_memory=(True if self.device == 'cuda' else False),
+                    drop_last=False
+                )
+                print(f"🩹 Rebuilt '{name}' with drop_last=False and batch_size={bs} (dataset_len={ds_len}).")
+        
+        def _first_nonempty_loader(dls, order=('source_train','target_train','source_val','target_val')):
+            for name in order:
+                dl = dls.get(name)
+                if dl is None:
+                    continue
+                if _has_batches(dl):
+                    return dl
+                # If no batches but has data, rebuild a temporary iterator by turning off drop_last
+                ds_len = _dataset_len(dl)
+                if ds_len > 0:
+                    bs = min(args.batch_size, ds_len)
+                    return torch.utils.data.DataLoader(
+                        dl.dataset, batch_size=bs, shuffle=False, num_workers=0, drop_last=False
+                    )
+            return None
+        # -----------------------------
+        
+        # Fix 0-batch train loaders (tiny sets + drop_last)
+        _rebuild_nonempty_train_loader('source_train')
+        _rebuild_nonempty_train_loader('target_train')
+        
+        # Target sample count (safe)
         self.target_sample_count = 0
-        if self.dataloaders.get('target_train') is not None:
-            self.target_sample_count = len(self.dataloaders['target_train'].dataset)
-            if self.target_sample_count < 100:
+        tgt_dl = self.dataloaders.get('target_train')
+        if tgt_dl is not None:
+            ds_len_tgt = _dataset_len(tgt_dl)
+            self.target_sample_count = ds_len_tgt
+            if 0 < ds_len_tgt < 100:
                 args.lr = min(args.lr, 1e-4)
-                logging.info(f"Reducing learning rate to {args.lr} for {self.target_sample_count} target samples")
-
-        # Determine if we should fine-tune using target data only
-        self.transfer_mode = (
-            self.dataloaders.get('target_train') is not None and
-            getattr(self.args, 'pretrained_model_path', None)
-        )
-        sample_loader = (
-            self.dataloaders['source_train']
-            if self.dataloaders.get('source_train') is not None
-            else self.dataloaders['target_train']
-        )
+                logging.info(f"Reducing learning rate to {args.lr} for {ds_len_tgt} target samples")
+        
+        # Determine transfer mode only if target_train actually has data
+        self.transfer_mode = (_dataset_len(tgt_dl) > 0 and getattr(self.args, 'pretrained_model_path', None))
+        
+        # Pick a NON-EMPTY sample loader for inferring input shape
+        sample_loader = _first_nonempty_loader(self.dataloaders, ('source_train','target_train','source_val','target_val'))
+        if sample_loader is None:
+            raise RuntimeError(
+                "All Battery dataloaders are empty. Check filters (source_cathode, target_cathode, "
+                "classification_label, sequence_length) — they may produce zero samples."
+            )
+        
         first_batch = next(iter(sample_loader))
         input_tensor, _ = first_batch
         args.input_channels = input_tensor.shape[1]  # Automatically infer input channels from data
         args.input_size = input_tensor.shape[-1]
         print("🧪 Input shape before CNN:", input_tensor.shape)
         
-
-
+        # Choose a NON-EMPTY train loader for max_iter
+        if self.transfer_mode and _has_batches(tgt_dl):
+            train_loader_for_iter = tgt_dl
+        else:
+            src_dl = self.dataloaders.get('source_train')
+            train_loader_for_iter = src_dl if _has_batches(src_dl) else sample_loader
         
-        # Define the model
-        train_loader_for_iter = (
-            self.dataloaders['target_train']
-            if self.transfer_mode
-            else self.dataloaders['source_train']
-        )
         self.max_iter = len(train_loader_for_iter) * args.max_epoch
+
         if args.model_name in ["cnn_openmax", "cnn_features_1d_sa", "cnn_features_1d","WideResNet", "WideResNet_sa", "WideResNet_mh", "WideResNet_edited"]:
             if args.model_name == "WideResNet":
                 self.model = WideResNet(
