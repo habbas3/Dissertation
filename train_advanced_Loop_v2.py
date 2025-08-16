@@ -31,6 +31,8 @@ import pandas as pd
 from torch.utils.data import Dataset, DataLoader
 import time
 from itertools import combinations
+from llm_selector import select_config
+
 
 
 import sys
@@ -119,6 +121,18 @@ def parse_args():
                     help='Weight for supervised source loss mixed into target steps during transfer')
     parser.add_argument('--improvement_metric', choices=['common', 'hscore', 'overall'], default='common',
                         help='Metric used to compare transfer vs baseline on target_val')
+    # --- LLM meta-selection flags ---
+    parser.add_argument('--auto_select', action='store_true',
+                        help='Use an LLM to choose model/config from data context')
+    parser.add_argument('--llm_backend', choices=['auto','openai','ollama'], default='auto',
+                        help='Which LLM provider to use')
+    parser.add_argument('--llm_model', type=str, default=None,
+                        help='Provider model id (e.g., gpt-4.1-mini or llama3.1)')
+    parser.add_argument('--llm_compare', action='store_true',
+                        help='Also run a small comparison set to verify the LLM pick')
+    parser.add_argument('--llm_context', type=str, default='',
+                        help='Short text describing dataset (e.g., Argonne cycles, sequence length, label consistency)')
+    
     args = parser.parse_args()
     if args.data_name == 'CWRU_inconsistent' and args.data_dir == './my_datasets/Battery':
         args.data_dir = './my_datasets/CWRU_dataset'
@@ -187,6 +201,45 @@ def build_cathode_groups(csv_path):
         "other_pool": other_pool,           # anything non-NMC not in the two above
     }
     return groups
+
+
+def _build_numeric_summary(dataloaders, args):
+    import numpy as np
+    summary = {}
+    # Choose a small, non-empty loader
+    for key in ['target_train','source_train','target_val','source_val']:
+        dl = dataloaders.get(key)
+        if dl is None:
+            continue
+        try:
+            it = iter(dl)
+            x, y = next(it)
+        except Exception:
+            continue
+        # x: (B, C, L)
+        C = int(x.shape[1]); L = int(x.shape[-1]); B = int(x.shape[0])
+        # stats on first batch (safe, tiny)
+        x_np = x.detach().cpu().numpy()
+        ch_mean = x_np.mean(axis=(0,2)).tolist()[: min(C, 8)]  # first 8 channels only
+        ch_std  = x_np.std(axis=(0,2)).tolist()[: min(C, 8)]
+        # class counts from a few batches
+        counts = {}
+        counts[int(y[0].item())] = counts.get(int(y[0].item()), 0) + 1
+        summary.update({
+            "dataset": args.data_name,
+            "split_used": key,
+            "batch_size_seen": B,
+            "channels": C,
+            "seq_len": L,
+            "num_classes": getattr(args, "num_classes", None) or getattr(args, "n_class", None),
+            "lr": args.lr,
+            "dropout": getattr(args, "droprate", 0.3),
+            "class_counts_head": counts,
+            "notes": "label_inconsistent" if getattr(args, "inconsistent", False) else "closed_set"
+        })
+        return summary
+    return {"dataset": args.data_name, "notes": "no_batch_available"}
+
 
 
 def run_experiment(args, save_dir, trial=None, baseline=False):
@@ -400,14 +453,9 @@ def run_battery_experiments(args):
             )
             os.makedirs(baseline_dir, exist_ok=True)
             # Return order is: model, acc, elapsed, source_val_loader, target_val_loader
-            model_bl, baseline_acc, _, _, bl_loader = run_experiment(baseline_args, baseline_dir, baseline=True)
-            bl_labels, bl_preds = evaluate_model(model_bl, bl_loader)
-            # Keep raw arrays for later "common vs outlier" scoring
-            baseline_labels_np = np.array(bl_labels)
-            baseline_preds_np = np.array(bl_preds)
-            if baseline_labels_np.size:
-                baseline_acc = accuracy_score(baseline_labels_np, baseline_preds_np)
-            print(f"✅ Baseline {target_cathodes}: {baseline_acc:.4f} ({len(bl_labels)} samples)")
+            model_bl, baseline_acc, _, _, _ = run_experiment(
+                baseline_args, baseline_dir, baseline=True
+            )
 
             # ---------------- Transfer learning ----------------
             transfer_args = argparse.Namespace(**vars(args))
@@ -426,19 +474,35 @@ def run_battery_experiments(args):
             model_ft, transfer_acc, _, _, tr_loader = run_experiment(transfer_args, ft_dir)
             tr_labels, tr_preds = evaluate_model(model_ft, tr_loader)
             
+            # Evaluate baseline on the SAME target validation loader
+            bl_labels, bl_preds = evaluate_model(model_bl, tr_loader)
+            baseline_labels_np = np.array(bl_labels)
+            baseline_preds_np = np.array(bl_preds)
+            
             # Use the same num_known (transfer_args.num_classes) to score both runs fairly.
             num_known = transfer_args.num_classes
             
             t_common, t_out, t_h = compute_common_outlier_metrics(tr_labels, tr_preds, num_known)
-            b_common, b_out, b_h = compute_common_outlier_metrics(baseline_labels_np, baseline_preds_np, num_known)
+            b_common, b_out, b_h = compute_common_outlier_metrics(
+                baseline_labels_np, baseline_preds_np, num_known
+            )
             
             # Compare *common-class* accuracy (apples-to-apples). Switch to hscore if you prefer.
             baseline_acc = b_common
             transfer_acc = t_common
             
-            print(f"✅ Transfer {source_cathodes} → {target_cathodes}: {transfer_acc:.4f} ({len(tr_labels)} samples)")
-            print(f"   ↳ common_acc={t_common:.4f}, outlier_acc={t_out:.4f}, hscore={t_h:.4f}")
-            print(f"🧪 Baseline scored on same split: common_acc={b_common:.4f}, outlier_acc={b_out:.4f}, hscore={b_h:.4f}")
+            print(
+                f"✅ Baseline {target_cathodes}: {baseline_acc:.4f} ({len(bl_labels)} samples)"
+            )
+            print(
+                f"✅ Transfer {source_cathodes} → {target_cathodes}: {transfer_acc:.4f} ({len(tr_labels)} samples)"
+            )
+            print(
+                f"   ↳ common_acc={t_common:.4f}, outlier_acc={t_out:.4f}, hscore={t_h:.4f}"
+            )
+            print(
+                f"🧪 Baseline scored on same split: common_acc={b_common:.4f}, outlier_acc={b_out:.4f}, hscore={b_h:.4f}"
+            )
             
             improvement = transfer_acc - baseline_acc
             print(f"📊 {source_cathodes} → {target_cathodes}: baseline(common)={baseline_acc:.4f}, transfer(common)={transfer_acc:.4f}, improvement={improvement:+.4f}")
@@ -583,6 +647,102 @@ def run_cwru_experiments(args):
 def main():
     args = parse_args()
     os.environ["CUDA_VISIBLE_DEVICES"] = args.cuda_device.strip()
+    
+    if args.auto_select:
+        # Build tiny loaders once to assemble summary (reuse your existing dataset creation if needed)
+        # We use the source loaders because they always exist in pretraining, else target.
+        try:
+            # Reuse your pretraining loaders quickly (small impact)
+            if args.data_name == 'Battery_inconsistent':
+                src_tr, src_val, tgt_tr, tgt_val, label_names, df = load_battery_dataset(
+                    csv_path=args.csv,
+                    source_cathodes=args.source_cathode,
+                    target_cathodes=args.target_cathode,
+                    classification_label=args.classification_label,
+                    batch_size=min(args.batch_size, 32),
+                    sequence_length=args.sequence_length,
+                )
+                dls = {'source_train': src_tr, 'source_val': src_val, 'target_train': tgt_tr, 'target_val': tgt_val}
+            else:
+                if isinstance(args.transfer_task[0], str):
+                    args.transfer_task = eval("".join(args.transfer_task))
+                src_tr, src_val, tgt_tr, tgt_val, _ = CWRU_inconsistent(
+                    args.data_dir, args.transfer_task, args.inconsistent, args.normlizetype
+                ).data_split(transfer_learning=True)
+                import torch
+                g = torch.Generator()
+                dls = {
+                    'source_train': torch.utils.data.DataLoader(src_tr, batch_size=min(args.batch_size, 64), shuffle=True, generator=g),
+                    'source_val': torch.utils.data.DataLoader(src_val, batch_size=min(args.batch_size, 64), shuffle=False),
+                    'target_train': torch.utils.data.DataLoader(tgt_tr, batch_size=min(args.batch_size, 64), shuffle=True, generator=g),
+                    'target_val': torch.utils.data.DataLoader(tgt_val, batch_size=min(args.batch_size, 64), shuffle=False),
+                }
+        except Exception:
+            dls = {'source_train': None, 'source_val': None, 'target_train': None, 'target_val': None}
+
+        num_summary = _build_numeric_summary(dls, args)
+        text_ctx = args.llm_context.strip() or f"{args.data_name} experiment; transfer={bool(getattr(args,'pretrained',False))}; label_inconsistent={getattr(args,'inconsistent',False)}."
+
+        llm_cfg = select_config(text_context=text_ctx,
+                                num_summary=num_summary,
+                                backend=args.llm_backend,
+                                model=args.llm_model)
+
+        # Map LLM output to your argparse knobs (MINIMAL changes)
+        args.model_name = llm_cfg["model_name"]
+        args.lambda_src = llm_cfg.get("lambda_src", getattr(args, "lambda_src", 1.0))
+        # SNGP toggles your method path
+        args.method = 'sngp' if llm_cfg.get("sngp", False) else getattr(args, 'method', 'deterministic')
+        # Self-attention already implied by chosen model_name *_sa variants
+        # OpenMax implies using the cnn_openmax model
+        if llm_cfg.get("openmax", False):
+            args.model_name = "cnn_openmax"
+        # Usual training knobs
+        args.droprate = llm_cfg.get("dropout", getattr(args, "droprate", 0.3))
+        args.lr = llm_cfg.get("learning_rate", args.lr)
+        args.batch_size = int(llm_cfg.get("batch_size", args.batch_size))
+        # Optional bottleneck (used by some WRN/SNGP paths)
+        if hasattr(args, "bottleneck_num"):
+            args.bottleneck_num = int(llm_cfg.get("bottleneck", args.bottleneck_num if args.bottleneck_num else 256))
+
+        # Mark run as LLM-picked in checkpoint dir names you already build
+        if hasattr(args, "tag"):
+            args.tag = (args.tag + "_llm") if args.tag else "llm"
+
+    if args.auto_select and args.llm_compare:
+        import copy
+        base_args = copy.deepcopy(args)
+
+        candidates = []
+
+        # 1) The LLM pick (already applied to args)
+        candidates.append(("llm_pick", copy.deepcopy(args)))
+
+        # 2) Deterministic CNN baseline (no SA/OpenMax/SNGP)
+        det = copy.deepcopy(base_args)
+        det.model_name = "cnn_features_1d"
+        det.method = "deterministic"
+        det.droprate = min(0.3, base_args.droprate)
+        candidates.append(("deterministic_cnn", det))
+
+        # 3) SNGP WideResNet + SA (strong calibrated model)
+        sngp = copy.deepcopy(base_args)
+        sngp.model_name = "WideResNet_sa"
+        sngp.method = "sngp"
+        sngp.droprate = 0.3
+        candidates.append(("sngp_wrn_sa", sngp))
+
+        # Run each candidate via your existing entrypoints
+        for tag, cfg in candidates:
+            print(f"\n===== LLM comparison run: {tag} =====")
+            if cfg.data_name == 'Battery_inconsistent':
+                run_battery_experiments(cfg)
+            else:
+                run_cwru_experiments(cfg)
+
+        # Exit after comparison runs to avoid double-running
+        import sys
+        sys.exit(0)
 
     if args.data_name == 'Battery_inconsistent':
         run_battery_experiments(args)
