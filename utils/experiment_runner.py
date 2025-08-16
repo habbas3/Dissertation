@@ -24,6 +24,20 @@ from utils.logger import setlogger
 from utils.train_utils_open_univ import train_utils_open_univ
 from my_datasets.Battery_label_inconsistent import load_battery_dataset
 from torch.utils.data import DataLoader
+from sklearn.metrics import confusion_matrix
+
+
+def _cm_with_min_labels(y_true, y_pred, min_labels=3):
+    """Return confusion matrix and explicit label list with a minimum size."""
+    import numpy as np
+
+    y_true = np.asarray(y_true)
+    y_pred = np.asarray(y_pred)
+    max_label = int(max(np.max(y_true, initial=0), np.max(y_pred, initial=0)))
+    labels = list(range(max(min_labels, max_label + 1)))
+    cm = confusion_matrix(y_true, y_pred, labels=labels)
+    return cm, labels
+
 
 def run_experiment(args, save_dir, trial=None):
     args.early_stop_patience = getattr(args, 'early_stop_patience', 5)

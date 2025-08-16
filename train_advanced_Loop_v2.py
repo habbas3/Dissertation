@@ -32,6 +32,7 @@ from torch.utils.data import Dataset, DataLoader
 import time
 from itertools import combinations
 from llm_selector import select_config
+from utils.experiment_runner import _cm_with_min_labels
 
 
 
@@ -249,6 +250,18 @@ def run_experiment(args, save_dir, trial=None, baseline=False):
         logging.info(f"{k}: {v}")
         
     start_time = time.time()
+    
+    # Persist LLM config into this run's save_dir
+    try:
+        import json as _json, os as _os
+        if save_dir and getattr(args, "llm_cfg", None):
+            _os.makedirs(save_dir, exist_ok=True)
+            _fname = f"llm_selected_config_{getattr(args, 'llm_cfg_stamp', '')}.json"
+            with open(_os.path.join(save_dir, _fname), "w") as f:
+                _json.dump(args.llm_cfg, f, indent=2)
+            print(f"\ud83d\udd8d\ufe0f LLM config copied into run folder: {_os.path.join(save_dir, _fname)}")
+    except Exception as _e:
+        print(f"\u26a0\ufe0f Could not write LLM config into run folder: {_e}")
 
     if args.data_name == 'Battery_inconsistent':
         source_train_loader, source_val_loader, target_train_loader, target_val_loader, label_names, df = load_battery_dataset(
@@ -518,15 +531,17 @@ def run_battery_experiments(args):
             if transfer_acc < baseline_acc:
                 print(f"⚠️ Transfer did not improve over baseline for {src_name} → {tgt_name}")
 
-            # Confusion matrices with consistent axes
-            labels = list(range(num_known))
-            cm_transfer = confusion_matrix(tr_labels, tr_preds, labels=labels)
+            # Confusion matrices with consistent axes and minimum label coverage
+            cm_transfer, labels_tr = _cm_with_min_labels(tr_labels, tr_preds, min_labels=3)
+            cm_baseline, labels_bl = _cm_with_min_labels(baseline_labels_np, baseline_preds_np, min_labels=3)
+            labels = sorted(set(labels_tr) | set(labels_bl))
+            cm_transfer, labels = _cm_with_min_labels(tr_labels, tr_preds, min_labels=len(labels))
+            cm_baseline, _ = _cm_with_min_labels(baseline_labels_np, baseline_preds_np, min_labels=len(labels))
             disp = ConfusionMatrixDisplay(confusion_matrix=cm_transfer, display_labels=labels)
             disp.plot(cmap='Blues')
             plt.savefig(os.path.join(ft_dir, f"cm_transfer_{src_name}_to_{tgt_name}.png"))
             plt.close()
 
-            cm_baseline = confusion_matrix(baseline_labels_np, baseline_preds_np, labels=labels)
             disp = ConfusionMatrixDisplay(confusion_matrix=cm_baseline, display_labels=labels)
             disp.plot(cmap='Blues')
             plt.savefig(os.path.join(ft_dir, f"cm_baseline_{src_name}_to_{tgt_name}.png"))
@@ -716,11 +731,31 @@ def main():
                                 model=args.llm_model)
         
         # Save and display LLM recommendation
-        with open("llm_recommendation.json", "w") as f:
-            json.dump(llm_cfg, f, indent=2)
-        print("LLM recommendation saved to llm_recommendation.json")
-        if llm_cfg.get("reason"):
-            print(f"LLM reason: {llm_cfg['reason']}")
+        print("🤖 LLM-selected configuration:")
+        print(json.dumps(llm_cfg, indent=2))
+        if llm_cfg.get("rationale"):
+            print("📝 Rationale:", llm_cfg["rationale"])
+
+        # ---- Persist the LLM choice so we can inspect it later ----
+        from datetime import datetime as _dt
+        import os as _os, json as _json
+        _llm_stamp = _dt.now().strftime("%Y%m%d_%H%M%S")
+        _llm_dir = _os.path.join("checkpoint", f"llm_run_{_llm_stamp}")
+        _os.makedirs(_llm_dir, exist_ok=True)
+
+        _llm_cfg_path = _os.path.join(_llm_dir, "llm_selected_config.json")
+        with open(_llm_cfg_path, "w") as _f:
+            _json.dump({
+                "llm_choice": llm_cfg,
+                "args_snapshot": {k: (v if isinstance(v, (int, float, str, bool, type(None))) else str(v))
+                                  for k, v in vars(args).items()},
+                "timestamp": _llm_stamp,
+            }, _f, indent=2)
+        print(f"📁 Saved LLM-selected config to {_llm_cfg_path}")
+
+        # Make run artifacts easy to associate with this LLM pick
+        if hasattr(args, "tag"):
+            args.tag = (args.tag + f"_llm_{_llm_stamp}") if args.tag else f"llm_{_llm_stamp}"
 
         # Map LLM output to your argparse knobs (MINIMAL changes)
         args.model_name = llm_cfg["model_name"]
@@ -738,13 +773,26 @@ def main():
         # Optional bottleneck (used by some WRN/SNGP paths)
         if hasattr(args, "bottleneck_num"):
             args.bottleneck_num = int(llm_cfg.get("bottleneck", args.bottleneck_num if args.bottleneck_num else 256))
+            
 
-        # Mark run as LLM-picked in checkpoint dir names you already build
-        if hasattr(args, "tag"):
-            args.tag = (args.tag + "_llm") if args.tag else "llm"
+        # ---- Persist the LLM choice globally and attach to args for per-run saving ----
+        _llm_stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        _llm_root = os.path.join("checkpoint", f"llm_run_{_llm_stamp}")
+        os.makedirs(_llm_root, exist_ok=True)
+        _llm_cfg_global = os.path.join(_llm_root, "llm_selected_config.json")
+        with open(_llm_cfg_global, "w") as _f:
+            json.dump({
+                "llm_choice": llm_cfg,
+                "timestamp": _llm_stamp
+            }, _f, indent=2)
+        print(f"\ud83d\udcc1 Saved LLM-selected config to {_llm_cfg_global}")
+        args.llm_cfg = llm_cfg
+        args.llm_cfg_stamp = _llm_stamp
+
+        
 
     if args.auto_select and args.llm_compare:
-        import copy
+        import copy, glob, time, shutil
         base_args = copy.deepcopy(args)
 
         candidates = []
@@ -756,7 +804,8 @@ def main():
         det = copy.deepcopy(base_args)
         det.model_name = "cnn_features_1d"
         det.method = "deterministic"
-        det.droprate = min(0.3, base_args.droprate)
+        det.droprate = min(getattr(base_args, "droprate", 0.3), 0.3)
+        det.tag = (getattr(det, "tag", "") + f"_detcnn_{_llm_stamp}").strip("_")
         candidates.append(("deterministic_cnn", det))
 
         # 3) SNGP WideResNet + SA (strong calibrated model)
@@ -764,9 +813,37 @@ def main():
         sngp.model_name = "WideResNet_sa"
         sngp.method = "sngp"
         sngp.droprate = 0.3
+        sngp.tag = (getattr(sngp, "tag", "") + f"_sngp_wrn_sa_{_llm_stamp}").strip("_")
         candidates.append(("sngp_wrn_sa", sngp))
 
-        # Run each candidate via your existing entrypoints
+        _cmp_dir = os.path.join(_llm_dir, "compare")
+        os.makedirs(_cmp_dir, exist_ok=True)
+
+        leaderboard_rows = []
+
+        def _collect_latest_summary(copy_prefix: str) -> tuple[str, float]:
+            summaries = sorted(glob.glob(os.path.join("checkpoint", "summary_*.csv")),
+                               key=os.path.getmtime)
+            if not summaries:
+                return ("", float("nan"))
+            latest = summaries[-1]
+            dst = os.path.join(_cmp_dir, f"{copy_prefix}_{os.path.basename(latest)}")
+            try:
+                shutil.copy2(latest, dst)
+            except Exception:
+                dst = latest
+            try:
+                df = pd.read_csv(latest)
+                if "improvement" in df.columns:
+                    avg_imp = float(pd.to_numeric(df["improvement"], errors="coerce").mean())
+                elif {"transfer_acc","baseline_acc"}.issubset(df.columns):
+                    avg_imp = float((pd.to_numeric(df["transfer_acc"], errors="coerce") -
+                                     pd.to_numeric(df["baseline_acc"], errors="coerce")).mean())
+                else:
+                    avg_imp = float("nan")
+            except Exception:
+                avg_imp = float("nan")
+            return (dst, avg_imp)
         for tag, cfg in candidates:
             print(f"\n===== LLM comparison run: {tag} =====")
             if cfg.data_name == 'Battery_inconsistent':
@@ -774,9 +851,41 @@ def main():
             else:
                 run_cwru_experiments(cfg)
 
-        # Exit after comparison runs to avoid double-running
-        import sys
-        sys.exit(0)
+            time.sleep(0.5)
+
+            copied_path, avg_imp = _collect_latest_summary(copy_prefix=tag)
+            leaderboard_rows.append({
+                "tag": tag,
+                "model_name": cfg.model_name,
+                "method": getattr(cfg, "method", "deterministic"),
+                "droprate": getattr(cfg, "droprate", None),
+                "lr": getattr(cfg, "lr", None),
+                "batch_size": getattr(cfg, "batch_size", None),
+                "lambda_src": getattr(cfg, "lambda_src", None),
+                "summary_csv": copied_path,
+                "avg_improvement": avg_imp,
+            })
+
+        _leader_csv = os.path.join(_llm_dir, "llm_leaderboard.csv")
+        _leader_json = os.path.join(_llm_dir, "llm_leaderboard.json")
+        pd.DataFrame(leaderboard_rows).to_csv(_leader_csv, index=False)
+        with open(_leader_json, "w") as _f:
+            _json.dump(leaderboard_rows, _f, indent=2)
+
+        _valid = [r for r in leaderboard_rows if not (r["avg_improvement"] != r["avg_improvement"])]
+        if _valid:
+            best = max(_valid, key=lambda r: r["avg_improvement"])
+            print("\n🏆 Leaderboard (avg improvement over baseline):")
+            for r in sorted(_valid, key=lambda x: x["avg_improvement"], reverse=True):
+                print(f" - {r['tag']:>18s}: {r['avg_improvement']:+.4f}  ({r['summary_csv']})")
+            print(f"\n✅ Best configuration: {best['tag']}  ({best['model_name']}, method={best['method']})")
+            with open(os.path.join(_llm_dir, "winner.json"), "w") as _f:
+                _json.dump(best, _f, indent=2)
+        else:
+            print("\n⚠️ Could not compute a valid leaderboard (no summaries found).")
+
+        import sys as _sys
+        _sys.exit(0)
 
     if args.data_name == 'Battery_inconsistent':
         run_battery_experiments(args)

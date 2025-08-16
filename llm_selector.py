@@ -48,7 +48,7 @@ JSON_SCHEMA = {
         "learning_rate": {"type": "number", "minimum": 1e-5, "maximum": 1e-2},
         "batch_size": {"type": "integer", "minimum": 4, "maximum": 256},
         "lambda_src": {"type": "number", "minimum": 0.0, "maximum": 5.0},
-        "reason": {"type": "string"}
+        "rationale": {"type": "string"}
     },
     "required": ["model_name"],
     "additionalProperties": False
@@ -67,7 +67,8 @@ Constraints:
 - Prefer cnn_openmax ONLY if explicit open-set classification is required and downstream expects OpenMax.
 - If data is small (<2k samples), favor lower learning_rate (e.g., 3e-4..1e-4) and higher dropout (0.2..0.5).
 - For CWRU 32x1024 style, CNN or WRN variants with SA often perform well. For Battery time-series (7 channels), start with CNN; add SA when sequence_length >= 256.
-- Output VALID JSON ONLY, matching the provided schema, and include a short human-readable "reason" field explaining the choice.
+- Return VALID JSON ONLY, matching the provided schema, with NO extra text.
+- Include a short "rationale" string (1–3 sentences) that explains why this configuration fits the input.
 """
 
 def _summarize_numeric(num_summary: Dict[str, Any]) -> str:
@@ -122,10 +123,9 @@ def _validate_or_default(payload: str) -> Dict[str, Any]:
         obj["learning_rate"] = float(max(1e-5, min(1e-2, float(obj.get("learning_rate", 3e-4)))))
         obj["batch_size"] = int(max(4, min(256, int(obj.get("batch_size", 64)))))
         obj["lambda_src"] = float(max(0.0, min(5.0, float(obj.get("lambda_src", 1.0)))))
-        obj["reason"] = str(obj.get("reason", ""))
+        obj["rationale"] = str(obj.get("rationale", "Heuristic fit based on channels, sequence length, and label inconsistency."))
         return obj
     except Exception:
-        # Sensible fallback
         return {
             "model_name": "cnn_features_1d_sa",
             "self_attention": True,
@@ -137,7 +137,7 @@ def _validate_or_default(payload: str) -> Dict[str, Any]:
             "learning_rate": 3e-4,
             "batch_size": 64,
             "lambda_src": 1.0,
-            "reason": "",
+            "rationale": "Fallback selection for robust performance on multi-channel sequences."
         }
 
 # ---------------------------- Provider adapters --------------------------------

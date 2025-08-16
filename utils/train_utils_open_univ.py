@@ -40,6 +40,7 @@ from datetime import datetime
 from collections import Counter
 from torch.utils.data import Dataset, DataLoader
 import torch.nn as nn
+import math
 
 
 
@@ -60,18 +61,22 @@ g.manual_seed(SEED)
 #Adapted from https://github.com/YU1ut/openset-DA and https://github.com/thuml/Universal-Domain-Adaptation
 
 
-# def adjust_bottleneck_layer(bottleneck_layer, features, bottleneck_num):
-#     # Extract the size of the features produced by the CNN
-#     feature_size = features.size(1)
-    
-#     # Dynamically create a new bottleneck layer with the correct input size
-#     adjusted_bottleneck_layer = nn.Sequential(
-#         nn.Linear(feature_size, bottleneck_num),
-#         nn.ReLU(inplace=True),
-#         nn.Dropout()
-#     )
-    
-#     return adjusted_bottleneck_layer
+def _find_last_linear(module: nn.Module):
+    last = None
+    for m in module.modules():
+        if isinstance(m, nn.Linear):
+            last = m
+    return last
+
+
+def _kaiming_reset_linear(lin: nn.Linear):
+    if hasattr(nn.init, "kaiming_uniform_"):
+        nn.init.kaiming_uniform_(lin.weight, a=math.sqrt(5))
+    else:
+        nn.init.xavier_uniform_(lin.weight)
+    if lin.bias is not None:
+        nn.init.zeros_(lin.bias)
+
 
 
 class train_utils_open_univ(object):
@@ -159,6 +164,18 @@ class train_utils_open_univ(object):
             print(f"⚠️ Missing keys when loading pretrained model: {incompatible.missing_keys}")
         if incompatible.unexpected_keys:
             print(f"⚠️ Unexpected keys when loading pretrained model: {incompatible.unexpected_keys}")
+            
+        # --- Reset optimizer state after loading pretrained weights (prevents stale momentum) ---
+        if hasattr(self, 'optimizer') and self.optimizer is not None:
+            try:
+                # Clear momentum/adam moments
+                self.optimizer.state.clear()
+                # Reset LR on all param groups to current args.lr
+                for pg in self.optimizer.param_groups:
+                    pg['lr'] = self.args.lr
+                print("🧽 Cleared optimizer state and reset learning rate for transfer fine-tuning.")
+            except Exception as _e:
+                print(f"⚠️ Optimizer reset skipped: {_e}")
 
     def setup(self):
         """
@@ -498,6 +515,28 @@ class train_utils_open_univ(object):
             self.model_all = nn.Sequential(self.model, self.bottleneck_layer, self.classifier_layer)
         else:
             self.model_all = nn.Sequential(self.model, self.classifier_layer)
+            
+            
+        # --- Optional: re-initialize the final classifier head for target task ---
+        reinit_head = getattr(self.args, "reinit_head", True)
+        if self.transfer_mode and reinit_head:
+            last_fc = _find_last_linear(self.model)
+            if last_fc is not None and getattr(last_fc, 'out_features', None) == self.num_classes:
+                _kaiming_reset_linear(last_fc)
+                print("\ud83d\udd01 Reinitialized final classifier layer for target task.")
+            else:
+                print("\u2139\ufe0f Skipped head reinit (no Linear head found with matching out_features).")
+
+        # --- Capture L2-SP reference (pretrained weights copy) ---
+        self._l2sp_ref = None
+        lambda_l2sp = float(getattr(self.args, "lambda_l2sp", 1e-3))
+        if self.transfer_mode and lambda_l2sp > 0:
+            self._l2sp_ref = {n: p.detach().clone().to(self.device)
+                              for n, p in self.model.named_parameters() if p.requires_grad}
+            self.lambda_l2sp = lambda_l2sp
+            print(f"\ud83e\uddf2 L2-SP active with \u03bb={self.lambda_l2sp}")
+        else:
+            self.lambda_l2sp = 0.0
         
         # Freeze early backbone layers if target data are scarce
         if self.target_sample_count and self.target_sample_count < 100:
@@ -894,6 +933,14 @@ class train_utils_open_univ(object):
                                 total_loss = loss_src * lam_src if total_loss is None else total_loss + lam_src * loss_src
                             # If no valid src labels for this step, just skip source loss for this batch.
                         # <<< END NEW >>>
+                        
+                        # L2-SP: keep weights near pretrained solution (helps on tiny/different targets)
+                        if self.transfer_mode and getattr(self, "lambda_l2sp", 0.0) > 0 and getattr(self, "_l2sp_ref", None) is not None:
+                            reg = torch.tensor(0.0, device=self.device)
+                            for (name, p) in self.model.named_parameters():
+                                if p.requires_grad and name in self._l2sp_ref:
+                                    reg = reg + (p - self._l2sp_ref[name]).pow(2).sum()
+                            total_loss = total_loss + self.lambda_l2sp * reg if total_loss is not None else self.lambda_l2sp * reg
                         
                         # Backprop/step (relies on zero_grad where you already do it in your loop)
                         if phase.endswith('train') and total_loss is not None:
