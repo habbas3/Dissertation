@@ -777,6 +777,9 @@ class train_utils_open_univ(object):
         best_common_acc = 0.0
         patience = getattr(self.args, 'early_stop_patience', None)
         epochs_no_improve = 0
+        
+        self.warmup_epochs = int(getattr(self.args, "warmup_epochs", 3))
+        self._head_module = _find_last_linear(self.model)
     
         for epoch in range(self.args.max_epoch):
             source_iter = None
@@ -784,6 +787,19 @@ class train_utils_open_univ(object):
                 source_iter = cycle(self.dataloaders['source_train'])
             print(f"{datetime.now().strftime('%m-%d %H:%M:%S')} ----- Epoch {epoch + 1}/{self.args.max_epoch} -----")
             print(f"{datetime.now().strftime('%m-%d %H:%M:%S')} Current LR: {self.optimizer.param_groups[0]['lr']:.6f}")
+            
+            if self.transfer_mode and self._head_module is not None:
+                if epoch < self.warmup_epochs:
+                    for p in self.model.parameters():
+                        p.requires_grad = False
+                    for p in self._head_module.parameters():
+                        p.requires_grad = True
+                    if epoch == 0:
+                        print(f"🧊 Linear-probe warmup for {self.warmup_epochs} epochs (head-only).")
+                elif epoch == self.warmup_epochs:
+                    for p in self.model.parameters():
+                        p.requires_grad = True
+                    print("🔥 Unfroze backbone after warmup.")
             
             if self.transfer_mode:
                 phases = ['target_train']

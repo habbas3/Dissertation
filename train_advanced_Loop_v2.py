@@ -33,11 +33,14 @@ import time
 from itertools import combinations
 from llm_selector import select_config
 from utils.experiment_runner import _cm_with_min_labels
+import os as _os
+
 
 
 
 import sys
 sys.path.append(os.path.dirname(__file__))
+sys.path.append(os.path.join(os.path.dirname(__file__), "my_datasets"))
 
 print(torch.__version__)
 warnings.filterwarnings('ignore')
@@ -65,7 +68,7 @@ def reset_seed(seed=SEED):
 
 def parse_args():
     parser = argparse.ArgumentParser(description='Train')
-    parser.add_argument('--data_name', type=str, default='CWRU_inconsistent',
+    parser.add_argument('--data_name', type=str, default='Battery_inconsistent',
                         choices=['Battery_inconsistent', 'CWRU_inconsistent'])
     parser.add_argument('--data_dir', type=str, default='./my_datasets/Battery',
                         help='Root directory for datasets')
@@ -213,39 +216,32 @@ def build_cathode_groups(csv_path):
 
 def _build_numeric_summary(dataloaders, args):
     import numpy as np
-    summary = {}
-    # Choose a small, non-empty loader
+    
     for key in ['target_train','source_train','target_val','source_val']:
         dl = dataloaders.get(key)
         if dl is None:
             continue
         try:
-            it = iter(dl)
-            x, y = next(it)
+           x, y = next(iter(dl))
         except Exception:
             continue
-        # x: (B, C, L)
-        C = int(x.shape[1]); L = int(x.shape[-1]); B = int(x.shape[0])
-        # stats on first batch (safe, tiny)
+        C, L, B = int(x.shape[1]), int(x.shape[-1]), int(x.shape[0])
         x_np = x.detach().cpu().numpy()
-        ch_mean = x_np.mean(axis=(0,2)).tolist()[: min(C, 8)]  # first 8 channels only
+        ch_mean = x_np.mean(axis=(0,2)).tolist()[: min(C, 8)]
         ch_std  = x_np.std(axis=(0,2)).tolist()[: min(C, 8)]
-        # class counts from a few batches
-        counts = {}
-        counts[int(y[0].item())] = counts.get(int(y[0].item()), 0) + 1
-        summary.update({
+        return {
             "dataset": args.data_name,
             "split_used": key,
             "batch_size_seen": B,
             "channels": C,
             "seq_len": L,
-            "num_classes": getattr(args, "num_classes", None) or getattr(args, "n_class", None),
-            "lr": args.lr,
-            "dropout": getattr(args, "droprate", 0.3),
-            "class_counts_head": counts,
-            "notes": "label_inconsistent" if getattr(args, "inconsistent", False) else "closed_set"
-        })
-        return summary
+            "num_classes_hint": getattr(args, "num_classes", None) or getattr(args, "n_class", None),
+            "lr_hint": args.lr,
+            "dropout_hint": getattr(args, "droprate", 0.3),
+            "notes": "label_inconsistent" if getattr(args, "inconsistent", False) else "closed_set",
+            "ch_mean_head": ch_mean,
+            "ch_std_head": ch_std,
+        }
     return {"dataset": args.data_name, "notes": "no_batch_available"}
 
 
@@ -258,17 +254,24 @@ def run_experiment(args, save_dir, trial=None, baseline=False):
         
     start_time = time.time()
     
-    # Persist LLM config into this run's save_dir
+    # Persist LLM config into this run's save_dir (next to best_model.pth)
     try:
-        import json as _json, os as _os
-        if save_dir and getattr(args, "llm_cfg", None):
+        import os as _os, json as _json
+        if save_dir:
             _os.makedirs(save_dir, exist_ok=True)
-            _fname = f"llm_selected_config_{getattr(args, 'llm_cfg_stamp', '')}.json"
-            with open(_os.path.join(save_dir, _fname), "w") as f:
-                _json.dump(args.llm_cfg, f, indent=2)
-            print(f"\ud83d\udd8d\ufe0f LLM config copied into run folder: {_os.path.join(save_dir, _fname)}")
+            if getattr(args, "llm_cfg", None):
+                _per_run_path = _os.path.join(
+                    save_dir, f"llm_selected_config_{getattr(args,'llm_cfg_stamp','')}.json"
+                )
+                with open(_per_run_path, "w") as f:
+                    _json.dump({
+                        "llm_choice": args.llm_cfg,
+                        "inputs": getattr(args, "llm_cfg_inputs", {})
+                    }, f, indent=2)
+                print(f"📝 LLM config copied into run folder: {_per_run_path}")
     except Exception as _e:
-        print(f"\u26a0\ufe0f Could not write LLM config into run folder: {_e}")
+        print(f"⚠️ Could not write LLM config into run folder: {_e}")
+
 
     if args.data_name == 'Battery_inconsistent':
         source_train_loader, source_val_loader, target_train_loader, target_val_loader, label_names, df = load_battery_dataset(
@@ -695,7 +698,8 @@ def run_cwru_experiments(args):
 
 def main():
     args = parse_args()
-    os.environ["CUDA_VISIBLE_DEVICES"] = args.cuda_device.strip()
+    os.environ["CUDA_VISIBLE_DEVICES"] = str(args.cuda_device).strip()
+
     
     if args.auto_select:
         # Build tiny loaders once to assemble summary (reuse your existing dataset creation if needed)
@@ -703,7 +707,8 @@ def main():
         try:
             # Reuse your pretraining loaders quickly (small impact)
             if args.data_name == 'Battery_inconsistent':
-                src_tr, src_val, tgt_tr, tgt_val, label_names, df = load_battery_dataset(
+                from battery_dataset_loader import load_battery_dataset
+                src_tr, src_val, tgt_tr, tgt_val, label_names, _df = load_battery_dataset(
                     csv_path=args.csv,
                     source_cathodes=args.source_cathode,
                     target_cathodes=args.target_cathode,
@@ -711,97 +716,73 @@ def main():
                     batch_size=min(args.batch_size, 32),
                     sequence_length=args.sequence_length,
                 )
-                dls = {'source_train': src_tr, 'source_val': src_val, 'target_train': tgt_tr, 'target_val': tgt_val}
+                dls_for_peek = {'source_train': src_tr, 'source_val': src_val, 'target_train': tgt_tr, 'target_val': tgt_val}
             else:
+                from SequenceDatasets import Dataset
+                import torch
                 if isinstance(args.transfer_task[0], str):
                     args.transfer_task = eval("".join(args.transfer_task))
-                src_tr, src_val, tgt_tr, tgt_val, _ = CWRU_inconsistent(
+                _src_tr, _src_val, _tgt_tr, _tgt_val, _ = Dataset(
                     args.data_dir, args.transfer_task, args.inconsistent, args.normlizetype
                 ).data_split(transfer_learning=True)
-                import torch
                 g = torch.Generator()
-                dls = {
-                    'source_train': torch.utils.data.DataLoader(src_tr, batch_size=min(args.batch_size, 64), shuffle=True, generator=g),
-                    'source_val': torch.utils.data.DataLoader(src_val, batch_size=min(args.batch_size, 64), shuffle=False),
-                    'target_train': torch.utils.data.DataLoader(tgt_tr, batch_size=min(args.batch_size, 64), shuffle=True, generator=g),
-                    'target_val': torch.utils.data.DataLoader(tgt_val, batch_size=min(args.batch_size, 64), shuffle=False),
+                dls_for_peek = {
+                    'source_train': torch.utils.data.DataLoader(_src_tr, batch_size=min(args.batch_size, 64), shuffle=True, generator=g),
+                    'source_val': torch.utils.data.DataLoader(_src_val, batch_size=min(args.batch_size, 64), shuffle=False),
+                    'target_train': torch.utils.data.DataLoader(_tgt_tr, batch_size=min(args.batch_size, 64), shuffle=True, generator=g),
+                    'target_val': torch.utils.data.DataLoader(_tgt_val, batch_size=min(args.batch_size, 64), shuffle=False),
                 }
         except Exception:
-            dls = {'source_train': None, 'source_val': None, 'target_train': None, 'target_val': None}
+            dls_for_peek = {'source_train': None, 'source_val': None, 'target_train': None, 'target_val': None}
 
-        num_summary = _build_numeric_summary(dls, args)
-        text_ctx = args.llm_context.strip() or f"{args.data_name} experiment; transfer={bool(getattr(args,'pretrained',False))}; label_inconsistent={getattr(args,'inconsistent',False)}."
-
+        num_summary = _build_numeric_summary(dls_for_peek, args)
+        text_ctx = (args.llm_context or f"{args.data_name}; transfer={bool(getattr(args,'pretrained',False))}; label_inconsistent={getattr(args,'inconsistent',False)}.").strip()
         llm_cfg = select_config(text_context=text_ctx,
                                 num_summary=num_summary,
                                 backend=args.llm_backend,
                                 model=args.llm_model)
         
-        # Save and display LLM recommendation
-        print("🤖 LLM-selected configuration:")
-        print(json.dumps(llm_cfg, indent=2))
-        if llm_cfg.get("rationale"):
-            print("📝 Rationale:", llm_cfg["rationale"])
+        
 
-        # ---- Persist the LLM choice so we can inspect it later ----
         from datetime import datetime as _dt
         import os as _os, json as _json
         _llm_stamp = _dt.now().strftime("%Y%m%d_%H%M%S")
-        _llm_dir = _os.path.join("checkpoint", f"llm_run_{_llm_stamp}")
-        _os.makedirs(_llm_dir, exist_ok=True)
-
-        _llm_cfg_path = _os.path.join(_llm_dir, "llm_selected_config.json")
-        with open(_llm_cfg_path, "w") as _f:
+        _llm_root = _os.path.join("checkpoint", f"llm_run_{_llm_stamp}")
+        _os.makedirs(_llm_root, exist_ok=True)
+        _llm_cfg_global = _os.path.join(_llm_root, "llm_selected_config.json")
+        with open(_llm_cfg_global, "w") as _f:
             _json.dump({
                 "llm_choice": llm_cfg,
-                "args_snapshot": {k: (v if isinstance(v, (int, float, str, bool, type(None))) else str(v))
-                                  for k, v in vars(args).items()},
-                "timestamp": _llm_stamp,
+                "inputs": {"text_context": text_ctx, "numeric_summary": num_summary},
+                "timestamp": _llm_stamp
             }, _f, indent=2)
-        print(f"📁 Saved LLM-selected config to {_llm_cfg_path}")
+        print("🤖 LLM-selected configuration:")
+        print(_json.dumps(llm_cfg, indent=2))
+        print(f"📝 Rationale: {llm_cfg.get('rationale','(none)')}")
+        print(f"📁 Saved LLM config to: {_llm_cfg_global}")
 
-        # Make run artifacts easy to associate with this LLM pick
-        if hasattr(args, "tag"):
-            args.tag = (args.tag + f"_llm_{_llm_stamp}") if args.tag else f"llm_{_llm_stamp}"
-
-        # Map LLM output to your argparse knobs (MINIMAL changes)
         args.model_name = llm_cfg["model_name"]
-        args.lambda_src = llm_cfg.get("lambda_src", getattr(args, "lambda_src", 1.0))
-        # SNGP toggles your method path
-        args.method = 'sngp' if llm_cfg.get("sngp", False) else getattr(args, 'method', 'deterministic')
-        # Self-attention already implied by chosen model_name *_sa variants
-        # OpenMax implies using the cnn_openmax model
+        args.method = 'sngp' if llm_cfg.get("sngp", False) else 'deterministic'
         if llm_cfg.get("openmax", False):
             args.model_name = "cnn_openmax"
-        # Usual training knobs
         args.droprate = llm_cfg.get("dropout", getattr(args, "droprate", 0.3))
         args.lr = llm_cfg.get("learning_rate", args.lr)
         args.batch_size = int(llm_cfg.get("batch_size", args.batch_size))
-        # Optional bottleneck (used by some WRN/SNGP paths)
+        args.lambda_src = float(llm_cfg.get("lambda_src", getattr(args, "lambda_src", 1.0)))
         if hasattr(args, "bottleneck_num"):
-            args.bottleneck_num = int(llm_cfg.get("bottleneck", args.bottleneck_num if args.bottleneck_num else 256))
+            args.bottleneck_num = int(llm_cfg.get("bottleneck", getattr(args, "bottleneck_num", 256)))
             
 
-        # ---- Persist the LLM choice globally and attach to args for per-run saving ----
-        _llm_stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        _llm_root = os.path.join("checkpoint", f"llm_run_{_llm_stamp}")
-        os.makedirs(_llm_root, exist_ok=True)
-        _llm_cfg_global = os.path.join(_llm_root, "llm_selected_config.json")
-        with open(_llm_cfg_global, "w") as _f:
-            json.dump({
-                "llm_choice": llm_cfg,
-                "timestamp": _llm_stamp
-            }, _f, indent=2)
-        print(f"\ud83d\udcc1 Saved LLM-selected config to {_llm_cfg_global}")
+        args.llm_cfg_inputs = {"text_context": text_ctx, "numeric_summary": num_summary}
         args.llm_cfg = llm_cfg
         args.llm_cfg_stamp = _llm_stamp
 
         
 
     if args.auto_select and args.llm_compare:
-        import copy, glob, time, shutil
-        base_args = copy.deepcopy(args)
+        import copy, glob, time, shutil, pandas as _pd, json as _json, os as _os
 
+        base_args = copy.deepcopy(args)
         candidates = []
 
         # 1) The LLM pick (already applied to args)
@@ -812,7 +793,7 @@ def main():
         det.model_name = "cnn_features_1d"
         det.method = "deterministic"
         det.droprate = min(getattr(base_args, "droprate", 0.3), 0.3)
-        det.tag = (getattr(det, "tag", "") + f"_detcnn_{_llm_stamp}").strip("_")
+        det.tag = (getattr(det, "tag", "") + "_detcnn_" + args.llm_cfg_stamp).strip("_")
         candidates.append(("deterministic_cnn", det))
 
         # 3) SNGP WideResNet + SA (strong calibrated model)
@@ -820,17 +801,16 @@ def main():
         sngp.model_name = "WideResNet_sa"
         sngp.method = "sngp"
         sngp.droprate = 0.3
-        sngp.tag = (getattr(sngp, "tag", "") + f"_sngp_wrn_sa_{_llm_stamp}").strip("_")
+        sngp.tag = (getattr(sngp, "tag", "") + "_sngp_wrn_sa_" + args.llm_cfg_stamp).strip("_")
         candidates.append(("sngp_wrn_sa", sngp))
 
-        _cmp_dir = os.path.join(_llm_dir, "compare")
-        os.makedirs(_cmp_dir, exist_ok=True)
+        _cmp_dir = _os.path.join("checkpoint", f"llm_run_{args.llm_cfg_stamp}", "compare")
+        _os.makedirs(_cmp_dir, exist_ok=True)
 
         leaderboard_rows = []
 
         def _collect_latest_summary(copy_prefix: str) -> tuple[str, float]:
-            summaries = sorted(glob.glob(os.path.join("checkpoint", "summary_*.csv")),
-                               key=os.path.getmtime)
+            summaries = sorted(glob.glob(_os.path.join("checkpoint", "summary_*.csv")), key=os.path.getmtime)
             if not summaries:
                 return ("", float("nan"))
             latest = summaries[-1]
@@ -840,12 +820,11 @@ def main():
             except Exception:
                 dst = latest
             try:
-                df = pd.read_csv(latest)
+                df = _pd.read_csv(latest)
                 if "improvement" in df.columns:
-                    avg_imp = float(pd.to_numeric(df["improvement"], errors="coerce").mean())
+                    avg_imp = float(_pd.to_numeric(df["improvement"], errors="coerce").mean())
                 elif {"transfer_acc","baseline_acc"}.issubset(df.columns):
-                    avg_imp = float((pd.to_numeric(df["transfer_acc"], errors="coerce") -
-                                     pd.to_numeric(df["baseline_acc"], errors="coerce")).mean())
+                    avg_imp = float((_pd.to_numeric(df["transfer_acc"], errors="coerce") - _pd.to_numeric(df["baseline_acc"], errors="coerce")).mean())
                 else:
                     avg_imp = float("nan")
             except Exception:
@@ -873,9 +852,10 @@ def main():
                 "avg_improvement": avg_imp,
             })
 
-        _leader_csv = os.path.join(_llm_dir, "llm_leaderboard.csv")
-        _leader_json = os.path.join(_llm_dir, "llm_leaderboard.json")
-        pd.DataFrame(leaderboard_rows).to_csv(_leader_csv, index=False)
+        _llm_root = _os.path.join("checkpoint", f"llm_run_{args.llm_cfg_stamp}")
+        _leader_csv = _os.path.join(_llm_root, "llm_leaderboard.csv")
+        _leader_json = _os.path.join(_llm_root, "llm_leaderboard.json")
+        _pd.DataFrame(leaderboard_rows).to_csv(_leader_csv, index=False)
         with open(_leader_json, "w") as _f:
             _json.dump(leaderboard_rows, _f, indent=2)
 
@@ -885,9 +865,10 @@ def main():
             print("\n🏆 Leaderboard (avg improvement over baseline):")
             for r in sorted(_valid, key=lambda x: x["avg_improvement"], reverse=True):
                 print(f" - {r['tag']:>18s}: {r['avg_improvement']:+.4f}  ({r['summary_csv']})")
-            print(f"\n✅ Best configuration: {best['tag']}  ({best['model_name']}, method={best['method']})")
-            with open(os.path.join(_llm_dir, "winner.json"), "w") as _f:
+            with open(_os.path.join(_llm_root, "winner.json"), "w") as _f:
                 _json.dump(best, _f, indent=2)
+            print(f"✅ Best configuration: {best['tag']} ({best['model_name']}, method={best['method']})")
+            print(f"🧾 Proof files:\n  - {_leader_csv}\n  - {_leader_json}\n  - {_os.path.join(_llm_root, 'winner.json')}")
         else:
             print("\n⚠️ Could not compute a valid leaderboard (no summaries found).")
 
