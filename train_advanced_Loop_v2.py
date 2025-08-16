@@ -404,29 +404,38 @@ def run_battery_experiments(args):
     ]
 
     
-    # Generate experiments by pairing every non-empty subset of a source group
-    # with every non-empty subset of a different target group.  This yields a
-    # rich set of baseline vs. transfer comparisons across cathode families.
+    # Define cathode groups as coarse families
+    nmc_group = sorted([c for c in cathode_groups.get("nmc_pool", []) if c.upper() != "FCG"])
+    fcg_group = [c for c in cathode_groups.get("nmc_pool", []) if c.upper() == "FCG"]
+    spinel_group = cathode_groups.get("spinel_pool", [])
+    li_group = cathode_groups.get("li_rich_pool", [])
+    fcg_li_group = sorted(set(fcg_group + li_group))
+
+    group_defs = {
+        "NMC": nmc_group,
+        "FCG": fcg_group,
+        "5Vspinel": spinel_group,
+        "FCG+Li": fcg_li_group,
+    }
+    group_defs = {k: v for k, v in group_defs.items() if v}
+
+    # Build experiment list using group combinations
     experiment_configs = []
-    for src_group, src_cathodes in cathode_groups.items():
-        for tgt_group, tgt_cathodes in cathode_groups.items():
-            if src_group == tgt_group:
+    for src_name, src_cathodes in group_defs.items():
+        for tgt_name, tgt_cathodes in group_defs.items():
+            if src_name == tgt_name:
                 continue
-            for r_s in range(1, len(src_cathodes) + 1):
-                for src_subset in combinations(src_cathodes, r_s):
-                    for r_t in range(1, len(tgt_cathodes) + 1):
-                        for tgt_subset in combinations(tgt_cathodes, r_t):
-                            experiment_configs.append((list(src_subset), list(tgt_subset)))
+            experiment_configs.append((src_name, tgt_name, src_cathodes, tgt_cathodes))
 
     # Allow command-line overrides for a single experiment or model.
     if args.source_cathode and args.target_cathode:
-        experiment_configs = [(args.source_cathode, args.target_cathode)]
+        experiment_configs = [("custom", "custom", args.source_cathode, args.target_cathode)]
     if args.model_name:
         model_architectures = [args.model_name]
 
     results = []
     for model_name in model_architectures:
-        for source_cathodes, target_cathodes in experiment_configs:
+        for src_name, tgt_name, source_cathodes, target_cathodes in experiment_configs:
             global_habbas3.init()
             args.model_name = model_name
             args.source_cathode = source_cathodes
@@ -437,7 +446,7 @@ def run_battery_experiments(args):
             pre_args.pretrained_model_path = None
             pre_dir = os.path.join(
                 args.checkpoint_dir,
-                f"pretrain_{model_name}_{'-'.join(source_cathodes)}_{datetime.now().strftime('%m%d')}",
+                f"pretrain_{model_name}_{src_name}_{datetime.now().strftime('%m%d')}",
             )
             os.makedirs(pre_dir, exist_ok=True)
             run_experiment(pre_args, pre_dir)
@@ -449,7 +458,7 @@ def run_battery_experiments(args):
             baseline_args.pretrained = False
             baseline_dir = os.path.join(
                 args.checkpoint_dir,
-                f"baseline_{model_name}_{'-'.join(target_cathodes)}_{datetime.now().strftime('%m%d')}",
+                f"baseline_{model_name}_{tgt_name}_{datetime.now().strftime('%m%d')}",
             )
             os.makedirs(baseline_dir, exist_ok=True)
             # Return order is: model, acc, elapsed, source_val_loader, target_val_loader
@@ -468,7 +477,7 @@ def run_battery_experiments(args):
             transfer_args.target_cathode = target_cathodes
             ft_dir = os.path.join(
                 args.checkpoint_dir,
-                f"transfer_{model_name}_{'-'.join(source_cathodes)}_to_{'-'.join(target_cathodes)}_{datetime.now().strftime('%m%d')}",
+                f"transfer_{model_name}_{src_name}_to_{tgt_name}_{datetime.now().strftime('%m%d')}",
             )
             os.makedirs(ft_dir, exist_ok=True)
             model_ft, transfer_acc, _, _, tr_loader = run_experiment(transfer_args, ft_dir)
@@ -492,10 +501,10 @@ def run_battery_experiments(args):
             transfer_acc = t_common
             
             print(
-                f"✅ Baseline {target_cathodes}: {baseline_acc:.4f} ({len(bl_labels)} samples)"
+                f"✅ Baseline {tgt_name}: {baseline_acc:.4f} ({len(bl_labels)} samples)"
             )
             print(
-                f"✅ Transfer {source_cathodes} → {target_cathodes}: {transfer_acc:.4f} ({len(tr_labels)} samples)"
+                f"✅ Transfer {src_name} → {tgt_name}: {transfer_acc:.4f} ({len(tr_labels)} samples)"
             )
             print(
                 f"   ↳ common_acc={t_common:.4f}, outlier_acc={t_out:.4f}, hscore={t_h:.4f}"
@@ -505,16 +514,30 @@ def run_battery_experiments(args):
             )
             
             improvement = transfer_acc - baseline_acc
-            print(f"📊 {source_cathodes} → {target_cathodes}: baseline(common)={baseline_acc:.4f}, transfer(common)={transfer_acc:.4f}, improvement={improvement:+.4f}")
+            print(f"📊 {src_name} → {tgt_name}: baseline(common)={baseline_acc:.4f}, transfer(common)={transfer_acc:.4f}, improvement={improvement:+.4f}")
             if transfer_acc < baseline_acc:
-                print(f"⚠️ Transfer did not improve over baseline for {source_cathodes} → {target_cathodes}")
+                print(f"⚠️ Transfer did not improve over baseline for {src_name} → {tgt_name}")
+
+            # Confusion matrices with consistent axes
+            labels = list(range(num_known))
+            cm_transfer = confusion_matrix(tr_labels, tr_preds, labels=labels)
+            disp = ConfusionMatrixDisplay(confusion_matrix=cm_transfer, display_labels=labels)
+            disp.plot(cmap='Blues')
+            plt.savefig(os.path.join(ft_dir, f"cm_transfer_{src_name}_to_{tgt_name}.png"))
+            plt.close()
+
+            cm_baseline = confusion_matrix(baseline_labels_np, baseline_preds_np, labels=labels)
+            disp = ConfusionMatrixDisplay(confusion_matrix=cm_baseline, display_labels=labels)
+            disp.plot(cmap='Blues')
+            plt.savefig(os.path.join(ft_dir, f"cm_baseline_{src_name}_to_{tgt_name}.png"))
+            plt.close()
 
 
             results.append(
                 {
                     "model": model_name,
-                    "source": "-".join(source_cathodes),
-                    "target": "-".join(target_cathodes),
+                    "source": src_name,
+                    "target": tgt_name,
                     "baseline_acc": baseline_acc,
                     "transfer_acc": transfer_acc,
                     "improvement": improvement,
@@ -530,6 +553,10 @@ def run_battery_experiments(args):
         summary_df.to_csv(summary_path, index=False)
         print(f"Saved summary to {summary_path}")
         print(summary_df[["source", "target", "baseline_acc", "transfer_acc", "improvement"]])
+        mean_impr = summary_df["improvement"].mean()
+        overall = summary_df["transfer_acc"].mean() - summary_df["baseline_acc"].mean()
+        print(f"Average improvement across experiments: {mean_impr:+.4f}")
+        print(f"Overall transfer vs baseline: {overall:+.4f}")
         
         
 def run_cwru_experiments(args):
@@ -687,6 +714,13 @@ def main():
                                 num_summary=num_summary,
                                 backend=args.llm_backend,
                                 model=args.llm_model)
+        
+        # Save and display LLM recommendation
+        with open("llm_recommendation.json", "w") as f:
+            json.dump(llm_cfg, f, indent=2)
+        print("LLM recommendation saved to llm_recommendation.json")
+        if llm_cfg.get("reason"):
+            print(f"LLM reason: {llm_cfg['reason']}")
 
         # Map LLM output to your argparse knobs (MINIMAL changes)
         args.model_name = llm_cfg["model_name"]
