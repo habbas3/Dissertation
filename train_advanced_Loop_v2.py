@@ -65,7 +65,7 @@ def reset_seed(seed=SEED):
 
 def parse_args():
     parser = argparse.ArgumentParser(description='Train')
-    parser.add_argument('--data_name', type=str, default='Battery_inconsistent',
+    parser.add_argument('--data_name', type=str, default='CWRU_inconsistent',
                         choices=['Battery_inconsistent', 'CWRU_inconsistent'])
     parser.add_argument('--data_dir', type=str, default='./my_datasets/Battery',
                         help='Root directory for datasets')
@@ -122,18 +122,25 @@ def parse_args():
                     help='Weight for supervised source loss mixed into target steps during transfer')
     parser.add_argument('--improvement_metric', choices=['common', 'hscore', 'overall'], default='common',
                         help='Metric used to compare transfer vs baseline on target_val')
-    # --- LLM meta-selection flags ---
-    parser.add_argument('--auto_select', action='store_true',
-                        help='Use an LLM to choose model/config from data context')
+    # --- LLM meta-selection flags (enabled by default; add --no-* to disable) ---
+    parser.add_argument('--auto_select', dest='auto_select', action='store_true', default=True,
+                        help='Use an LLM to choose model/config from data context (default: on)')
+    parser.add_argument('--no-auto_select', dest='auto_select', action='store_false',
+                        help='Disable LLM auto-selection')
+    
+    parser.add_argument('--llm_compare', dest='llm_compare', action='store_true', default=True,
+                        help='Run a small comparison set to verify the LLM pick (default: on)')
+    parser.add_argument('--no-llm_compare', dest='llm_compare', action='store_false',
+                        help='Disable multi-candidate comparison proof')
+    
     parser.add_argument('--llm_backend', choices=['auto','openai','ollama'], default='auto',
                         help='Which LLM provider to use')
     parser.add_argument('--llm_model', type=str, default=None,
                         help='Provider model id (e.g., gpt-4.1-mini or llama3.1)')
-    parser.add_argument('--llm_compare', action='store_true',
-                        help='Also run a small comparison set to verify the LLM pick')
     parser.add_argument('--llm_context', type=str, default='',
-                        help='Short text describing dataset (e.g., Argonne cycles, sequence length, label consistency)')
+                        help='Short text describing dataset (e.g., Argonne cycles; channels=7; seq_len=256; label-inconsistent)')
     
+        
     args = parser.parse_args()
     if args.data_name == 'CWRU_inconsistent' and args.data_dir == './my_datasets/Battery':
         args.data_dir = './my_datasets/CWRU_dataset'
