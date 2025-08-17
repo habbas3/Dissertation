@@ -17,3 +17,11 @@ my_datasets/CWRU_dataset/
 my_datasets/UoC_GearData/
 
 .env
+
+# Ignore environment secrets
+.env
+.env.*
+*.env
+.env.local
+.env.*.local
+.env.rtf
