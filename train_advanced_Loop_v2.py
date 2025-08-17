@@ -35,6 +35,13 @@ from llm_selector import select_config
 from utils.experiment_runner import _cm_with_min_labels
 import os as _os
 
+try:
+    from dotenv import load_dotenv
+    load_dotenv()  # loads .env into os.environ
+except Exception:
+    pass
+
+api_key = os.getenv("OPENAI_API_KEY")  # llm_selector will read this too
 
 
 import sys

@@ -16,3 +16,4 @@ my_datasets/Battery/
 my_datasets/CWRU_dataset/
 my_datasets/UoC_GearData/
 
+.env
