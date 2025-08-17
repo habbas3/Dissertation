@@ -35,7 +35,7 @@ from llm_selector import select_config
 from utils.experiment_runner import _cm_with_min_labels
 import os as _os
 
-
+_os.environ["OPENAI_API_KEY"] = "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"
 
 
 import sys
@@ -136,7 +136,7 @@ def parse_args():
     parser.add_argument('--no-llm_compare', dest='llm_compare', action='store_false',
                         help='Disable multi-candidate comparison proof')
     
-    parser.add_argument('--llm_backend', choices=['auto','openai','ollama'], default='auto',
+    parser.add_argument('--llm_backend', choices=['auto','openai','ollama'], default='openai',
                         help='Which LLM provider to use')
     parser.add_argument('--llm_model', type=str, default=None,
                         help='Provider model id (e.g., gpt-4.1-mini or llama3.1)')

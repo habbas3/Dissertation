@@ -142,72 +142,122 @@ def _validate_or_default(payload: str) -> Dict[str, Any]:
 
 # ---------------------------- Provider adapters --------------------------------
 
-def call_openai(text_context: str, num_summary: Dict[str, Any], model: str = "gpt-4.1-mini") -> Dict[str, Any]:
+def call_openai(text_context: str,
+                num_summary: Dict[str, Any],
+                model: str = "gpt-4.1-mini",
+                debug_dir: Optional[str] = None) -> Dict[str, Any]:
     """Use official OpenAI SDK + Responses API with JSON output."""
     if not OPENAI_OK:
         raise RuntimeError("openai SDK not installed. pip install openai")
-    if os.getenv("OPENAI_API_KEY") is None:
+    import os
+    if os.getenv("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") is None:
         raise RuntimeError("Set OPENAI_API_KEY environment variable.")
     client = OpenAI()
     prompt = _build_user_prompt(text_context, num_summary)
-    # Responses API w/ JSON (see docs). :contentReference[oaicite:4]{index=4}
     resp = client.responses.create(
         model=model,
         input=[{"role": "system", "content": SYSTEM_PROMPT},
                {"role": "user", "content": prompt}],
         response_format={"type": "json_object"},
-        max_output_tokens=400,
+        max_output_tokens=600,
         temperature=0.2,
     )
-    # Extract text
-    txt = resp.output_text if hasattr(resp, "output_text") else (resp.choices[0].message["content"] if hasattr(resp, "choices") else "")
-    return _validate_or_default(txt)
+    txt = resp.output_text if hasattr(resp, "output_text") else (
+        resp.choices[0].message["content"] if hasattr(resp, "choices") else ""
+    )
+    if debug_dir:
+        _safe_write(f"{debug_dir}/openai_request_user.txt", prompt)
+        _safe_write(f"{debug_dir}/openai_raw.json", txt)
+    obj = _validate_or_default(txt)
+    obj["_provider"] = "openai"
+    obj["_raw"] = txt
+    return obj
 
-def call_ollama(text_context: str, num_summary: Dict[str, Any], model: str = "llama3.1") -> Dict[str, Any]:
-    """
-    Use local Ollama. Requires `ollama serve` and a pulled model (e.g., `ollama pull llama3.1`).
-    Python SDK mirrors the REST chat API.  :contentReference[oaicite:5]{index=5}
-    """
-    payload_user = _build_user_prompt(text_context, num_summary)
-    sys = SYSTEM_PROMPT
+
+
+# Save text/JSON safely; ignore errors in debug mode
+def _safe_write(path: str, data) -> None:
     try:
-        if OLLAMA_OK:
-            res = ollama.chat(model=model, messages=[
-                {"role": "system", "content": sys},
-                {"role": "user", "content": payload_user},
-            ])
-            content = res["message"]["content"]
-        else:
-            # REST fallback
-            import requests
-            url = os.getenv("OLLAMA_HOST", "http://localhost:11434") + "/api/chat"
-            r = requests.post(url, json={
-                "model": model,
-                "messages": [
-                    {"role": "system", "content": sys},
-                    {"role": "user", "content": payload_user},
-                ],
-                "stream": False
-            }, timeout=120)
-            r.raise_for_status()
-            content = r.json()["message"]["content"]
+        import os, json
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        with open(path, "w", encoding="utf-8") as f:
+            if isinstance(data, (dict, list)):
+                json.dump(data, f, indent=2)
+            else:
+                f.write(data if isinstance(data, str) else str(data))
+    except Exception:
+        # Debug writes should never crash the run
+        pass
+
+
+def call_ollama(text_context: str,
+                num_summary: Dict[str, Any],
+                model: str = "llama3.1:8b",
+                debug_dir: Optional[str] = None) -> Dict[str, Any]:
+    """
+    Use local Ollama with JSON-only mode. Saves raw request/response if debug_dir is given.
+    """
+    import json, os, requests
+    sys = SYSTEM_PROMPT
+    user = _build_user_prompt(text_context, num_summary)
+
+    payload = {
+        "model": model,
+        "messages": [
+            {"role": "system", "content": sys},
+            {"role": "user", "content": user},
+        ],
+        "format": "json",     # enforce JSON output
+        "stream": False,
+        "options": {"temperature": 0.2}
+    }
+
+    try:
+        host = os.getenv("OLLAMA_HOST", "http://127.0.0.1:11434")
+        url = host.rstrip("/") + "/api/chat"
+        r = requests.post(url, json=payload, timeout=120)
+        r.raise_for_status()
+        content = r.json()["message"]["content"]
     except Exception as e:
-        # Fallback defaults on error
         content = ""
-    return _validate_or_default(content)
+        if debug_dir:
+            _safe_write(f"{debug_dir}/ollama_error.txt", f"{type(e).__name__}: {e}")
+
+    if debug_dir:
+        _safe_write(f"{debug_dir}/ollama_request_user.txt", user)
+        _safe_write(f"{debug_dir}/ollama_request_payload.json", payload)
+        _safe_write(f"{debug_dir}/ollama_raw.txt", content)
+
+    # Parse JSON (provider should already be JSON because of format='json')
+    obj = None
+    try:
+        obj = json.loads(content)
+    except Exception:
+        # crude extraction of first {...}
+        try:
+            start = content.find("{")
+            end = content.rfind("}")
+            if start != -1 and end != -1 and end > start:
+                obj = json.loads(content[start:end+1])
+        except Exception:
+            obj = None
+
+    parsed = _validate_or_default(json.dumps(obj) if obj is not None else content)
+    parsed["_provider"] = "ollama"
+    parsed["_raw"] = content
+    return parsed
+
+
 
 # ------------------------------ Public API ------------------------------------
 
 def select_config(text_context: str,
                   num_summary: Dict[str, Any],
                   backend: str = "auto",
-                  model: Optional[str] = None) -> Dict[str, Any]:
-    """
-    Returns a validated dict with keys compatible with your argparse.
-    backend: 'auto' | 'openai' | 'ollama'
-    """
-    if backend == "openai" or (backend == "auto" and os.getenv("OPENAI_API_KEY")):
-        return call_openai(text_context, num_summary, model or "gpt-4.1-mini")
+                  model: Optional[str] = None,
+                  debug_dir: Optional[str] = None) -> Dict[str, Any]:
+    if backend == "openai" or (backend == "auto" and os.getenv("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")):
+        return call_openai(text_context, num_summary, model or "gpt-4.1-mini", debug_dir=debug_dir)
     if backend == "ollama" or backend == "auto":
-        return call_ollama(text_context, num_summary, model or "llama3.1")
+        return call_ollama(text_context, num_summary, model or "llama3.1:8b", debug_dir=debug_dir)
     raise RuntimeError("No LLM backend available. Set OPENAI_API_KEY or run Ollama locally.")
