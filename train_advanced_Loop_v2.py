@@ -679,7 +679,22 @@ def run_cwru_experiments(args):
             if transfer_acc < baseline_acc:
                 print(f"⚠️ Transfer did not improve over baseline for {src_str} → {tgt_str}")
 
+            # Confusion matrices with consistent axes and minimum label coverage
+            cm_transfer, labels_tr = _cm_with_min_labels(tr_labels, tr_preds, min_labels=10)
+            cm_baseline, labels_bl = _cm_with_min_labels(baseline_labels_np, baseline_preds_np, min_labels=10)
+            labels = sorted(set(labels_tr) | set(labels_bl))
+            cm_transfer, labels = _cm_with_min_labels(tr_labels, tr_preds, min_labels=len(labels))
+            cm_baseline, _ = _cm_with_min_labels(baseline_labels_np, baseline_preds_np, min_labels=len(labels))
+            disp = ConfusionMatrixDisplay(confusion_matrix=cm_transfer, display_labels=labels)
+            disp.plot(cmap='Blues')
+            plt.savefig(os.path.join(ft_dir, f"cm_transfer_{src_str}_to_{tgt_str}.png"))
+            plt.close()
 
+            disp = ConfusionMatrixDisplay(confusion_matrix=cm_baseline, display_labels=labels)
+            disp.plot(cmap='Blues')
+            plt.savefig(os.path.join(ft_dir, f"cm_baseline_{src_str}_to_{tgt_str}.png"))
+            plt.close()
+            
             results.append(
                 {
                     "model": model_name,
