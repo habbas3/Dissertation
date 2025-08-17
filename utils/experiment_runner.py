@@ -25,6 +25,19 @@ from utils.train_utils_open_univ import train_utils_open_univ
 from my_datasets.Battery_label_inconsistent import load_battery_dataset
 from torch.utils.data import DataLoader
 from sklearn.metrics import confusion_matrix
+import json
+
+
+def _read_timing_json(run_dir):
+    import json as _json, os as _os
+    path = _os.path.join(run_dir, "train_timing.json")
+    if _os.path.exists(path):
+        try:
+            with open(path, "r") as f:
+                return _json.load(f)
+        except Exception:
+            return {}
+    return {}
 
 
 def _cm_with_min_labels(y_true, y_pred, min_labels=3):
@@ -94,5 +107,21 @@ def run_experiment(args, save_dir, trial=None):
 
     trainer.setup()
     return trainer.train()
+
+def add_timing_to_row(row, base_dir, ft_dir):
+    """Merge timing information into a summary row if available."""
+    base_timing = _read_timing_json(base_dir)
+    ft_timing = _read_timing_json(ft_dir)
+
+    row["baseline_time_sec"] = float(base_timing.get("wall_time_sec", float("nan")))
+    row["transfer_time_sec"] = float(ft_timing.get("wall_time_sec", float("nan")))
+
+    if not (row["baseline_time_sec"] != row["baseline_time_sec"]) and \
+       not (row["transfer_time_sec"] != row["transfer_time_sec"]) and \
+       row["transfer_time_sec"] > 0:
+        row["speedup_x"] = row["baseline_time_sec"] / row["transfer_time_sec"]
+    else:
+        row["speedup_x"] = float("nan")
+    return row
 
 

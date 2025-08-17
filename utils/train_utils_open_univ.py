@@ -41,6 +41,7 @@ from collections import Counter
 from torch.utils.data import Dataset, DataLoader
 import torch.nn as nn
 import math
+import json
 
 
 
@@ -77,6 +78,22 @@ def _kaiming_reset_linear(lin: nn.Linear):
     if lin.bias is not None:
         nn.init.zeros_(lin.bias)
 
+@torch.no_grad()
+def calibrate_bn(model: nn.Module, loader, device, max_batches: int = 50):
+    """Recompute BN running stats on target data; weights frozen."""
+    if loader is None:
+        return
+    was_training = model.training
+    model.train()  # BN updates running stats in train mode
+    cnt = 0
+    for x, _ in loader:
+        x = x.to(device, non_blocking=True)
+        model(x)
+        cnt += 1
+        if cnt >= max_batches:
+            break
+    model.train(was_training)
+    print(f"📏 BN calibrated on {cnt} target batches.")
 
 
 class train_utils_open_univ(object):
@@ -635,6 +652,12 @@ class train_utils_open_univ(object):
 
 
         self.start_epoch = 0
+        
+        if self.transfer_mode and hasattr(self, 'optimizer') and self.optimizer is not None:
+            self.optimizer.state.clear()
+            for pg in self.optimizer.param_groups:
+                pg['lr'] = self.args.lr
+            print("🧽 Cleared optimizer state and reset LR for transfer.")
 
 
         # Invert the model and define the loss
@@ -646,6 +669,14 @@ class train_utils_open_univ(object):
             self.AdversarialNet_auxiliary.to(self.device)
         self.classifier_layer.to(self.device)
         self.sngp_model.to(self.device)
+        
+        if self.transfer_mode and self.dataloaders.get('target_train') is not None:
+            with torch.no_grad():
+                for p in self.model.parameters():
+                    p.requires_grad = False
+                calibrate_bn(self.model, self.dataloaders['target_train'], self.device, max_batches=50)
+                for p in self.model.parameters():
+                    p.requires_grad = True
 
         if args.inconsistent == "OSBP":
             self.inconsistent_loss = nn.BCELoss()
@@ -780,6 +811,9 @@ class train_utils_open_univ(object):
         
         self.warmup_epochs = int(getattr(self.args, "warmup_epochs", 3))
         self._head_module = _find_last_linear(self.model)
+        self._train_start_time = time.time()
+        self._best_metric_time = None
+        self._best_epoch = 0
     
         for epoch in range(self.args.max_epoch):
             source_iter = None
@@ -991,6 +1025,8 @@ class train_utils_open_univ(object):
                     best_model_wts = copy.deepcopy(self.model.state_dict())
                     print("✓ Best model updated based on validation accuracy.")
                     val_improved = True
+                    self._best_epoch = epoch
+                    self._best_metric_time = time.time() - self._train_start_time
     
                 if phase == 'target_val':
                     preds_np = np.array(preds_all)
@@ -1032,6 +1068,8 @@ class train_utils_open_univ(object):
                         best_model_wts = copy.deepcopy(self.model.state_dict())
                         val_improved = True
                         print("✓ Best target model updated based on hscore/common.")
+                        self._best_epoch = epoch
+                        self._best_metric_time = time.time() - self._train_start_time
     
             self.lr_scheduler.step()
             if patience is not None:
@@ -1058,6 +1096,24 @@ class train_utils_open_univ(object):
         )
         print(f"🔖  Saved best source model to {self.save_dir}/best_model.pth")
         print(f"🏁 Final best target validation accuracy: {self.best_val_acc_class:.4f}")
+        
+        
+        total_time = time.time() - self._train_start_time
+        metrics = {
+            "wall_time_sec": float(total_time),
+            "time_to_best_sec": float(self._best_metric_time if self._best_metric_time is not None else total_time),
+            "best_epoch": int(self._best_epoch),
+            "transfer_mode": bool(self.transfer_mode),
+            "num_target_samples": int(self.target_sample_count),
+        }
+        try:
+            os.makedirs(self.save_dir, exist_ok=True)
+            with open(os.path.join(self.save_dir, "train_timing.json"), "w") as f:
+                json.dump(metrics, f, indent=2)
+            print(f"⏱  Timing saved → {os.path.join(self.save_dir, 'train_timing.json')}")
+        except Exception as e:
+            print("⚠️ Could not write timing:", e)
+
         
         # Build a wrapper so evaluation can call model(x) directly when SNGP
         # Build a wrapper so evaluation can call model(x) directly when SNGP
