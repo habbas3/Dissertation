@@ -150,7 +150,7 @@ def call_openai(text_context: str,
     if not OPENAI_OK:
         raise RuntimeError("openai SDK not installed. pip install openai")
     import os
-    if os.getenv("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") is None:
+    if os.getenv("OPENAI_API_KEY") is None:
         raise RuntimeError("Set OPENAI_API_KEY environment variable.")
     client = OpenAI()
     prompt = _build_user_prompt(text_context, num_summary)
@@ -256,7 +256,7 @@ def select_config(text_context: str,
                   backend: str = "auto",
                   model: Optional[str] = None,
                   debug_dir: Optional[str] = None) -> Dict[str, Any]:
-    if backend == "openai" or (backend == "auto" and os.getenv("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")):
+    if backend == "openai" or (backend == "auto" and os.getenv("OPENAI_API_KEY")):
         return call_openai(text_context, num_summary, model or "gpt-4.1-mini", debug_dir=debug_dir)
     if backend == "ollama" or backend == "auto":
         return call_ollama(text_context, num_summary, model or "llama3.1:8b", debug_dir=debug_dir)
