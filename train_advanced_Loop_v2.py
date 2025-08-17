@@ -35,7 +35,6 @@ from llm_selector import select_config
 from utils.experiment_runner import _cm_with_min_labels
 import os as _os
 
-_os.environ["OPENAI_API_KEY"] = "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"
 
 
 import sys
