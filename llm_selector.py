@@ -31,6 +31,12 @@ except Exception:
     # fallback to REST later if needed
     pass
 
+try:
+    from dotenv import load_dotenv, find_dotenv
+    load_dotenv(find_dotenv(), override=False)
+except Exception:
+    pass
+
 # ------------------------------------------------------------------------------
 JSON_SCHEMA = {
     "type": "object",
