@@ -1,6 +1,6 @@
 from collections import Counter
 from sklearn.preprocessing import LabelEncoder, StandardScaler
-from sklearn.model_selection import train_test_split
+from sklearn.model_selection import StratifiedShuffleSplit, GroupShuffleSplit, StratifiedGroupKFold, ShuffleSplit
 from torch.utils.data import Dataset, DataLoader, WeightedRandomSampler
 import numpy as np
 import pandas as pd
@@ -20,6 +20,100 @@ class Compose:
             x = t(x)
         return x
 
+
+# --- Splitting utilities ---
+from typing import Optional
+
+
+
+def _safe_stratified_split(y, groups=None, test_size=0.2, seed=42, min_val=20):
+    """
+    Robust split for tiny/imbalanced Battery slices:
+      - Prefer stratified (group-aware if groups provided)
+      - If any class has < 2 samples, put those singletons in TRAIN and stratify the rest
+      - If stratification is still impossible, fall back to group/random split
+      - Ensure a minimum validation size via test_size adjustment
+    """
+    import numpy as np
+
+    y = np.asarray(y)
+    n = len(y)
+    eff_test = min(0.5, max(test_size, min_val / max(1, n)))  # keep val reasonably sized
+
+    classes, counts = np.unique(y, return_counts=True)
+
+    # Case 1: only one class present → no stratification possible
+    if len(classes) <= 1:
+        if groups is not None:
+            gss = GroupShuffleSplit(n_splits=1, test_size=eff_test, random_state=seed)
+            tr, va = next(gss.split(np.zeros(n), groups=groups))
+        else:
+            ss = ShuffleSplit(n_splits=1, test_size=eff_test, random_state=seed)
+            tr, va = next(ss.split(np.zeros(n)))
+        print("⚠️  Split fallback: single-class set → using GroupShuffle/Shuffle split.")
+        return tr, va
+
+    # Case 2: some classes are singletons → send them to TRAIN, stratify the rest
+    singletons = set(classes[counts < 2].tolist())
+    if singletons:
+        mask_single = np.isin(y, list(singletons))
+        idx_single = np.where(mask_single)[0]          # force to TRAIN
+        idx_rest   = np.where(~mask_single)[0]         # eligible for stratified split
+        y_rest     = y[idx_rest]
+        groups_rest = groups[idx_rest] if groups is not None else None
+
+        rest_classes, rest_counts = np.unique(y_rest, return_counts=True)
+        can_stratify_rest = (len(rest_classes) >= 2) and np.all(rest_counts >= 2)
+
+        if can_stratify_rest:
+            if groups_rest is not None:
+                # Use SGKF and pick a fold closest to eff_test proportion
+                n_splits = max(2, int(round(1.0 / eff_test)))
+                sgkf = StratifiedGroupKFold(n_splits=n_splits, shuffle=True, random_state=seed)
+                best = None
+                target = eff_test * len(idx_rest)
+                for tr_r, va_r in sgkf.split(np.zeros_like(y_rest), y_rest, groups_rest):
+                    if best is None or abs(len(va_r) - target) < abs(len(best[1]) - target):
+                        best = (tr_r, va_r)
+                tr_r, va_r = best
+            else:
+                sss = StratifiedShuffleSplit(n_splits=1, test_size=eff_test, random_state=seed)
+                tr_r, va_r = next(sss.split(np.zeros_like(y_rest), y_rest))
+            tr_idx = idx_rest[tr_r]
+            va_idx = idx_rest[va_r]
+            # add singleton samples to TRAIN
+            tr_idx = np.concatenate([tr_idx, idx_single])
+            print(f"⚠️  Split fallback: moved {len(idx_single)} singleton samples to TRAIN; stratified the rest.")
+            return tr_idx, va_idx
+        else:
+            # Can't stratify the rest either → group/random split on rest, then add singletons to TRAIN
+            if groups_rest is not None:
+                gss = GroupShuffleSplit(n_splits=1, test_size=eff_test, random_state=seed)
+                tr_r, va_r = next(gss.split(np.zeros(len(idx_rest)), groups=groups_rest))
+            else:
+                ss = ShuffleSplit(n_splits=1, test_size=eff_test, random_state=seed)
+                tr_r, va_r = next(ss.split(np.zeros(len(idx_rest))))
+            tr_idx = np.concatenate([idx_rest[tr_r], idx_single])
+            va_idx = idx_rest[va_r]
+            print(f"⚠️  Split fallback: no stratify possible; using GroupShuffle/Shuffle on rest. "
+                  f"Singletons ({len(idx_single)}) kept in TRAIN.")
+            return tr_idx, va_idx
+
+    # Case 3: clean stratified split (preferred)
+    if groups is not None:
+        n_splits = max(2, int(round(1.0 / eff_test)))
+        sgkf = StratifiedGroupKFold(n_splits=n_splits, shuffle=True, random_state=seed)
+        best = None
+        target = eff_test * n
+        for tr, va in sgkf.split(np.zeros_like(y), y, groups):
+            if best is None or abs(len(va) - target) < abs(len(best[1]) - target):
+                best = (tr, va)
+        return best
+    else:
+        sss = StratifiedShuffleSplit(n_splits=1, test_size=eff_test, random_state=seed)
+        return next(sss.split(np.zeros_like(y), y))
+
+    
 # --- Sequence generation ---
 def build_sequences(df, feature_cols, label_col, seq_len=32, group_col=None):
     sequences, labels, groups = [], [], []
@@ -88,6 +182,8 @@ def load_battery_dataset(
     batch_size=64,
     sequence_length=32,
     num_classes=None,
+    cycles_per_file=None,
+    sample_random_state=42,
 ):
     
     df = pd.read_csv(csv_path)
@@ -95,16 +191,28 @@ def load_battery_dataset(
     cycle_counts = df.groupby("filename")["cycle_number"].max()
     print("\U0001F501 Total cycles per cell:\n", cycle_counts)
 
-    def _half_cycles(group: pd.DataFrame) -> pd.DataFrame:
-        """Return only the first 40% of cycles for a single cell.
+    rng = np.random.default_rng(sample_random_state)
 
-        Uses the ordering of `cycle_number` within each group to select the
-        earliest portion of the available cycles, which is more robust when
-        cycle numbering does not start at 0 or 1."""
-        group = group.sort_values("cycle_number")
-        n_cycles = len(group)
-        cutoff_idx = int(np.ceil(n_cycles * 0.25))
-        return group.iloc[:cutoff_idx]
+    def _sample_cycles(group: pd.DataFrame) -> pd.DataFrame:
+        """Optionally select a contiguous block of cycles at random.
+
+        Parameters
+        ----------
+        group : DataFrame
+            All cycles for a single cell.
+
+        Returns
+        -------
+        DataFrame
+            Either the full group (if ``cycles_per_file`` is ``None``) or a
+            random contiguous slice of length ``cycles_per_file``.
+        """
+
+        if cycles_per_file is None or cycles_per_file <= 0 or len(group) <= cycles_per_file:
+            return group
+        start_max = len(group) - cycles_per_file
+        start = int(rng.integers(0, start_max + 1))
+        return group.iloc[start : start + cycles_per_file]
 
     if classification_label not in df.columns:
         raise ValueError(f"Missing classification label: {classification_label}")
@@ -157,10 +265,10 @@ def load_battery_dataset(
         if target_df.empty:
             print(f"⚠️ No rows found for target cathodes: {target_cathodes}")
         
-    # Use only the first 50% of cycles for each cell in both source and target
-    source_df = source_df.groupby("filename", group_keys=False).apply(_half_cycles).reset_index(drop=True)
+    # Optionally subsample a fixed number of cycles from each cell
+    source_df = source_df.groupby("filename", group_keys=False).apply(_sample_cycles).reset_index(drop=True)
     if not target_df.empty:
-        target_df = target_df.groupby("filename", group_keys=False).apply(_half_cycles).reset_index(drop=True)
+        target_df = target_df.groupby("filename", group_keys=False).apply(_sample_cycles).reset_index(drop=True)
 
     feature_cols = ['cycle_number', 'energy_charge', 'capacity_charge', 'energy_discharge',
                     'capacity_discharge', 'cycle_start', 'cycle_duration']
@@ -173,74 +281,32 @@ def load_battery_dataset(
 
     # --- Source split ---
     label_col = classification_label + "_encoded"
-    file_labels = source_df.groupby("filename")[label_col].first()
-    files = file_labels.index.to_numpy()
-    labels = file_labels.values
-
-    if len(np.unique(labels)) == 1 or np.min(np.bincount(labels)) < 2:
-        print("⚠️ Not enough samples to stratify source files. Using random split.")
-        if len(files) < 2:
-            train_files, val_files = files, []
-        else:
-            train_files, val_files = train_test_split(
-                files,
-                test_size=0.25,
-                random_state=42,
-            )
-
-    else:
-        train_files, val_files = train_test_split(
-            files,
-            test_size=0.25,
-            stratify=labels,
-            random_state=42,
-        )
-
-    train_df = source_df[source_df["filename"].isin(train_files)].reset_index(drop=True)
-    val_df = source_df[source_df["filename"].isin(val_files)].reset_index(drop=True)
-    X_train, y_train = build_sequences(train_df, feature_cols, label_col, seq_len=sequence_length)
-    X_val, y_val = build_sequences(val_df, feature_cols, label_col, seq_len=sequence_length)
+    
+    src_group_col = "cell_id" if "cell_id" in source_df.columns else "filename"
+    X_src, y_src, g_src = build_sequences(
+        source_df, feature_cols, label_col, seq_len=sequence_length, group_col=src_group_col
+    )
+    
+    src_tr_idx, src_va_idx = _safe_stratified_split(y_src, groups=g_src, test_size=0.2, seed=42, min_val=30)
+    X_train, y_train = X_src[src_tr_idx], y_src[src_tr_idx]
+    X_val, y_val = X_src[src_va_idx], y_src[src_va_idx]
     
 
-    transform = Compose([Reshape()])  
+    transform = Compose([Reshape()])
 
     source_train = DataLoader(BatteryDataset(X_train, y_train, transform), batch_size=batch_size, shuffle=True)
-    source_val   = DataLoader(BatteryDataset(X_val, y_val, transform), batch_size=batch_size, shuffle=False)
+    source_val = DataLoader(BatteryDataset(X_val, y_val, transform), batch_size=batch_size, shuffle=False)
 
     # --- Target split ---
     if not target_df.empty:
-        label_col = classification_label + "_encoded"
-        tgt_file_labels = target_df.groupby("filename")[label_col].first()
-        tgt_files = tgt_file_labels.index.to_numpy()
-        tgt_labels = tgt_file_labels.values
-
-        if len(np.unique(tgt_labels)) == 1 or np.min(np.bincount(tgt_labels)) < 2:
-            print(f"⚠️ Not enough target samples to stratify. Using random split.")
-            if len(tgt_files) < 2:
-                tgt_train_files, tgt_val_files = tgt_files, []
-            else:
-                tgt_train_files, tgt_val_files = train_test_split(
-                    tgt_files,
-                    test_size=0.2,
-                    random_state=42,
-                )
-        else:
-            tgt_train_files, tgt_val_files = train_test_split(
-                tgt_files,
-                test_size=0.2,
-                stratify=tgt_labels,
-                random_state=42,
-            )
-
-        tgt_train_df = target_df[target_df["filename"].isin(tgt_train_files)].reset_index(drop=True)
-        tgt_val_df = target_df[target_df["filename"].isin(tgt_val_files)].reset_index(drop=True)
-
-        X_tgt_train, y_tgt_train, g_tgt_train = build_sequences(
-            tgt_train_df, feature_cols, label_col, seq_len=sequence_length, group_col="cathode"
+        tgt_group_col = "cell_id" if "cell_id" in target_df.columns else "filename"
+        X_tgt, y_tgt, g_tgt = build_sequences(
+            target_df, feature_cols, label_col, seq_len=sequence_length, group_col=tgt_group_col)
+        tgt_tr_idx, tgt_va_idx = _safe_stratified_split(y_tgt, groups=g_tgt, test_size=0.3, seed=42, min_val=20)
+        X_tgt_train, y_tgt_train, g_tgt_train = (
+            X_tgt[tgt_tr_idx], y_tgt[tgt_tr_idx], g_tgt[tgt_tr_idx]
         )
-        X_tgt_val, y_tgt_val = build_sequences(
-            tgt_val_df, feature_cols, label_col, seq_len=sequence_length
-        )
+        X_tgt_val, y_tgt_val = X_tgt[tgt_va_idx], y_tgt[tgt_va_idx]
 
         # When very few target samples are available, augment and oversample
         if len(y_tgt_train) > 0 and len(y_tgt_train) < 100:

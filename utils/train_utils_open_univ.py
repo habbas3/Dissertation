@@ -42,6 +42,10 @@ from torch.utils.data import Dataset, DataLoader
 import torch.nn as nn
 import math
 import json
+from torch.utils.data import WeightedRandomSampler
+from sklearn.metrics import confusion_matrix, classification_report
+import matplotlib.pyplot as plt
+import numpy as np
 
 
 
@@ -77,6 +81,50 @@ def _kaiming_reset_linear(lin: nn.Linear):
         nn.init.xavier_uniform_(lin.weight)
     if lin.bias is not None:
         nn.init.zeros_(lin.bias)
+        
+        
+def _wrap_with_class_balanced_sampler(loader, batch_size, num_workers, device):
+    """
+    Replace a DataLoader with a class-balanced sampler so minority classes are not ignored.
+    Works even if the dataset doesn't expose .targets; we scan labels once.
+    """
+    if loader is None:
+        return loader
+    ds = loader.dataset
+
+    # Try to get labels efficiently; fall back to a one-pass scan
+    labels = None
+    for attr in ("targets", "labels", "y", "ys"):
+        if hasattr(ds, attr):
+            arr = getattr(ds, attr)
+            labels = np.asarray(arr if isinstance(arr, (list, np.ndarray)) else list(arr))
+            break
+    if labels is None:
+        # One pass through the dataset to read labels
+        labels = np.array([ds[i][1] for i in range(len(ds))])
+
+    classes, counts = np.unique(labels, return_counts=True)
+    class_to_weight = {c: 1.0 / cnt for c, cnt in zip(classes, counts)}
+    sample_weights = np.array([class_to_weight[int(y)] for y in labels], dtype=np.float32)
+
+    sampler = WeightedRandomSampler(
+        weights=torch.from_numpy(sample_weights),
+        num_samples=len(sample_weights),
+        replacement=True
+    )
+
+    # Rebuild the loader with the sampler (no shuffle)
+    return torch.utils.data.DataLoader(
+        ds,
+        batch_size=batch_size,
+        sampler=sampler,
+        shuffle=False,
+        num_workers=num_workers,
+        pin_memory=(True if str(device) == 'cuda' else False),
+        drop_last=False
+    )
+
+
 
 @torch.no_grad()
 def calibrate_bn(model: nn.Module, loader, device, max_batches: int = 50):
@@ -94,6 +142,85 @@ def calibrate_bn(model: nn.Module, loader, device, max_batches: int = 50):
             break
     model.train(was_training)
     print(f"📏 BN calibrated on {cnt} target batches.")
+    
+@torch.no_grad()
+def _save_confusion_outputs(model: nn.Module,
+                            loader,
+                            device,
+                            num_classes: int,
+                            out_dir: str,
+                            split_name: str,
+                            labels_override=None):
+    """
+    Saves confusion matrix (PNG + CSV) and classification report (JSON).
+    Handles models that return (logits, features, ...) and maps any
+    predicted/true labels outside [0..num_classes-1] safely.
+    """
+    import os
+    if loader is None:
+        return
+
+    model.eval()
+    all_preds, all_labels = [], []
+    for x, y in loader:
+        x = x.to(device, non_blocking=True)
+        out = model(x)
+        if isinstance(out, tuple):
+            out = out[0]
+        # logits -> preds
+        preds = torch.argmax(out, dim=1).detach().cpu().numpy()
+        labels = y.detach().cpu().numpy()
+        all_preds.append(preds)
+        all_labels.append(labels)
+
+    if not all_labels:
+        return
+
+    y_true = np.concatenate(all_labels)
+    y_pred = np.concatenate(all_preds)
+
+    # Keep only known-class samples, then clip preds to known-class range
+    known_mask = y_true < num_classes
+    y_true = y_true[known_mask]
+    y_pred = y_pred[known_mask]
+    y_pred = np.clip(y_pred, 0, num_classes - 1)
+
+    # Label set for axes
+    labels = list(labels_override) if labels_override is not None else list(range(num_classes))
+
+    cm = confusion_matrix(y_true, y_pred, labels=labels)
+
+    os.makedirs(out_dir, exist_ok=True)
+    # CSV
+    np.savetxt(os.path.join(out_dir, f"confmat_{split_name}.csv"), cm, delimiter=",", fmt="%d")
+
+    # PNG
+    fig = plt.figure(figsize=(4 + 0.3*len(labels), 4 + 0.3*len(labels)), dpi=150)
+    ax = fig.add_subplot(111)
+    im = ax.imshow(cm, interpolation='nearest')
+    ax.figure.colorbar(im, ax=ax)
+    ax.set(title=f"Confusion Matrix - {split_name}", xlabel="Predicted", ylabel="True")
+    ax.set_xticks(range(len(labels))); ax.set_yticks(range(len(labels)))
+    ax.set_xticklabels(labels); ax.set_yticklabels(labels)
+    thresh = cm.max()/2 if cm.size else 0
+    for i in range(len(labels)):
+        for j in range(len(labels)):
+            val = int(cm[i, j]) if cm.size else 0
+            ax.text(j, i, val, ha="center", va="center",
+                    color="white" if val > thresh else "black")
+    fig.tight_layout()
+    png_path = os.path.join(out_dir, f"confmat_{split_name}.png")
+    fig.savefig(png_path)
+    plt.close(fig)
+
+    # Classification report
+    report = classification_report(y_true, y_pred, labels=labels, zero_division=0, output_dict=True)
+    with open(os.path.join(out_dir, f"classification_report_{split_name}.json"), "w") as f:
+        json.dump(report, f, indent=2)
+
+    print(f"🧾 Saved confusion matrix & report for {split_name} → {png_path}")
+
+
 
 
 class train_utils_open_univ(object):
@@ -234,6 +361,8 @@ class train_utils_open_univ(object):
                     classification_label=self.args.classification_label,
                     batch_size=self.args.batch_size,
                     sequence_length=self.args.sequence_length,
+                    cycles_per_file=getattr(self.args, 'cycles_per_file', None),
+                    sample_random_state=getattr(self.args, 'sample_random_state', 42),
                 )
         
                 self.datasets['source_train'] = source_train
@@ -347,16 +476,26 @@ class train_utils_open_univ(object):
         
         # Target sample count (safe)
         self.target_sample_count = 0
-        tgt_dl = self.dataloaders.get('target_train')
-        if tgt_dl is not None:
-            ds_len_tgt = _dataset_len(tgt_dl)
-            self.target_sample_count = ds_len_tgt
-            if 0 < ds_len_tgt < 100:
+        if self.dataloaders.get('target_train') is not None:
+            self.target_sample_count = len(self.dataloaders['target_train'].dataset)
+            # Class-balanced sampling for very small targets (Battery-inconsistent case)
+            if self.args.data_name == 'Battery_inconsistent' and self.target_sample_count > 0:
+                tb = self.args.batch_size
+                nw = self.args.num_workers
+                self.dataloaders['target_train'] = _wrap_with_class_balanced_sampler(
+                    self.dataloaders['target_train'], batch_size=tb, num_workers=nw, device=self.device
+                )
+                print("⚖️  Enabled class-balanced sampling for target_train.")
+
+            if self.target_sample_count < 100:
                 args.lr = min(args.lr, 1e-4)
-                logging.info(f"Reducing learning rate to {args.lr} for {ds_len_tgt} target samples")
+                logging.info(f"Reducing learning rate to {args.lr} for {self.target_sample_count} target samples")
+
+        tgt_dl = self.dataloaders.get('target_train')
         
         # Determine transfer mode only if target_train actually has data
-        self.transfer_mode = (_dataset_len(tgt_dl) > 0 and getattr(self.args, 'pretrained_model_path', None))
+        self.transfer_mode = (self.target_sample_count > 0 and getattr(self.args, 'pretrained_model_path', None))
+
         
         # Pick a NON-EMPTY sample loader for inferring input shape
         sample_loader = _first_nonempty_loader(self.dataloaders, ('source_train','target_train','source_val','target_val'))
@@ -634,6 +773,41 @@ class train_utils_open_univ(object):
                                         weight_decay=args.weight_decay)
         else:
             raise Exception("optimizer not implement")
+            
+        # --- Discriminative LR for transfer: tiny LR for backbone, larger for head ---
+        if self.transfer_mode:
+            head = _find_last_linear(self.model)
+            head_params = list(head.parameters()) if head is not None else []
+            head_param_ids = {id(p) for p in head_params}
+            base_params = [p for p in self.model.parameters() if id(p) not in head_param_ids]
+
+            lr_head = float(self.args.lr)
+            lr_base = float(self.args.lr) * float(getattr(self.args, "backbone_lr_mult", 0.1))
+            wd = float(self.args.weight_decay)
+
+            opt_name = str(getattr(self.args, "opt", "adam")).lower()
+            if opt_name == "sgd":
+                self.optimizer = torch.optim.SGD(
+                    [
+                        {"params": base_params, "lr": lr_base, "weight_decay": wd},
+                        {"params": head_params, "lr": lr_head, "weight_decay": wd},
+                    ],
+                    momentum=self.args.momentum,
+                    nesterov=getattr(self.args, "nesterov", True),
+                )
+            else:
+                # default: AdamW/Adam path
+                if opt_name == "adamw":
+                    Opt = torch.optim.AdamW
+                else:
+                    Opt = torch.optim.Adam
+                self.optimizer = Opt(
+                    [
+                        {"params": base_params, "lr": lr_base, "weight_decay": wd},
+                        {"params": head_params, "lr": lr_head, "weight_decay": wd},
+                    ]
+                )
+            print(f"🔧 Discriminative LR set → backbone: {lr_base:g}, head: {lr_head:g}")
 
 
         # Define the learning rate decay
@@ -1152,6 +1326,35 @@ class train_utils_open_univ(object):
             eval_model = SNGPWrapper(self.model, self.bottleneck_layer if self.args.bottleneck else nn.Identity(), self.sngp_model)
         else:
             eval_model = self.model
+            
+        # === Confusion matrices for this run ===
+        # Battery datasets pin labels to [0,1,2]; others (e.g., CWRU) use full range
+        labels_override = (
+            [0, 1, 2]
+            if self.args.data_name == "Battery_inconsistent"
+            else list(range(self.num_classes))
+        )
+        model_for_eval = eval_model  # use the wrapper when SNGP, else the model
+
+        try:
+            if self.dataloaders.get('source_val') is not None:
+                _save_confusion_outputs(model_for_eval,
+                                        self.dataloaders['source_val'],
+                                        self.device,
+                                        self.num_classes,
+                                        self.save_dir,
+                                        split_name="source_val",
+                                        labels_override=labels_override)
+            if self.dataloaders.get('target_val') is not None:
+                _save_confusion_outputs(model_for_eval,
+                                        self.dataloaders['target_val'],
+                                        self.device,
+                                        self.num_classes,
+                                        self.save_dir,
+                                        split_name="target_val",
+                                        labels_override=labels_override)
+        except Exception as e:
+            print(f"⚠️ Failed to save confusion matrices: {e}")
 
         # now return the model instance *and* the target‐val accuracy (so optuna can optimize it)
         return eval_model, self.best_val_acc_class

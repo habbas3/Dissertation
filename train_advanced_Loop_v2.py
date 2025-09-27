@@ -74,12 +74,12 @@ def reset_seed(seed=SEED):
 
 def parse_args():
     parser = argparse.ArgumentParser(description='Train')
-    parser.add_argument('--data_name', type=str, default='Battery_inconsistent',
+    parser.add_argument('--data_name', type=str, default='CWRU_inconsistent',
                         choices=['Battery_inconsistent', 'CWRU_inconsistent'])
     parser.add_argument('--data_dir', type=str, default='./my_datasets/Battery',
                         help='Root directory for datasets')
-    parser.add_argument('--csv', type=str, default='./my_datasets/Battery/battery_data_labeled.csv',
-                        help='CSV file for Battery dataset')
+    parser.add_argument('--csv', type=str, default='./my_datasets/Battery/battery_cycles_labeled.csv',
+                        help='Cycle-level CSV for Battery dataset (run my_datasets/prepare_cycle_csv.py to generate if missing)')
     parser.add_argument('--normlizetype', type=str, default='mean-std')
     parser.add_argument('--method', type=str, default='sngp', choices=['deterministic', 'sngp'])
     parser.add_argument('--gp_hidden_dim', type=int, default=2048)
@@ -117,6 +117,10 @@ def parse_args():
     parser.add_argument('--input_channels', type=int, default=7)
     parser.add_argument('--classification_label', type=str, default='eol_class')
     parser.add_argument('--sequence_length', type=int, default=32)
+    parser.add_argument('--cycles_per_file', type=int, default=None,
+                        help='Number of contiguous cycles randomly sampled from each cell')
+    parser.add_argument('--sample_random_state', type=int, default=42,
+                        help='Random seed used when sampling cycles')
     parser.add_argument('--transfer_task', type=str, default='[[0],[1]]',
                         help='CWRU transfer task as [[source],[target]]')
     parser.add_argument('--source_cathode', nargs='+', default=[])
@@ -160,95 +164,288 @@ def parse_args():
             pass
     return args
 
+# --- Chemistry-aware cathode grouping and compatibility ---
+    
 def build_cathode_groups(csv_path):
     """
-    Group cathodes by chemistry similarity.
-
-    Returns keys compatible with existing code:
-      - 'nmc_pool':   conventional & derivative NMC layered oxides (incl. HE5050, FCG if present)
-      - 'hv_pool':    all non-NMC cathodes (for backward compatibility)
-      - 'li_rich_pool': Li-rich layered (oxygen-redox) NMC variants
-      - 'spinel_pool': high-voltage spinel (e.g., 5Vspinel/LNMO)
-      - 'other_pool': any remaining non-NMC types not caught above
-
-    Upstream that expects only {'nmc_pool','hv_pool'} still works, while you can
-    optionally use the finer pools for better transfer task definitions.
+    Group cathodes by approximate chemistry family and return a compatibility map.
+    Families are intentionally tight to avoid harmful transfers.
     """
-    import pandas as pd
-    import re
 
     df = pd.read_csv(csv_path)
-    cathodes = df["cathode"].astype(str).str.strip()
-
-    # Unique label universe (whitespace-cleaned)
-    uniq = sorted(cathodes.unique().tolist())
-
-    # --- Detect families by chemistry ---
-    # 1) Conventional / derivative NMC (layered oxides): NMC***, HE5050, FCG (Full Concentration Gradient NMC)
-    nmc_like_mask = (
-        cathodes.str.match(r'^(?i:nmc)') |
-        cathodes.str.fullmatch(r'(?i:HE5050)') |
-        cathodes.str.fullmatch(r'(?i:FCG)')
-    )
-    nmc_pool = sorted(cathodes[nmc_like_mask].unique().tolist())
-
-    # 2) Li-rich layered oxides (oxygen-redox), e.g., Li1.2Ni0.3Mn0.6O2, Li1.35Ni0.33Mn0.67O2.35
-    #    Heuristic: starts with Li1.xNi...O2*
-    li_rich_mask = cathodes.str.match(r'(?i)^Li1\.\d+Ni', na=False)
-    li_rich_pool = sorted(cathodes[li_rich_mask].unique().tolist())
-
-    # 3) High-voltage spinel (LNMO), e.g., "5Vspinel"
-    spinel_mask = cathodes.str.contains(r'(?i)spinel', na=False)
-    spinel_pool = sorted(cathodes[spinel_mask].unique().tolist())
-
-    # Backward-compatible 'hv_pool' = non-NMC (union of Li-rich, Spinel, and any other non-NMC)
-    non_nmc = [x for x in uniq if x not in set(nmc_pool)]
-    hv_pool = sorted(non_nmc)
-
-    # 'other_pool' = non-NMC that are neither Li-rich nor Spinel (kept separate if significantly different)
-    li_rich_set = set(li_rich_pool)
-    spinel_set = set(spinel_pool)
-    other_pool = sorted([x for x in non_nmc if x not in li_rich_set | spinel_set])
+    cath = df["cathode"].astype(str).str.strip()
 
     groups = {
-        "nmc_pool": nmc_pool,
-        "hv_pool": hv_pool,                 # keeps old callers working (all non-NMC)
-        "li_rich_pool": li_rich_pool,       # finer grouping you can use now
-        "spinel_pool": spinel_pool,         # finer grouping you can use now
-        "other_pool": other_pool,           # anything non-NMC not in the two above
+        # NMC family (+ HE5050 bucketed here as NMC-like)
+        "nmc": sorted(
+            cath[cath.str.contains(r"(?:^|\W)(NMC|HE5050)(?:$|\W)", case=False, regex=True)]
+            .unique().tolist()
+        ),
+        # Li-rich layered compositions
+        "lirich": sorted(
+            cath[cath.str.contains(r"^Li1\.", case=False, regex=True)]
+            .unique().tolist()
+        ),
+        # 5V spinel
+        "spinel5v": sorted(
+            cath[cath.str.contains("5Vspinel", case=False)]
+            .unique().tolist()
+        ),
+        # FCG (+ variant)
+        "fcg": sorted([x for x in cath.unique() if str(x).strip() == "FCG"]),
+        "fcg_li": sorted([x for x in cath.unique() if "FCG+Li" in str(x)]),
     }
-    return groups
+    # Drop empties
+    groups = {k: v for k, v in groups.items() if len(v) > 0}
+
+    # Compatibility map: what *target* families each *source* family is allowed to train for
+    compat = {
+        "nmc": {"nmc", "lirich"},
+        "lirich": {"nmc", "lirich"},
+        "spinel5v": {"spinel5v"},
+        "fcg": {"fcg", "fcg_li"},
+        "fcg_li": {"fcg", "fcg_li"},
+    }
+    return groups, compat
+
+
+def _cathode_family(label, groups):
+    for fam, items in groups.items():
+        if label in items:
+            return fam
+    return None
 
 
 def _build_numeric_summary(dataloaders, args):
     import numpy as np
     
-    for key in ['target_train','source_train','target_val','source_val']:
-        dl = dataloaders.get(key)
-        if dl is None:
-            continue
+    def _split_snapshot(name, loader):
+        if loader is None:
+            return None
         try:
-           x, y = next(iter(dl))
+           batch = next(iter(loader))
         except Exception:
-            continue
-        C, L, B = int(x.shape[1]), int(x.shape[-1]), int(x.shape[0])
-        x_np = x.detach().cpu().numpy()
-        ch_mean = x_np.mean(axis=(0,2)).tolist()[: min(C, 8)]
-        ch_std  = x_np.std(axis=(0,2)).tolist()[: min(C, 8)]
-        return {
-            "dataset": args.data_name,
-            "split_used": key,
-            "batch_size_seen": B,
+            return None
+
+        if not isinstance(batch, (list, tuple)) or len(batch) < 1:
+            return None
+
+        x = batch[0]
+        y = batch[1] if len(batch) > 1 else None
+
+        try:
+            x_np = x.detach().cpu().numpy()
+        except Exception:
+            return None
+
+        if x_np.ndim == 2:  # (B, L) -> add channel axis
+            x_np = x_np[:, None, :]
+        if x_np.ndim != 3:
+            return None
+
+        B, C, L = int(x_np.shape[0]), int(x_np.shape[1]), int(x_np.shape[2])
+
+        # Preview only a small slice to stay prompt-friendly
+        max_channels_preview = min(3, C)
+        max_steps_preview = min(12, L)
+        sample_preview = np.round(
+            x_np[0, :max_channels_preview, :max_steps_preview], 4
+        ).tolist()
+
+        y_np = None
+        if y is not None:
+            try:
+                y_np = y.detach().cpu().numpy()
+            except Exception:
+                try:
+                    y_np = np.asarray(y)
+                except Exception:
+                    y_np = None
+
+        dataset_obj = getattr(loader, "dataset", None)
+        label_counts = None
+        feature_range = None
+        feature_mean = None
+        sample_rows = None
+
+        if dataset_obj is not None:
+            labels_attr = getattr(dataset_obj, "labels", None)
+            if labels_attr is not None:
+                labels_np = np.asarray(labels_attr)
+                try:
+                    uniq, cnt = np.unique(labels_np, return_counts=True)
+                    label_counts = {str(int(u)): int(c) for u, c in zip(uniq, cnt)}
+                except Exception:
+                    pass
+
+            seq_data = getattr(dataset_obj, "seq_data", None)
+            if seq_data is None:
+                seq_data = getattr(dataset_obj, "sequences", None)
+
+            if seq_data is not None:
+                arr = np.asarray(seq_data)
+                if arr.size > 0:
+                    try:
+                        arr_flat_all = arr.reshape(arr.shape[0], -1)
+                        sample_rows = np.round(
+                            arr_flat_all[:3, : min(10, arr_flat_all.shape[1])], 4
+                        ).tolist()
+                    except Exception:
+                        sample_rows = None
+                        arr_flat_all = None
+
+                    arr_view = arr[: min(len(arr), 128)]
+                    try:
+                        arr_flat = arr_view.reshape(arr_view.shape[0], -1)
+                        feature_range = [
+                            float(np.min(arr_flat)),
+                            float(np.max(arr_flat)),
+                        ]
+                        feature_mean = float(np.mean(arr_flat))
+                    except Exception:
+                        pass
+
+        split_info = {
+            "batch_shape": [B, C, L],
             "channels": C,
             "seq_len": L,
-            "num_classes_hint": getattr(args, "num_classes", None) or getattr(args, "n_class", None),
-            "lr_hint": args.lr,
-            "dropout_hint": getattr(args, "droprate", 0.3),
-            "notes": "label_inconsistent" if getattr(args, "inconsistent", False) else "closed_set",
-            "ch_mean_head": ch_mean,
-            "ch_std_head": ch_std,
+            "example_label": int(y_np[0]) if y_np is not None and y_np.size > 0 else None,
+            "preview": {
+                "channels": max_channels_preview,
+                "timesteps": max_steps_preview,
+                "values": sample_preview,
+            },
+            "batch_channel_mean": np.round(x_np.mean(axis=(0, 2)), 4).tolist()[: min(C, 8)],
+            "batch_channel_std": np.round(x_np.std(axis=(0, 2)), 4).tolist()[: min(C, 8)],
         }
-    return {"dataset": args.data_name, "notes": "no_batch_available"}
+        
+        if label_counts:
+            split_info["class_distribution"] = label_counts
+        if feature_range:
+            split_info["feature_range"] = feature_range
+        if feature_mean is not None:
+            split_info["feature_global_mean"] = feature_mean
+        if sample_rows is not None:
+            split_info["flattened_rows_head"] = sample_rows
+
+        return split_info
+
+    summary = {
+        "dataset": args.data_name,
+        "sequence_length_requested": getattr(args, "sequence_length", None),
+        "notes": "label_inconsistent" if getattr(args, "inconsistent", False) else "closed_set",
+        "lr_hint": args.lr,
+        "dropout_hint": getattr(args, "droprate", 0.3),
+        "num_classes_hint": getattr(args, "num_classes", None) or getattr(args, "n_class", None),
+        "splits": {},
+    }
+
+    if args.data_name == 'Battery_inconsistent':
+        summary["dataset_variant"] = "argonne_battery"
+        summary["feature_names"] = [
+            'cycle_number', 'energy_charge', 'capacity_charge', 'energy_discharge',
+            'capacity_discharge', 'cycle_start', 'cycle_duration'
+        ]
+        summary["source_cathodes"] = list(getattr(args, "source_cathode", []) or [])
+        summary["target_cathodes"] = list(getattr(args, "target_cathode", []) or [])
+        summary["label_column"] = getattr(args, "classification_label", None)
+    else:
+        summary["dataset_variant"] = "cwru_bearing"
+        summary["transfer_task"] = getattr(args, "transfer_task", None)
+
+    preferred_keys = ['source_train', 'target_train', 'source_val', 'target_val']
+    first_stats = None
+    for key in preferred_keys:
+        info = _split_snapshot(key, dataloaders.get(key))
+        if info is None:
+            continue
+        summary['splits'][key] = info
+        if first_stats is None:
+            first_stats = {
+                "split_used": key,
+                "batch_size_seen": info['batch_shape'][0],
+                "channels": info['channels'],
+                "seq_len": info['seq_len'],
+            }
+
+    if first_stats:
+        summary.update(first_stats)
+    else:
+        summary['splits'] = {}
+
+    return summary
+
+
+def _build_text_context(args, num_summary):
+    import json
+
+    lines = []
+    dataset_name = getattr(args, 'data_name', 'unknown')
+
+    if dataset_name == 'Battery_inconsistent':
+        feature_names = num_summary.get('feature_names', [])
+        lines.append("Dataset: Argonne National Laboratory battery aging time-series with partial cycle windows.")
+        lines.append(
+            f"Source cathodes: {', '.join(num_summary.get('source_cathodes', []) or ['(all available)'])}; "
+            f"target cathodes: {', '.join(num_summary.get('target_cathodes', []) or ['(none specified)'])}."
+        )
+        label_col = num_summary.get('label_column') or getattr(args, 'classification_label', None)
+        seq_len = num_summary.get('seq_len') or num_summary.get('sequence_length_requested')
+        channels = num_summary.get('channels') or getattr(args, 'input_channels', None)
+        channel_desc = channels if channels is not None else "?"
+        feature_desc = ', '.join(feature_names[:7]) if feature_names else f"{channel_desc} normalized signals"
+        lines.append(
+            f"Label column '{label_col}' with ~{num_summary.get('num_classes_hint', 'unknown')} classes; "
+            f"sequence length {seq_len}; {channel_desc} channels covering {feature_desc}."
+        )
+    else:
+        transfer = num_summary.get('transfer_task') or getattr(args, 'transfer_task', None)
+
+        def _fmt_domain(domain):
+            if isinstance(domain, (list, tuple, set)):
+                if len(domain) == 0:
+                    return "?"
+                return ",".join([str(x) for x in domain])
+            return str(domain) if domain is not None else "?"
+
+        src_dom = _fmt_domain(transfer[0]) if transfer and len(transfer) > 0 else "?"
+        tgt_dom = _fmt_domain(transfer[1]) if transfer and len(transfer) > 1 else "?"
+        lines.append("Dataset: Case Western Reserve University bearing vibration transfer benchmark with label inconsistency handling.")
+        lines.append(f"Transfer from motors {src_dom} to {tgt_dom}; inconsistency setting {getattr(args, 'inconsistent', '(not set)')}.")
+        seq_len = num_summary.get('seq_len', getattr(args, 'sequence_length', None))
+        channels = num_summary.get('channels', getattr(args, 'input_channels', None))
+        channel_desc = channels if channels is not None else "?"
+        lines.append(f"Windows are length {seq_len} with {channel_desc} vibration channels; task uses {num_summary.get('num_classes_hint', 'unknown')} classes.")
+
+    splits = num_summary.get('splits', {})
+    for split_name, info in splits.items():
+        counts = info.get('class_distribution') or {}
+        if counts:
+            sorted_counts = sorted(counts.items(), key=lambda kv: kv[0])
+            subset = ', '.join([f"{k}:{v}" for k, v in sorted_counts[:6]])
+            if len(sorted_counts) > 6:
+                subset += f" … (+{len(sorted_counts) - 6} classes)"
+            lines.append(f"{split_name}: class counts {subset} (example label {info.get('example_label')}).")
+        preview = info.get('preview', {})
+        if preview.get('values'):
+            values_json = json.dumps(preview['values'])
+            if len(values_json) > 420:
+                values_json = values_json[:420] + '…'
+            lines.append(
+                f"{split_name} sample window (first {preview.get('channels')} ch × {preview.get('timesteps')} steps): {values_json}"
+            )
+        rows = info.get('flattened_rows_head')
+        if rows:
+            rows_json = json.dumps(rows)
+            if len(rows_json) > 420:
+                rows_json = rows_json[:420] + '…'
+            lines.append(f"{split_name} flattened row glimpses: {rows_json}")
+
+    extra = getattr(args, 'llm_context', '')
+    if extra:
+        lines.append(f"User notes: {extra}")
+
+    return "\n".join(lines)
 
 
 
@@ -288,6 +485,8 @@ def run_experiment(args, save_dir, trial=None, baseline=False):
             batch_size=args.batch_size,
             sequence_length=args.sequence_length,
             num_classes=args.num_classes,
+            cycles_per_file=args.cycles_per_file,
+            sample_random_state=args.sample_random_state,
         )
         # keep dataset references for later use
         source_train_dataset = source_train_loader.dataset
@@ -417,7 +616,6 @@ def compute_open_set_metrics(labels, preds, num_known):
     return common_acc, outlier_acc, hscore
 
 def run_battery_experiments(args):
-    cathode_groups = build_cathode_groups(args.csv)
 
     # Baseline architecture defaults to CNN-1D but other models can be
     # explored by overriding --model_name.
@@ -433,26 +631,18 @@ def run_battery_experiments(args):
     ]
 
     
-    # Define cathode groups as coarse families
-    nmc_group = sorted([c for c in cathode_groups.get("nmc_pool", []) if c.upper() != "FCG"])
-    fcg_group = [c for c in cathode_groups.get("nmc_pool", []) if c.upper() == "FCG"]
-    spinel_group = cathode_groups.get("spinel_pool", [])
-    li_group = cathode_groups.get("li_rich_pool", [])
-    fcg_li_group = sorted(set(fcg_group + li_group))
+    groups, compat = build_cathode_groups(args.csv)
 
-    group_defs = {
-        "NMC": nmc_group,
-        "FCG": fcg_group,
-        "5Vspinel": spinel_group,
-        "FCG+Li": fcg_li_group,
-    }
-    group_defs = {k: v for k, v in group_defs.items() if v}
-
-    # Build experiment list using group combinations
+    # Build experiment list using chemistry-aware compatibility
     experiment_configs = []
-    for src_name, src_cathodes in group_defs.items():
-        for tgt_name, tgt_cathodes in group_defs.items():
+    for src_name, src_cathodes in groups.items():
+        for tgt_name, tgt_cathodes in groups.items():
             if src_name == tgt_name:
+                continue
+            if tgt_name not in compat.get(src_name, set()):
+                print(
+                    f"⏭️  Skipping {src_name} → {tgt_name} (incompatible families: {src_name} → {tgt_name})"
+                )
                 continue
             experiment_configs.append((src_name, tgt_name, src_cathodes, tgt_cathodes))
 
@@ -579,7 +769,7 @@ def run_battery_experiments(args):
         summary_df = pd.DataFrame(results)
         summary_path = os.path.join(
             args.checkpoint_dir,
-            f"summary_{datetime.now().strftime('%m%d')}.csv",
+            f"summary_{datetime.now().strftime('%m%d')}_{args.data_name}.csv",
         )
         summary_df.to_csv(summary_path, index=False)
         print(f"Saved summary to {summary_path}")
@@ -720,6 +910,22 @@ def run_cwru_experiments(args):
 def main():
     args = parse_args()
     os.environ["CUDA_VISIBLE_DEVICES"] = str(args.cuda_device).strip()
+    
+    # Auto-generate the cycle-level CSV if it is missing
+    if (
+        args.data_name == 'Battery_inconsistent'
+        and args.csv
+        and not os.path.exists(args.csv)
+    ):
+        try:
+            from my_datasets.prepare_cycle_csv import build_cycle_csv
+
+            processed = os.path.join(args.data_dir, 'proper_hdf5', 'processed')
+            labels_csv = os.path.join(args.data_dir, 'battery_labeled.csv')
+            print(f"⚠️ {args.csv} not found – building from {processed}")
+            build_cycle_csv(processed, labels_csv, args.csv, num_classes=5)
+        except Exception as exc:  # pragma: no cover - best effort
+            print(f"❌ Failed to build cycle CSV: {exc}")
 
     
     if args.auto_select:
@@ -757,7 +963,7 @@ def main():
             dls_for_peek = {'source_train': None, 'source_val': None, 'target_train': None, 'target_val': None}
 
         num_summary = _build_numeric_summary(dls_for_peek, args)
-        text_ctx = (args.llm_context or f"{args.data_name}; transfer={bool(getattr(args,'pretrained',False))}; label_inconsistent={getattr(args,'inconsistent',False)}.").strip()
+        text_ctx = _build_text_context(args, num_summary)        
         llm_cfg = select_config(text_context=text_ctx,
                                 num_summary=num_summary,
                                 backend=args.llm_backend,

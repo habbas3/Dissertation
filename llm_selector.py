@@ -225,18 +225,36 @@ Return VALID JSON ONLY (no extra text).
 
 
 def _summarize_numeric(num_summary: Dict[str, Any]) -> str:
-    # Keep payload tiny: just stats, a few class counts, lengths
+    """Render a compact-yet-informative summary for the LLM prompt."""
+
+    def _fmt(value: Any, depth: int = 0) -> str:
+        if isinstance(value, (int, float)):
+            return f"{value}"
+        if isinstance(value, str):
+            return value
+        if isinstance(value, bool):
+            return "true" if value else "false"
+        if isinstance(value, list):
+            head = [
+                _fmt(v, depth + 1)
+                for v in value[:4]
+            ]
+            suffix = ""
+            if len(value) > 4:
+                suffix = f", … (+{len(value) - 4})"
+            return "[" + ", ".join(head) + suffix + "]"
+        if isinstance(value, dict):
+            items = list(value.items())
+            parts = []
+            for i, (k, v) in enumerate(items[:6]):
+                parts.append(f"{k}: {_fmt(v, depth + 1)}")
+            if len(items) > 6:
+                parts.append(f"… (+{len(items) - 6} more)")
+            return "{" + ", ".join(parts) + "}"
+        return textwrap.shorten(str(value), width=160, placeholder="…")
     lines = []
-    for k, v in num_summary.items():
-        if isinstance(v, (int, float, str)):
-            lines.append(f"{k}: {v}")
-        elif isinstance(v, dict):
-            # include up to 6 items
-            items = list(v.items())[:6]
-            kv = ", ".join([f"{ik}={iv}" for ik, iv in items])
-            lines.append(f"{k}: {{{kv}}}")
-        else:
-            lines.append(f"{k}: {str(v)[:120]}")
+    for key in sorted(num_summary.keys()):
+        lines.append(f"{key}: {_fmt(num_summary[key])}")
     return "\n".join(lines)
 
 def _build_user_prompt(text_context: str, num_summary: Dict[str, Any]) -> str:

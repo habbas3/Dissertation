@@ -8,7 +8,7 @@ import torch.nn.functional as F
 import torch
 
 class CNN(nn.Module):
-    def __init__(self, pretrained=False, in_channels=7):
+    def __init__(self, num_classes: int = 5, pretrained: bool = False, in_channels: int = 7):
         super(CNN, self).__init__()
         
         self.conv1 = nn.Conv1d(in_channels, 32, kernel_size=3, stride=1, padding=1)
@@ -19,8 +19,7 @@ class CNN(nn.Module):
         self.fc1 = nn.Linear(64, 256)  # explicitly define fc1
         self.relu = nn.ReLU()
         
-        num_classes = 3
-        self.classifier = nn.Linear(256, num_classes)  # 3 classes in your case
+        self.classifier = nn.Linear(256, num_classes)
         
         self.domain_classifier = nn.Linear(256, 2)  # use same hidden dim
 
@@ -46,9 +45,9 @@ class CNN(nn.Module):
 
 
 class cnn_features(nn.Module):
-    def __init__(self, pretrained=False, in_channels=7):
+    def __init__(self, num_classes: int = 5, pretrained: bool = False, in_channels: int = 7):
         super(cnn_features, self).__init__()
-        self.model_cnn = CNN(pretrained, in_channels=in_channels)
+        self.model_cnn = CNN(num_classes=num_classes, pretrained=pretrained, in_channels=in_channels)
         self.__in_features = 256
 
     def forward(self, x):
