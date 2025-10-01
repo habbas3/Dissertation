@@ -182,7 +182,8 @@ def load_battery_dataset(
     batch_size=64,
     sequence_length=32,
     num_classes=None,
-    cycles_per_file=None,
+    cycles_per_file=50,
+    # cycles_per_file=None,
     sample_random_state=42,
 ):
     
@@ -204,12 +205,40 @@ def load_battery_dataset(
         Returns
         -------
         DataFrame
-            Either the full group (if ``cycles_per_file`` is ``None``) or a
-            random contiguous slice of length ``cycles_per_file``.
+            A slice containing exactly ``cycles_per_file`` cycles when
+            ``cycles_per_file`` is positive. Shorter sequences are padded by
+            repeating their final cycle to avoid leaking label information via
+            input length. When ``cycles_per_file`` is ``None`` or non-positive,
+            the full group is returned.
         """
 
-        if cycles_per_file is None or cycles_per_file <= 0 or len(group) <= cycles_per_file:
+        if cycles_per_file is None or cycles_per_file <= 0:
             return group
+        
+        group = group.sort_values("cycle_number").reset_index(drop=True)
+
+        if len(group) < cycles_per_file:
+            pad_needed = cycles_per_file - len(group)
+            last_row = group.iloc[-1].to_dict()
+            pads = []
+            cycle_numbers = [None] * pad_needed
+            if "cycle_number" in last_row:
+                start_cycle = pd.to_numeric(last_row["cycle_number"], errors="coerce")
+                if pd.notnull(start_cycle):
+                    start_cycle = int(start_cycle)
+                    cycle_numbers = np.arange(start_cycle + 1, start_cycle + pad_needed + 1)
+            for idx in range(pad_needed):
+                new_row = last_row.copy()
+                if cycle_numbers[idx] is not None:
+                    new_row["cycle_number"] = cycle_numbers[idx]
+                pads.append(new_row)
+            pad_df = pd.DataFrame(pads, columns=group.columns)
+            group = pd.concat([group, pad_df], ignore_index=True)
+            return group
+
+        if len(group) == cycles_per_file:
+            return group
+        
         start_max = len(group) - cycles_per_file
         start = int(rng.integers(0, start_max + 1))
         return group.iloc[start : start + cycles_per_file]

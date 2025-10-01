@@ -74,7 +74,7 @@ def reset_seed(seed=SEED):
 
 def parse_args():
     parser = argparse.ArgumentParser(description='Train')
-    parser.add_argument('--data_name', type=str, default='CWRU_inconsistent',
+    parser.add_argument('--data_name', type=str, default='Battery_inconsistent',
                         choices=['Battery_inconsistent', 'CWRU_inconsistent'])
     parser.add_argument('--data_dir', type=str, default='./my_datasets/Battery',
                         help='Root directory for datasets')
@@ -117,8 +117,8 @@ def parse_args():
     parser.add_argument('--input_channels', type=int, default=7)
     parser.add_argument('--classification_label', type=str, default='eol_class')
     parser.add_argument('--sequence_length', type=int, default=32)
-    parser.add_argument('--cycles_per_file', type=int, default=None,
-                        help='Number of contiguous cycles randomly sampled from each cell')
+    parser.add_argument('--cycles_per_file', type=int, default=50,
+                        help='Number of contiguous cycles randomly sampled from each cell (default: 50)')
     parser.add_argument('--sample_random_state', type=int, default=42,
                         help='Random seed used when sampling cycles')
     parser.add_argument('--transfer_task', type=str, default='[[0],[1]]',

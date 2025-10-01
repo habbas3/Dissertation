@@ -66,7 +66,7 @@ def run_experiment(args, save_dir, trial=None):
         classification_label=args.classification_label,
         batch_size=args.batch_size,
         sequence_length=args.sequence_length,
-        cycles_per_file=getattr(args, 'cycles_per_file', None),
+        cycles_per_file=getattr(args, 'cycles_per_file', 50),
         sample_random_state=getattr(args, 'sample_random_state', 42),
     )
     args.num_classes = len(label_names)

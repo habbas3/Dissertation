@@ -179,6 +179,119 @@ def _list_model_architectures() -> list[str]:
 
 MODEL_ARCHS = _list_model_architectures()
 
+_ARCHITECTURE_GUIDE = {
+    "cnn_1d": {
+        "headline": "Lightweight 1-D temporal CNN",
+        "best_for": (
+            "Short-to-mid sequences (<256 steps) with <=8 channels,"
+            " fast iteration, or when GPU memory is limited."
+        ),
+        "strengths": [
+            "Low latency and easy to regularize",
+            "Works well on CWRU bearings with narrow frequency bands",
+            "Stable baseline when data is mostly closed-set",
+        ],
+        "watchouts": [
+            "May underfit long-horizon battery curves",
+            "Less expressive for high-channel sensor arrays",
+        ],
+    },
+    "cnn_1d_sa": {
+        "headline": "CNN with lightweight self-attention tail",
+        "best_for": (
+            "Sequences needing local feature extraction plus some long-range"
+            " mixing (Argonne battery cycle slices, multi-axis sensors)."
+        ),
+        "strengths": [
+            "Keeps CNN efficiency while capturing multi-cycle correlations",
+            "Balances between latency and expressivity",
+        ],
+        "watchouts": [
+            "Slightly higher memory than pure CNN",
+            "Attention layer can overfit tiny datasets without dropout",
+        ],
+    },
+    "cnn_openmax": {
+        "headline": "CNN with OpenMax calibrated tail",
+        "best_for": (
+            "Closed-set CNN workloads where explicit unknown rejection is"
+            " mandatory (e.g., CWRU with novel fault types)."
+        ),
+        "strengths": [
+            "Adds open-set calibration to the fast CNN backbone",
+            "Pairs well with label-inconsistent or anomaly-heavy splits",
+        ],
+        "watchouts": [
+            "Assumes CNN-appropriate sequence lengths",
+            "Requires tuning OpenMax thresholds for noisy labels",
+        ],
+    },
+    "wideresnet": {
+        "headline": "WideResNet 1-D (high capacity)",
+        "best_for": (
+            "Longer sequences (>=256 steps) or >8 channel inputs needing"
+            " stronger representation power (battery chemo-mechanical signals)."
+        ),
+        "strengths": [
+            "Deep residual blocks capture rich frequency structure",
+            "Handles transfer tasks with large domain gap",
+        ],
+        "watchouts": [
+            "Higher compute/memory footprint",
+            "Can overfit small CWRU subsets without augmentation",
+        ],
+    },
+    "wideresnet_sa": {
+        "headline": "WideResNet with attention head",
+        "best_for": (
+            "Hybrid scenarios: long multi-channel sequences where global"
+            " context matters (battery degradation trajectories)."
+        ),
+        "strengths": [
+            "Residual depth + attention for regime shifts",
+            "Works well when label inconsistency requires context",
+        ],
+        "watchouts": [
+            "Largest memory use; ensure batch size is feasible",
+            "Needs dropout to avoid memorizing small source domains",
+        ],
+    },
+    "wideresnet_edited": {
+        "headline": "WideResNet variant tuned for battery",
+        "best_for": (
+            "Argonne battery cycles with physics-inspired feature edits"
+            " (e.g., state-of-health regression buckets)."
+        ),
+        "strengths": [
+            "Pre-activation blocks favor smooth degradation patterns",
+            "Often strongest when transfer source ≠ target chemistry",
+        ],
+        "watchouts": [
+            "Less validated on vibration data",
+            "Expect longer warm-up and sensitivity to learning rate",
+        ],
+    },
+}
+
+_TOGGLE_GUIDE = {
+    "self_attention": {
+        "purpose": "Captures long-range interactions beyond convolutional receptive fields.",
+        "use_when": "Sequence length is large or cross-channel alignment matters.",
+        "avoid_when": "Sequence is extremely short or data volume is tiny (risk of overfit).",
+    },
+    "sngp": {
+        "purpose": "Spectral-normalized Gaussian Process head for calibrated uncertainty.",
+        "use_when": "Expect domain shift (transfer) or need reliable OOD detection.",
+        "avoid_when": "Latency budget is strict and domain is stable closed-set.",
+    },
+    "openmax": {
+        "purpose": "Adds OpenMax logits for explicit unknown-class rejection.",
+        "use_when": "Have outliers/label inconsistency and want hard unknown bucket.",
+        "avoid_when": "Dataset is clean closed-set and decision boundary is tight.",
+    },
+}
+
+
 
 # ------------------------------------------------------------------------------
 JSON_SCHEMA = {
@@ -204,7 +317,9 @@ _ARCH_LIST_STR = ", ".join(MODEL_ARCHS)
 
 SYSTEM_PROMPT = """\
 You are a model-selection assistant for time-series fault diagnosis / battery health and CWRU vibration data.
-Given a SHORT dataset description and SMALL numeric summary, recommend ONE configuration likely to perform best.
+Given a SHORT dataset description, a MODEL REFERENCE cheat-sheet, and SMALL numeric summary, recommend ONE configuration likely to perform best.
+
+Leverage the architecture/toggle guidance to weigh trade-offs (capacity vs. sequence length, open-set risk, transfer gap, compute limits).
 
 Return STRICT JSON with these fields (no prose outside JSON):
 - architecture: one of [cnn_1d, cnn_1d_sa, cnn_openmax, wideresnet, wideresnet_sa, wideresnet_edited]
@@ -225,7 +340,7 @@ Return VALID JSON ONLY (no extra text).
 
 
 def _summarize_numeric(num_summary: Dict[str, Any]) -> str:
-    """Render a compact-yet-informative summary for the LLM prompt."""
+    """"Render a compact-yet-informative summary for the LLM prompt."""
 
     def _fmt(value: Any, depth: int = 0) -> str:
         if isinstance(value, (int, float)):
@@ -257,13 +372,45 @@ def _summarize_numeric(num_summary: Dict[str, Any]) -> str:
         lines.append(f"{key}: {_fmt(num_summary[key])}")
     return "\n".join(lines)
 
+def _format_architecture_reference() -> str:
+    lines: list[str] = []
+    for arch in _ALLOWED_ARCH:
+        guide = _ARCHITECTURE_GUIDE.get(arch)
+        if not guide:
+            continue
+        lines.append(f"{arch} — {guide['headline']}")
+        lines.append(f"  Best for: {guide['best_for']}")
+        if guide.get("strengths"):
+            strengths = "; ".join(guide["strengths"])
+            lines.append(f"  Strengths: {strengths}")
+        if guide.get("watchouts"):
+            watch = "; ".join(guide["watchouts"])
+            lines.append(f"  Watch-outs: {watch}")
+        lines.append("")
+
+    lines.append("Toggles and heads:")
+    for toggle, info in _TOGGLE_GUIDE.items():
+        lines.append(f"  {toggle}: {info['purpose']}")
+        lines.append(f"    Use when: {info['use_when']}")
+        lines.append(f"    Avoid when: {info['avoid_when']}")
+    return "\n".join(lines).strip()
+
+
 def _build_user_prompt(text_context: str, num_summary: Dict[str, Any]) -> str:
     summary = _summarize_numeric(num_summary)
     schema_str = json.dumps(JSON_SCHEMA, indent=2)
+    arch_reference = textwrap.shorten(
+        _format_architecture_reference(), width=2400, placeholder="..."
+    )
     return f"""\
 DATASET CONTEXT
 ---------------
 {textwrap.shorten(text_context.strip(), width=2000, placeholder='...')}
+
+MODEL REFERENCE
+---------------
+{arch_reference}
+
 
 NUMERIC SUMMARY
 ---------------
