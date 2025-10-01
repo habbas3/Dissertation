@@ -477,7 +477,15 @@ def run_experiment(args, save_dir, trial=None, baseline=False):
 
 
     if args.data_name == 'Battery_inconsistent':
-        source_train_loader, source_val_loader, target_train_loader, target_val_loader, label_names, df = load_battery_dataset(
+        (
+            source_train_loader,
+            source_val_loader,
+            target_train_loader,
+            target_val_loader,
+            label_names,
+            df,
+            cycle_stats,
+        ) = load_battery_dataset(
             csv_path=args.csv,
             source_cathodes=args.source_cathode,
             target_cathodes=args.target_cathode,
@@ -494,6 +502,7 @@ def run_experiment(args, save_dir, trial=None, baseline=False):
         target_train_dataset = target_train_loader.dataset if target_train_loader is not None else None
         target_val_dataset = target_val_loader.dataset if target_val_loader is not None else None
         args.num_classes = len(label_names)
+        args.dataset_cycle_stats = cycle_stats
     else:
         cwru_dataset = CWRU_inconsistent(args.data_dir, args.transfer_task, args.inconsistent, args.normlizetype)
         if baseline:
@@ -632,6 +641,10 @@ def run_battery_experiments(args):
 
     
     groups, compat = build_cathode_groups(args.csv)
+    
+    print("🔍 Cathode families discovered:")
+    for fam, items in groups.items():
+        print(f"   - {fam}: {len(items)} cathodes → {', '.join(items[:5])}{'…' if len(items) > 5 else ''}")
 
     # Build experiment list using chemistry-aware compatibility
     experiment_configs = []
@@ -684,6 +697,12 @@ def run_battery_experiments(args):
             model_bl, baseline_acc, _, _, _ = run_experiment(
                 baseline_args, baseline_dir, baseline=True
             )
+            
+            baseline_stats = getattr(baseline_args, "dataset_cycle_stats", {})
+            if baseline_stats:
+                print(
+                    f"🧵 Baseline training cycles used: {baseline_stats.get('source_train_cycles', 'n/a')}"
+                )
 
             # ---------------- Transfer learning ----------------
             transfer_args = argparse.Namespace(**vars(args))
@@ -700,6 +719,11 @@ def run_battery_experiments(args):
             )
             os.makedirs(ft_dir, exist_ok=True)
             model_ft, transfer_acc, _, _, tr_loader = run_experiment(transfer_args, ft_dir)
+            transfer_stats = getattr(transfer_args, "dataset_cycle_stats", {})
+            if transfer_stats:
+                print(
+                    f"🔁 Transfer target training cycles used: {transfer_stats.get('target_train_cycles', 'n/a')}"
+                )
             tr_labels, tr_preds = evaluate_model(model_ft, tr_loader)
             
             # Evaluate baseline on the SAME target validation loader
@@ -725,6 +749,23 @@ def run_battery_experiments(args):
             print(
                 f"✅ Transfer {src_name} → {tgt_name}: {transfer_acc:.4f} ({len(tr_labels)} samples)"
             )
+            eval_cycles = getattr(tr_loader, "cycle_count", None)
+            eval_sequences = getattr(tr_loader, "sequence_count", None)
+            if eval_cycles is None and transfer_stats:
+                eval_cycles = transfer_stats.get("target_val_cycles")
+            if eval_sequences is None and transfer_stats:
+                eval_sequences = transfer_stats.get("target_val_sequences")
+            holdout_flag = None
+            if transfer_stats:
+                holdout_flag = transfer_stats.get("target_val_has_holdout")
+            if eval_cycles is not None:
+                msg = f"   ↳ evaluated_cycles={eval_cycles}"
+                if eval_sequences is not None:
+                    msg += f", evaluated_sequences={eval_sequences}"
+                if holdout_flag is not None:
+                    msg += f", holdout_split={'yes' if holdout_flag else 'no'}"
+                print(msg)
+                
             print(
                 f"   ↳ common_acc={t_common:.4f}, outlier_acc={t_out:.4f}, hscore={t_h:.4f}"
             )
@@ -935,7 +976,7 @@ def main():
             # Reuse your pretraining loaders quickly (small impact)
             if args.data_name == 'Battery_inconsistent':
                 from battery_dataset_loader import load_battery_dataset
-                src_tr, src_val, tgt_tr, tgt_val, label_names, _df = load_battery_dataset(
+                src_tr, src_val, tgt_tr, tgt_val, label_names, _df, _stats = load_battery_dataset(
                     csv_path=args.csv,
                     source_cathodes=args.source_cathode,
                     target_cathodes=args.target_cathode,

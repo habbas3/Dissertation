@@ -354,7 +354,15 @@ class train_utils_open_univ(object):
                 else:
                     print("No target cathode provided — pretraining mode.")
         
-                source_train, source_val, target_train, target_val, label_names, df = load_battery_dataset(
+                (
+                    source_train,
+                    source_val,
+                    target_train,
+                    target_val,
+                    label_names,
+                    df,
+                    cycle_stats,
+                ) = load_battery_dataset(
                     csv_path=self.args.csv,
                     source_cathodes=self.args.source_cathode,
                     target_cathodes=self.args.target_cathode,
@@ -372,6 +380,7 @@ class train_utils_open_univ(object):
                 self.label_names = label_names
                 self.df = df
                 self.num_classes = len(label_names)
+                self.dataset_cycle_stats = cycle_stats
                 self.dataloaders = {
                     'source_train': source_train,
                     'source_val': source_val,

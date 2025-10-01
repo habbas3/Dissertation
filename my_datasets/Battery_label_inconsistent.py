@@ -22,7 +22,7 @@ class Compose:
 
 
 # --- Splitting utilities ---
-from typing import Optional
+from typing import Optional, Tuple
 
 
 
@@ -194,186 +194,256 @@ def load_battery_dataset(
 
     rng = np.random.default_rng(sample_random_state)
 
-    def _sample_cycles(group: pd.DataFrame) -> pd.DataFrame:
-        """Optionally select a contiguous block of cycles at random.
+    def _split_train_eval_cycles(group: pd.DataFrame) -> Tuple[pd.DataFrame, pd.DataFrame]:
+        """Return (train_cycles, eval_cycles) for a single cell.
 
-        Parameters
-        ----------
-        group : DataFrame
-            All cycles for a single cell.
-
-        Returns
-        -------
-        DataFrame
-            A slice containing exactly ``cycles_per_file`` cycles when
-            ``cycles_per_file`` is positive. Shorter sequences are padded by
-            repeating their final cycle to avoid leaking label information via
-            input length. When ``cycles_per_file`` is ``None`` or non-positive,
-            the full group is returned.
+        Training is limited to ``cycles_per_file`` contiguous cycles when the
+        parameter is positive, while evaluation keeps every remaining cycle so we
+        can score on substantially longer horizons. When the group itself is
+        shorter than ``cycles_per_file`` we simply return the available cycles for
+        training and leave the evaluation portion empty.
         """
-
-        if cycles_per_file is None or cycles_per_file <= 0:
-            return group
-        
+    
         group = group.sort_values("cycle_number").reset_index(drop=True)
-
-        if len(group) < cycles_per_file:
-            pad_needed = cycles_per_file - len(group)
-            last_row = group.iloc[-1].to_dict()
-            pads = []
-            cycle_numbers = [None] * pad_needed
-            if "cycle_number" in last_row:
-                start_cycle = pd.to_numeric(last_row["cycle_number"], errors="coerce")
-                if pd.notnull(start_cycle):
-                    start_cycle = int(start_cycle)
-                    cycle_numbers = np.arange(start_cycle + 1, start_cycle + pad_needed + 1)
-            for idx in range(pad_needed):
-                new_row = last_row.copy()
-                if cycle_numbers[idx] is not None:
-                    new_row["cycle_number"] = cycle_numbers[idx]
-                pads.append(new_row)
-            pad_df = pd.DataFrame(pads, columns=group.columns)
-            group = pd.concat([group, pad_df], ignore_index=True)
-            return group
-
-        if len(group) == cycles_per_file:
-            return group
-        
+    
+        if cycles_per_file is None or cycles_per_file <= 0:
+            return group.copy(), group.copy()
+    
+        if len(group) <= cycles_per_file:
+            return group.copy(), group.iloc[0:0].copy()
+    
         start_max = len(group) - cycles_per_file
         start = int(rng.integers(0, start_max + 1))
-        return group.iloc[start : start + cycles_per_file]
-
-    if classification_label not in df.columns:
-        raise ValueError(f"Missing classification label: {classification_label}")
-    if "cathode" not in df.columns:
-        raise ValueError("'cathode' column missing in CSV.")
-        
-    # Optionally rebin the target column into a different number of classes.
-    # This is useful when the raw label is numeric and a user wants to
-    # evaluate a coarser or finer-grained classification task without
-    # regenerating the CSV file.
-    if num_classes is not None:
-        if pd.api.types.is_numeric_dtype(df[classification_label]):
-            try:
-                df[classification_label] = pd.qcut(
-                    df[classification_label],
-                    q=num_classes,
-                    labels=False,
-                    duplicates="drop",
-                )
-            except Exception as exc:  # pragma: no cover - defensive, feature optional
-                raise ValueError(
-                    f"Failed to bin '{classification_label}' into {num_classes} classes"
-                ) from exc
-        else:
-            print(
-                f"⚠️ classification label '{classification_label}' is non-numeric; "
-                "skipping quantile binning and using existing categories."
-            )
-
-
-
-    # Encode labels
-    df[classification_label + "_encoded"] = LabelEncoder().fit_transform(
-        df[classification_label]
-    )
-
-    print("🔢 Class distribution:\n", df[classification_label + "_encoded"].value_counts())
-    print("🔬 Cathode distribution:\n", df["cathode"].value_counts())
-    df["cathode"] = df["cathode"].astype(str).str.strip()
-
-    # ✅ Handle both pretraining and transfer modes
-    source_df = df[df["cathode"].isin(source_cathodes)].reset_index(drop=True)
-    if source_df.empty:
-        raise ValueError(f"❌ No rows found for source cathodes: {source_cathodes}")
-    if target_cathodes is None or len(target_cathodes) == 0:
-        print("🛠 Loading pretraining mode (source only, no target)")
-        target_df = pd.DataFrame(columns=df.columns)
-    else:
-        target_df = df[df["cathode"].isin(target_cathodes)].reset_index(drop=True)
-        if target_df.empty:
-            print(f"⚠️ No rows found for target cathodes: {target_cathodes}")
-        
-    # Optionally subsample a fixed number of cycles from each cell
-    source_df = source_df.groupby("filename", group_keys=False).apply(_sample_cycles).reset_index(drop=True)
-    if not target_df.empty:
-        target_df = target_df.groupby("filename", group_keys=False).apply(_sample_cycles).reset_index(drop=True)
-
-    feature_cols = ['cycle_number', 'energy_charge', 'capacity_charge', 'energy_discharge',
-                    'capacity_discharge', 'cycle_start', 'cycle_duration']
-
-    scaler = StandardScaler()
-    scaler.fit(df[feature_cols])
-    source_df[feature_cols] = scaler.transform(source_df[feature_cols])
-    if not target_df.empty:
-        target_df[feature_cols] = scaler.transform(target_df[feature_cols])
-
-    # --- Source split ---
-    label_col = classification_label + "_encoded"
     
-    src_group_col = "cell_id" if "cell_id" in source_df.columns else "filename"
-    X_src, y_src, g_src = build_sequences(
-        source_df, feature_cols, label_col, seq_len=sequence_length, group_col=src_group_col
-    )
-    
-    src_tr_idx, src_va_idx = _safe_stratified_split(y_src, groups=g_src, test_size=0.2, seed=42, min_val=30)
-    X_train, y_train = X_src[src_tr_idx], y_src[src_tr_idx]
-    X_val, y_val = X_src[src_va_idx], y_src[src_va_idx]
-    
-
-    transform = Compose([Reshape()])
-
-    source_train = DataLoader(BatteryDataset(X_train, y_train, transform), batch_size=batch_size, shuffle=True)
-    source_val = DataLoader(BatteryDataset(X_val, y_val, transform), batch_size=batch_size, shuffle=False)
-
-    # --- Target split ---
-    if not target_df.empty:
-        tgt_group_col = "cell_id" if "cell_id" in target_df.columns else "filename"
-        X_tgt, y_tgt, g_tgt = build_sequences(
-            target_df, feature_cols, label_col, seq_len=sequence_length, group_col=tgt_group_col)
-        tgt_tr_idx, tgt_va_idx = _safe_stratified_split(y_tgt, groups=g_tgt, test_size=0.3, seed=42, min_val=20)
-        X_tgt_train, y_tgt_train, g_tgt_train = (
-            X_tgt[tgt_tr_idx], y_tgt[tgt_tr_idx], g_tgt[tgt_tr_idx]
+        train_slice = group.iloc[start : start + cycles_per_file].copy()
+        eval_slice = pd.concat(
+            [group.iloc[:start], group.iloc[start + cycles_per_file :]], ignore_index=True
         )
-        X_tgt_val, y_tgt_val = X_tgt[tgt_va_idx], y_tgt[tgt_va_idx]
+    
+        return train_slice, eval_slice
 
-        # When very few target samples are available, augment and oversample
-        if len(y_tgt_train) > 0 and len(y_tgt_train) < 100:
-            aug_transform = Compose([
-                RandomAddGaussian(sigma=0.05),
-                RandomScale(sigma=0.1),
-                RandomStretch(sigma=0.3),
-                RandomTimeShift(shift_ratio=0.2),
-                Reshape(),
-            ])
-            class_counts = np.bincount(y_tgt_train)
-            class_weights = 1.0 / class_counts
-            cathode_counts = Counter(g_tgt_train)
-            cathode_weights = {c: 1.0 / cnt for c, cnt in cathode_counts.items()}
-            sample_weights = class_weights[y_tgt_train] * np.array([cathode_weights[g] for g in g_tgt_train])
-            sample_weights = torch.from_numpy(sample_weights).float()
-            sampler = WeightedRandomSampler(
-                sample_weights,
-                num_samples=len(sample_weights) * 10,
-                replacement=True,
-            )
-            target_train_dataset = BatteryDataset(X_tgt_train, y_tgt_train, aug_transform)
-            target_train = DataLoader(target_train_dataset, batch_size=batch_size, sampler=sampler)
+
+    def _partition_cycles(df: pd.DataFrame) -> Tuple[pd.DataFrame, pd.DataFrame]:
+        train_parts = []
+        eval_parts = []
+        for _, group in df.groupby("filename"):
+            train_slice, eval_slice = _split_train_eval_cycles(group)
+            if not train_slice.empty:
+                train_parts.append(train_slice)
+            if not eval_slice.empty:
+                eval_parts.append(eval_slice)
+
+        train_df = pd.concat(train_parts, ignore_index=True) if train_parts else df.iloc[0:0].copy()
+        eval_df = pd.concat(eval_parts, ignore_index=True) if eval_parts else df.iloc[0:0].copy()
+        return train_df, eval_df
+
+    def _count_cycles(df_subset: pd.DataFrame) -> int:
+        if df_subset is None or df_subset.empty:
+            return 0
+        if "cycle_number" in df_subset.columns:
+            return int(pd.to_numeric(df_subset["cycle_number"], errors="coerce").notna().sum())
+        return int(len(df_subset))
+    
+        if classification_label not in df.columns:
+            raise ValueError(f"Missing classification label: {classification_label}")
+        if "cathode" not in df.columns:
+            raise ValueError("'cathode' column missing in CSV.")
+            
+        # Optionally rebin the target column into a different number of classes.
+        # This is useful when the raw label is numeric and a user wants to
+        # evaluate a coarser or finer-grained classification task without
+        # regenerating the CSV file.
+        if num_classes is not None:
+            if pd.api.types.is_numeric_dtype(df[classification_label]):
+                try:
+                    df[classification_label] = pd.qcut(
+                        df[classification_label],
+                        q=num_classes,
+                        labels=False,
+                        duplicates="drop",
+                    )
+                except Exception as exc:  # pragma: no cover - defensive, feature optional
+                    raise ValueError(
+                        f"Failed to bin '{classification_label}' into {num_classes} classes"
+                    ) from exc
+            else:
+                print(
+                    f"⚠️ classification label '{classification_label}' is non-numeric; "
+                    "skipping quantile binning and using existing categories."
+                )
+    
+    
+    
+        # Encode labels
+        df[classification_label + "_encoded"] = LabelEncoder().fit_transform(
+            df[classification_label]
+        )
+    
+        print("🔢 Class distribution:\n", df[classification_label + "_encoded"].value_counts())
+        print("🔬 Cathode distribution:\n", df["cathode"].value_counts())
+        df["cathode"] = df["cathode"].astype(str).str.strip()
+    
+        # ✅ Handle both pretraining and transfer modes
+        source_df = df[df["cathode"].isin(source_cathodes)].reset_index(drop=True)
+        if source_df.empty:
+            raise ValueError(f"❌ No rows found for source cathodes: {source_cathodes}")
+        if target_cathodes is None or len(target_cathodes) == 0:
+            print("🛠 Loading pretraining mode (source only, no target)")
+            target_df = pd.DataFrame(columns=df.columns)
         else:
-            target_train_dataset = BatteryDataset(X_tgt_train, y_tgt_train, transform)
-            target_train = DataLoader(target_train_dataset, batch_size=batch_size, shuffle=True)
+            target_df = df[df["cathode"].isin(target_cathodes)].reset_index(drop=True)
+            if target_df.empty:
+                print(f"⚠️ No rows found for target cathodes: {target_cathodes}")
+            
+        source_train_cycles, source_eval_cycles = _partition_cycles(source_df)
         
-        target_val = DataLoader(BatteryDataset(X_tgt_val, y_tgt_val, transform), batch_size=batch_size, shuffle=False)
-    else:
-        target_train, target_val = None, None
-
-    label_names = sorted(df[classification_label].dropna().unique().tolist())
-
-    print("📊 Source val class counts:", Counter(y_val))
-    if not target_df.empty:
-        print("📊 Target val class counts:", Counter(y_tgt_val))
-
-    return source_train, source_val, target_train, target_val, label_names, df
-
-
-
+        if not target_df.empty:
+            target_train_cycles, target_eval_cycles = _partition_cycles(target_df)
+        else:
+            target_train_cycles = target_df.copy()
+            target_eval_cycles = target_df.copy()
+    
+        src_train_cycle_count = _count_cycles(source_train_cycles)
+        src_eval_cycle_count = _count_cycles(source_eval_cycles)
+        tgt_train_cycle_count = _count_cycles(target_train_cycles)
+        tgt_eval_cycle_count = _count_cycles(target_eval_cycles)
+    
+        feature_cols = ['cycle_number', 'energy_charge', 'capacity_charge', 'energy_discharge',
+                        'capacity_discharge', 'cycle_start', 'cycle_duration']
+    
+        scaler = StandardScaler()
+        scaler.fit(df[feature_cols])
+        def _transform(df_subset: pd.DataFrame) -> pd.DataFrame:
+            if df_subset is None or df_subset.empty:
+                return df_subset
+            df_subset = df_subset.copy()
+            df_subset[feature_cols] = scaler.transform(df_subset[feature_cols])
+            return df_subset
+    
+        source_train_cycles = _transform(source_train_cycles)
+        source_eval_cycles = _transform(source_eval_cycles)
+        target_train_cycles = _transform(target_train_cycles)
+        target_eval_cycles = _transform(target_eval_cycles)
+    
+        label_col = classification_label + "_encoded"
+        
+    
+        transform = Compose([Reshape()])
+    
+        def _build_arrays(df_subset: pd.DataFrame, group_col: str):
+            if df_subset is None or df_subset.empty:
+                return np.zeros((0, sequence_length, len(feature_cols))), np.zeros((0,), dtype=int), np.zeros((0,), dtype=object)
+            return build_sequences(df_subset, feature_cols, label_col, seq_len=sequence_length, group_col=group_col)
+    
+        # --- Source split ---
+        src_group_col = "cell_id" if "cell_id" in source_df.columns else "filename"
+        X_src_all, y_src_all, g_src_all = _build_arrays(source_train_cycles, src_group_col)
+        X_src_val_all, y_src_val_all, g_src_val_all = _build_arrays(source_eval_cycles, src_group_col)
+    
+        if X_src_val_all.size == 0 and y_src_all.size > 0:
+            tr_idx, va_idx = _safe_stratified_split(y_src_all, groups=g_src_all, test_size=0.2, seed=42, min_val=30)
+            X_train = X_src_all[tr_idx]
+            y_train = y_src_all[tr_idx]
+            g_src_all = g_src_all[tr_idx]
+            X_val = X_src_all[va_idx]
+            y_val = y_src_all[va_idx]
+        else:
+            X_train, y_train = X_src_all, y_src_all
+            X_val, y_val = X_src_val_all, y_src_val_all
+    
+        source_train_dataset = BatteryDataset(X_train, y_train, transform)
+        source_val_dataset = BatteryDataset(X_val, y_val, transform)
+        source_train = DataLoader(source_train_dataset, batch_size=batch_size, shuffle=True)
+        source_val = DataLoader(source_val_dataset, batch_size=batch_size, shuffle=False)
+    
+        # --- Target split ---
+        target_train_dataset = None
+        target_val_dataset = None
+        X_tgt_val = np.zeros((0, sequence_length, len(feature_cols)))
+        y_tgt_val = np.zeros((0,), dtype=int)
+    
+        if not target_df.empty:
+            tgt_group_col = "cell_id" if "cell_id" in target_df.columns else "filename"
+            X_tgt_all, y_tgt_all, g_tgt_all = _build_arrays(target_train_cycles, tgt_group_col)
+            X_tgt_val_all, y_tgt_val_all, g_tgt_val_all = _build_arrays(target_eval_cycles, tgt_group_col)
+    
+            if X_tgt_val_all.size == 0 and y_tgt_all.size > 0:
+                tgt_tr_idx, tgt_va_idx = _safe_stratified_split(y_tgt_all, groups=g_tgt_all, test_size=0.3, seed=42, min_val=20)
+                X_tgt_train = X_tgt_all[tgt_tr_idx]
+                y_tgt_train = y_tgt_all[tgt_tr_idx]
+                g_tgt_all = g_tgt_all[tgt_tr_idx]
+                X_tgt_val = X_tgt_all[tgt_va_idx]
+                y_tgt_val = y_tgt_all[tgt_va_idx]
+            else:
+                X_tgt_train, y_tgt_train = X_tgt_all, y_tgt_all
+                X_tgt_val, y_tgt_val = X_tgt_val_all, y_tgt_val_all
+                
+                
+            if len(y_tgt_train) > 0 and len(y_tgt_train) < 100:
+                aug_transform = Compose([
+                    RandomAddGaussian(sigma=0.05),
+                    RandomScale(sigma=0.1),
+                    RandomStretch(sigma=0.3),
+                    RandomTimeShift(shift_ratio=0.2),
+                    Reshape(),
+                ])
+                class_counts = np.bincount(y_tgt_train)
+                class_weights = 1.0 / np.clip(class_counts, 1, None)
+                cathode_counts = Counter(g_tgt_all)
+                cathode_weights = {c: 1.0 / cnt for c, cnt in cathode_counts.items()}
+                sample_weights = class_weights[y_tgt_train] * np.array([cathode_weights.get(g, 1.0) for g in g_tgt_all])
+                sample_weights = torch.from_numpy(sample_weights).float()
+                sampler = WeightedRandomSampler(
+                    sample_weights,
+                    num_samples=max(len(sample_weights) * 10, len(sample_weights)),
+                    replacement=True,
+                )
+                target_train_dataset = BatteryDataset(X_tgt_train, y_tgt_train, aug_transform)
+                target_train = DataLoader(target_train_dataset, batch_size=batch_size, sampler=sampler)
+            else:
+                target_train_dataset = BatteryDataset(X_tgt_train, y_tgt_train, transform)
+                target_train = DataLoader(target_train_dataset, batch_size=batch_size, shuffle=True)
+            
+            target_val_dataset = BatteryDataset(X_tgt_val, y_tgt_val, transform)
+            target_val = DataLoader(target_val_dataset, batch_size=batch_size, shuffle=False)
+    
+        else:
+            target_train = None
+            target_val = None
+    
+        label_names = sorted(df[classification_label].dropna().unique().tolist())
+        
+        src_val_cycle_effective = src_eval_cycle_count if src_eval_cycle_count > 0 else (src_train_cycle_count if len(y_val) > 0 else 0)
+        tgt_val_cycle_effective = tgt_eval_cycle_count if tgt_eval_cycle_count > 0 else (tgt_train_cycle_count if len(y_tgt_val) > 0 else 0)
+    
+        stats = {
+            "source_train_cycles": src_train_cycle_count,
+            "source_val_cycles": src_val_cycle_effective,
+            "source_val_has_holdout": bool(src_eval_cycle_count > 0),
+            "target_train_cycles": tgt_train_cycle_count,
+            "target_val_cycles": tgt_val_cycle_effective,
+            "target_val_has_holdout": bool(tgt_eval_cycle_count > 0),
+            "source_train_sequences": len(source_train_dataset),
+            "source_val_sequences": len(source_val_dataset),
+            "target_train_sequences": len(target_train_dataset) if target_train_dataset is not None else 0,
+            "target_val_sequences": len(target_val_dataset) if target_val_dataset is not None else 0,
+        }
+    
+        for loader, seq_key, cyc_key in [
+            (source_train, "source_train_sequences", "source_train_cycles"),
+            (source_val, "source_val_sequences", "source_val_cycles"),
+            (target_train, "target_train_sequences", "target_train_cycles"),
+            (target_val, "target_val_sequences", "target_val_cycles"),
+        ]:
+            if loader is not None:
+                setattr(loader, "sequence_count", stats[seq_key])
+                setattr(loader, "cycle_count", stats[cyc_key])
+    
+        print("📊 Source val class counts:", Counter(y_val))
+        if not target_df.empty:
+            print("📊 Target val class counts:", Counter(y_tgt_val))
+    
+        return source_train, source_val, target_train, target_val, label_names, df, stats
+    
+    
+    

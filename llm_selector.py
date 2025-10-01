@@ -501,6 +501,23 @@ def _validate_or_default(payload, num_summary=None) -> dict:
     prov_rat = str(obj.get("rationale", "")).strip()
     if not prov_rat or prov_rat.lower().startswith("fallback"):
         prov_rat = ""
+        
+    def _count_split_samples(split: dict) -> int:
+        if not split:
+            return 0
+        counts = split.get("class_distribution") or {}
+        if counts:
+            try:
+                return int(sum(int(v) for v in counts.values()))
+            except Exception:
+                pass
+        batch_shape = split.get("batch_shape") or []
+        if batch_shape:
+            try:
+                return int(batch_shape[0])
+            except Exception:
+                return 0
+        return 0
 
     cfg = {
         "architecture": arch,
@@ -515,6 +532,28 @@ def _validate_or_default(payload, num_summary=None) -> dict:
         "batch_size": bs,
         "lambda_src": lam_src,
     }
+    
+    try:
+        dataset_tag = (num_summary or {}).get("dataset")
+        splits = (num_summary or {}).get("splits") or {}
+        target_samples = _count_split_samples(splits.get("target_train"))
+        if target_samples == 0:
+            target_samples = _count_split_samples(splits.get("source_train"))
+        if dataset_tag == "Battery_inconsistent" and 0 < target_samples <= 400:
+            cfg.update({
+                "architecture": "cnn_1d",
+                "model_name": "cnn_features_1d",
+                "self_attention": False,
+                "sngp": False,
+                "openmax": False,
+                "use_unknown_head": False,
+                "dropout": min(cfg["dropout"], 0.3),
+                "lambda_src": min(cfg["lambda_src"], 1.0),
+            })
+    except Exception:
+        pass
+    
+    
     cfg["rationale"] = prov_rat or _autofill_rationale(cfg, num_summary, provider_reason="")
 
     return cfg

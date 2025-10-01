@@ -59,7 +59,15 @@ def run_experiment(args, save_dir, trial=None):
         logging.info(f"{k}: {v}")
 
     # ✅ Load dataset using cathode filters (already returns DataLoaders)
-    source_train_loader, source_val_loader, target_train_loader, target_val_loader, label_names, df = load_battery_dataset(
+    (
+        source_train_loader,
+        source_val_loader,
+        target_train_loader,
+        target_val_loader,
+        label_names,
+        df,
+        cycle_stats,
+    ) = load_battery_dataset(
         csv_path=args.csv,
         source_cathodes=args.source_cathode,
         target_cathodes=args.target_cathode,
@@ -70,6 +78,7 @@ def run_experiment(args, save_dir, trial=None):
         sample_random_state=getattr(args, 'sample_random_state', 42),
     )
     args.num_classes = len(label_names)
+    args.dataset_cycle_stats = cycle_stats
 
    # Determine size of target training set for LR tuning
     tgt_sample_count = 0
