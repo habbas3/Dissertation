@@ -29,11 +29,13 @@ from collections import Counter
 from models.optuna_search import run_optuna_search
 import pandas as pd
 from torch.utils.data import Dataset, DataLoader
+from torch.utils.data.sampler import RandomSampler, SequentialSampler, WeightedRandomSampler
 import time
 from itertools import combinations
 from llm_selector import select_config
 from utils.experiment_runner import _cm_with_min_labels
 import os as _os
+from scipy.spatial.distance import jensenshannon
 
 try:
     from dotenv import load_dotenv
@@ -198,14 +200,42 @@ def build_cathode_groups(csv_path):
     # Drop empties
     groups = {k: v for k, v in groups.items() if len(v) > 0}
 
-    # Compatibility map: what *target* families each *source* family is allowed to train for
-    compat = {
-        "nmc": {"nmc", "lirich"},
-        "lirich": {"nmc", "lirich"},
-        "spinel5v": {"spinel5v"},
-        "fcg": {"fcg", "fcg_li"},
-        "fcg_li": {"fcg", "fcg_li"},
-    }
+    label_col = "eol_class_encoded" if "eol_class_encoded" in df.columns else "eol_class"
+    label_values = sorted(df[label_col].dropna().unique().tolist())
+
+    def _distribution_for(cathodes: list[str]):
+        subset = df[df["cathode"].isin(cathodes)]
+        if subset.empty:
+            return None
+        counts = subset[label_col].value_counts(normalize=True)
+        return np.array([counts.get(lbl, 0.0) for lbl in label_values], dtype=float)
+
+    distributions = {fam: _distribution_for(items) for fam, items in groups.items()}
+
+    compat: dict[str, set[str]] = {fam: set() for fam in groups}
+    threshold = 0.35
+
+    for src, src_dist in distributions.items():
+        if src_dist is None:
+            continue
+        pair_scores: list[tuple[str, float]] = []
+        for tgt, tgt_dist in distributions.items():
+            if src == tgt or tgt_dist is None:
+                continue
+            jsd = float(jensenshannon(src_dist, tgt_dist, base=2))
+            if np.isnan(jsd):
+                continue
+            pair_scores.append((tgt, jsd))
+            if jsd <= threshold:
+                compat[src].add(tgt)
+        if not compat[src] and pair_scores:
+            pair_scores.sort(key=lambda x: x[1])
+            compat[src].add(pair_scores[0][0])
+
+    # Ensure symmetry so that if A can transfer to B we also consider B → A
+    for src, targets in list(compat.items()):
+        for tgt in list(targets):
+            compat.setdefault(tgt, set()).add(src)
     return groups, compat
 
 
@@ -214,6 +244,73 @@ def _cathode_family(label, groups):
         if label in items:
             return fam
     return None
+
+def _clone_loader(loader, force_shuffle: bool | None = None):
+    if loader is None:
+        return None
+
+    dataset = loader.dataset
+    batch_size = loader.batch_size
+    drop_last = loader.drop_last
+    num_workers = loader.num_workers
+    pin_memory = loader.pin_memory
+    generator = getattr(loader, "generator", None)
+
+    sampler = loader.sampler
+    if isinstance(sampler, WeightedRandomSampler):
+        new_sampler = WeightedRandomSampler(
+            weights=sampler.weights.clone(),
+            num_samples=sampler.num_samples,
+            replacement=sampler.replacement,
+        )
+        new_loader = DataLoader(
+            dataset,
+            batch_size=batch_size,
+            sampler=new_sampler,
+            drop_last=drop_last,
+            num_workers=num_workers,
+            pin_memory=pin_memory,
+        )
+    else:
+        if isinstance(sampler, RandomSampler):
+            shuffle = True if force_shuffle is None else force_shuffle
+        elif isinstance(sampler, SequentialSampler):
+            shuffle = False if force_shuffle is None else force_shuffle
+        else:
+            shuffle = False if force_shuffle is None else force_shuffle
+
+        new_loader = DataLoader(
+            dataset,
+            batch_size=batch_size,
+            shuffle=shuffle,
+            drop_last=drop_last,
+            num_workers=num_workers,
+            pin_memory=pin_memory,
+            generator=generator,
+        )
+
+    for attr in ("sequence_count", "cycle_count"):
+        if hasattr(loader, attr):
+            setattr(new_loader, attr, getattr(loader, attr))
+
+    return new_loader
+
+
+def _baseline_cycle_stats(shared_stats: dict[str, int | bool]):
+    if not shared_stats:
+        return {}
+    return {
+        "source_train_cycles": shared_stats.get("target_train_cycles", 0),
+        "source_val_cycles": shared_stats.get("target_val_cycles", 0),
+        "source_val_has_holdout": shared_stats.get("target_val_has_holdout", False),
+        "target_train_cycles": 0,
+        "target_val_cycles": 0,
+        "target_val_has_holdout": False,
+        "source_train_sequences": shared_stats.get("target_train_sequences", 0),
+        "source_val_sequences": shared_stats.get("target_val_sequences", 0),
+        "target_train_sequences": 0,
+        "target_val_sequences": 0,
+    }
 
 
 def _build_numeric_summary(dataloaders, args):
@@ -449,7 +546,7 @@ def _build_text_context(args, num_summary):
 
 
 
-def run_experiment(args, save_dir, trial=None, baseline=False):
+def run_experiment(args, save_dir, trial=None, baseline=False, override_data=None):
     reset_seed()
     setlogger(os.path.join(save_dir, 'train.log'))
     for k, v in vars(args).items():
@@ -476,7 +573,61 @@ def run_experiment(args, save_dir, trial=None, baseline=False):
         print(f"⚠️ Could not write LLM config into run folder: {_e}")
 
 
-    if args.data_name == 'Battery_inconsistent':
+    if override_data is not None:
+        source_train_loader = override_data.get("source_train_loader")
+        source_val_loader = override_data.get("source_val_loader")
+        target_train_loader = override_data.get("target_train_loader")
+        target_val_loader = override_data.get("target_val_loader")
+
+        source_train_dataset = override_data.get("source_train_dataset")
+        if source_train_dataset is None and source_train_loader is not None:
+            source_train_dataset = source_train_loader.dataset
+        source_val_dataset = override_data.get("source_val_dataset")
+        if source_val_dataset is None and source_val_loader is not None:
+            source_val_dataset = source_val_loader.dataset
+        target_train_dataset = override_data.get("target_train_dataset")
+        if target_train_dataset is None and target_train_loader is not None:
+            target_train_dataset = target_train_loader.dataset
+        target_val_dataset = override_data.get("target_val_dataset")
+        if target_val_dataset is None and target_val_loader is not None:
+            target_val_dataset = target_val_loader.dataset
+
+        label_names = override_data.get("label_names")
+        if label_names:
+            args.num_classes = len(label_names)
+        args.num_classes = override_data.get("num_classes", args.num_classes)
+        if override_data.get("cycle_stats") is not None:
+            args.dataset_cycle_stats = override_data.get("cycle_stats")
+
+        if source_train_loader is None and source_train_dataset is not None:
+            source_train_loader = DataLoader(
+                source_train_dataset,
+                batch_size=args.batch_size,
+                shuffle=True,
+                drop_last=True,
+            )
+        if source_val_loader is None and source_val_dataset is not None:
+            source_val_loader = DataLoader(
+                source_val_dataset,
+                batch_size=args.batch_size,
+                shuffle=False,
+                drop_last=False,
+            )
+        if target_train_loader is None and target_train_dataset is not None:
+            target_train_loader = DataLoader(
+                target_train_dataset,
+                batch_size=args.batch_size,
+                shuffle=True,
+                drop_last=True,
+            )
+        if target_val_loader is None and target_val_dataset is not None:
+            target_val_loader = DataLoader(
+                target_val_dataset,
+                batch_size=args.batch_size,
+                shuffle=False,
+                drop_last=False,
+            )
+    elif args.data_name == 'Battery_inconsistent':
         (
             source_train_loader,
             source_val_loader,
@@ -513,20 +664,19 @@ def run_experiment(args, save_dir, trial=None, baseline=False):
             source_train_dataset, source_val_dataset, target_train_dataset, target_val_dataset, num_classes = cwru_dataset.data_split(transfer_learning=True)
             args.num_classes = num_classes
 
-    # ✅ Build dataloaders
-    source_train_loader = DataLoader(source_train_dataset, batch_size=args.batch_size, shuffle=True, drop_last=True)
-    source_val_loader = DataLoader(source_val_dataset, batch_size=args.batch_size, shuffle=False, drop_last=False)
+        source_train_loader = DataLoader(source_train_dataset, batch_size=args.batch_size, shuffle=True, drop_last=True)
+        source_val_loader = DataLoader(source_val_dataset, batch_size=args.batch_size, shuffle=False, drop_last=False)
 
-    # ✅ Build target loaders *only if available*
-    if target_train_dataset is not None:
-        target_train_loader = DataLoader(target_train_dataset, batch_size=args.batch_size, shuffle=True, drop_last=True)
-    else:
-        target_train_loader = None
+        if target_train_dataset is not None:
+            target_train_loader = DataLoader(target_train_dataset, batch_size=args.batch_size, shuffle=True, drop_last=True)
+        else:
+            target_train_loader = None
 
-    if target_val_dataset is not None:
-        target_val_loader = DataLoader(target_val_dataset, batch_size=args.batch_size, shuffle=False, drop_last=False)
-    else:
-        target_val_loader = None
+        if target_val_dataset is not None:
+            target_val_loader = DataLoader(target_val_dataset, batch_size=args.batch_size, shuffle=False, drop_last=False)
+        else:
+            target_val_loader = None
+
 
     # ✅ Inject Optuna trial hyperparameters
     if trial is not None:
@@ -645,6 +795,11 @@ def run_battery_experiments(args):
     print("🔍 Cathode families discovered:")
     for fam, items in groups.items():
         print(f"   - {fam}: {len(items)} cathodes → {', '.join(items[:5])}{'…' if len(items) > 5 else ''}")
+        
+    print("🔁 Allowed transfer directions (data-driven):")
+    for fam, targets in sorted(compat.items()):
+        arrow = ", ".join(sorted(targets)) if targets else "(none)"
+        print(f"   - {fam} → {arrow}")
 
     # Build experiment list using chemistry-aware compatibility
     experiment_configs = []
@@ -683,7 +838,48 @@ def run_battery_experiments(args):
             os.makedirs(pre_dir, exist_ok=True)
             run_experiment(pre_args, pre_dir)
 
-            # ---------------- Baseline: train target from scratch ----------------
+            shared_tuple = load_battery_dataset(
+                csv_path=args.csv,
+                source_cathodes=source_cathodes,
+                target_cathodes=target_cathodes,
+                classification_label=args.classification_label,
+                batch_size=args.batch_size,
+                sequence_length=args.sequence_length,
+                num_classes=args.num_classes,
+                cycles_per_file=args.cycles_per_file,
+                sample_random_state=args.sample_random_state,
+            )
+            (
+                shared_src_train_loader,
+                shared_src_val_loader,
+                shared_tgt_train_loader,
+                shared_tgt_val_loader,
+                label_names,
+                _shared_df,
+                shared_stats,
+            ) = shared_tuple
+
+            transfer_override = {
+                "source_train_loader": _clone_loader(shared_src_train_loader, force_shuffle=True),
+                "source_val_loader": _clone_loader(shared_src_val_loader, force_shuffle=False),
+                "target_train_loader": _clone_loader(shared_tgt_train_loader, force_shuffle=True),
+                "target_val_loader": _clone_loader(shared_tgt_val_loader, force_shuffle=False),
+                "label_names": label_names,
+                "num_classes": len(label_names),
+                "cycle_stats": dict(shared_stats),
+            }
+
+            baseline_override = {
+                "source_train_loader": _clone_loader(shared_tgt_train_loader, force_shuffle=True),
+                "source_val_loader": _clone_loader(shared_tgt_val_loader, force_shuffle=False),
+                "target_train_loader": None,
+                "target_val_loader": None,
+                "label_names": label_names,
+                "num_classes": len(label_names),
+                "cycle_stats": _baseline_cycle_stats(shared_stats),
+            }
+
+            # ---------------- Baseline: train target from scratch (matched data) ----------------
             baseline_args = argparse.Namespace(**vars(args))
             baseline_args.source_cathode = target_cathodes
             baseline_args.target_cathode = []
@@ -693,9 +889,11 @@ def run_battery_experiments(args):
                 f"baseline_{model_name}_{tgt_name}_{datetime.now().strftime('%m%d')}",
             )
             os.makedirs(baseline_dir, exist_ok=True)
-            # Return order is: model, acc, elapsed, source_val_loader, target_val_loader
-            model_bl, baseline_acc, _, _, _ = run_experiment(
-                baseline_args, baseline_dir, baseline=True
+            model_bl, _, _, _, _ = run_experiment(
+                baseline_args,
+                baseline_dir,
+                baseline=True,
+                override_data=baseline_override,
             )
             
             baseline_stats = getattr(baseline_args, "dataset_cycle_stats", {})
@@ -718,16 +916,21 @@ def run_battery_experiments(args):
                 f"transfer_{model_name}_{src_name}_to_{tgt_name}_{datetime.now().strftime('%m%d')}",
             )
             os.makedirs(ft_dir, exist_ok=True)
-            model_ft, transfer_acc, _, _, tr_loader = run_experiment(transfer_args, ft_dir)
+            model_ft, _, _, _, _ = run_experiment(
+                transfer_args,
+                ft_dir,
+                override_data=transfer_override,
+            )
             transfer_stats = getattr(transfer_args, "dataset_cycle_stats", {})
             if transfer_stats:
                 print(
                     f"🔁 Transfer target training cycles used: {transfer_stats.get('target_train_cycles', 'n/a')}"
                 )
-            tr_labels, tr_preds = evaluate_model(model_ft, tr_loader)
+            eval_loader = transfer_override.get("target_val_loader")
+            tr_labels, tr_preds = evaluate_model(model_ft, eval_loader)
             
             # Evaluate baseline on the SAME target validation loader
-            bl_labels, bl_preds = evaluate_model(model_bl, tr_loader)
+            bl_labels, bl_preds = evaluate_model(model_bl, eval_loader)
             baseline_labels_np = np.array(bl_labels)
             baseline_preds_np = np.array(bl_preds)
             
@@ -739,18 +942,24 @@ def run_battery_experiments(args):
                 baseline_labels_np, baseline_preds_np, num_known
             )
             
-            # Compare *common-class* accuracy (apples-to-apples). Switch to hscore if you prefer.
-            baseline_acc = b_common
-            transfer_acc = t_common
+            metric_lookup = {
+                "common": (t_common, b_common),
+                "hscore": (t_h, b_h),
+                "overall": ((t_common + t_out) / 2.0, (b_common + b_out) / 2.0),
+            }
+            metric_key = args.improvement_metric
+            if metric_key not in metric_lookup:
+                metric_key = "common"
+            transfer_score, baseline_score = metric_lookup[metric_key]
             
             print(
-                f"✅ Baseline {tgt_name}: {baseline_acc:.4f} ({len(bl_labels)} samples)"
+                f"✅ Baseline {tgt_name}: {baseline_score:.4f} ({len(bl_labels)} samples)"
             )
             print(
-                f"✅ Transfer {src_name} → {tgt_name}: {transfer_acc:.4f} ({len(tr_labels)} samples)"
+                f"✅ Transfer {src_name} → {tgt_name}: {transfer_score:.4f} ({len(tr_labels)} samples)"
             )
-            eval_cycles = getattr(tr_loader, "cycle_count", None)
-            eval_sequences = getattr(tr_loader, "sequence_count", None)
+            eval_cycles = getattr(eval_loader, "cycle_count", None)
+            eval_sequences = getattr(eval_loader, "sequence_count", None)
             if eval_cycles is None and transfer_stats:
                 eval_cycles = transfer_stats.get("target_val_cycles")
             if eval_sequences is None and transfer_stats:
@@ -773,9 +982,11 @@ def run_battery_experiments(args):
                 f"🧪 Baseline scored on same split: common_acc={b_common:.4f}, outlier_acc={b_out:.4f}, hscore={b_h:.4f}"
             )
             
-            improvement = transfer_acc - baseline_acc
-            print(f"📊 {src_name} → {tgt_name}: baseline(common)={baseline_acc:.4f}, transfer(common)={transfer_acc:.4f}, improvement={improvement:+.4f}")
-            if transfer_acc < baseline_acc:
+            improvement = transfer_score - baseline_score
+            print(
+                f"📊 {src_name} → {tgt_name}: baseline({metric_key})={baseline_score:.4f}, transfer({metric_key})={transfer_score:.4f}, improvement={improvement:+.4f}"
+            )
+            if transfer_score < baseline_score:
                 print(f"⚠️ Transfer did not improve over baseline for {src_name} → {tgt_name}")
 
             # Confusion matrices with consistent axes and minimum label coverage
@@ -800,9 +1011,16 @@ def run_battery_experiments(args):
                     "model": model_name,
                     "source": src_name,
                     "target": tgt_name,
-                    "baseline_acc": baseline_acc,
-                    "transfer_acc": transfer_acc,
+                    "comparison_metric": metric_key,
+                    "baseline_score": baseline_score,
+                    "transfer_score": transfer_score,
                     "improvement": improvement,
+                    "baseline_common_acc": b_common,
+                    "transfer_common_acc": t_common,
+                    "baseline_outlier_acc": b_out,
+                    "transfer_outlier_acc": t_out,
+                    "baseline_hscore": b_h,
+                    "transfer_hscore": t_h,
                 }
             )
 
@@ -814,9 +1032,17 @@ def run_battery_experiments(args):
         )
         summary_df.to_csv(summary_path, index=False)
         print(f"Saved summary to {summary_path}")
-        print(summary_df[["source", "target", "baseline_acc", "transfer_acc", "improvement"]])
+        cols_to_show = [
+            "source",
+            "target",
+            "comparison_metric",
+            "baseline_score",
+            "transfer_score",
+            "improvement",
+        ]
+        print(summary_df[cols_to_show])
         mean_impr = summary_df["improvement"].mean()
-        overall = summary_df["transfer_acc"].mean() - summary_df["baseline_acc"].mean()
+        overall = summary_df["transfer_score"].mean() - summary_df["baseline_score"].mean()
         print(f"Average improvement across experiments: {mean_impr:+.4f}")
         print(f"Overall transfer vs baseline: {overall:+.4f}")
         
