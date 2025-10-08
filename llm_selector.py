@@ -117,27 +117,187 @@ def _clamp(v, lo, hi, default):
     except Exception:
         return default
 
-def _autofill_rationale(cfg: dict, num_summary: dict, provider_reason: str = "") -> str:
+def _safe_int(value: Any, default: int = 0) -> int:
+    try:
+        return int(value)
+    except Exception:
+        return default
+
+
+def _split_total_examples(split: Optional[dict]) -> int:
+    if not split:
+        return 0
+    counts = split.get("class_distribution") or {}
+    total = 0
+    for v in counts.values():
+        total += _safe_int(v)
+    if total:
+        return total
+    batch_shape = split.get("batch_shape") or []
+    if batch_shape:
+        return _safe_int(batch_shape[0])
+    return 0
+
+
+def _collect_cycle_stats(num_summary: Optional[dict]) -> Dict[str, int]:
+    stats: Dict[str, int] = {}
+    if not num_summary:
+        return stats
+    raw_stats = num_summary.get("cycle_stats") or {}
+    for key, value in raw_stats.items():
+        stats[key] = _safe_int(value)
+    splits = (num_summary or {}).get("splits") or {}
+    if "target_train_cycles" not in stats:
+        stats["target_train_cycles"] = _split_total_examples(splits.get("target_train"))
+    if "source_train_cycles" not in stats:
+        stats["source_train_cycles"] = _split_total_examples(splits.get("source_train"))
+    return stats
+
+
+def _numeric_heuristic_adjust(cfg: dict, num_summary: Optional[dict]) -> Tuple[dict, list[str]]:
+    """Refine the config using numeric signals so the selection is data-aware."""
+
+    if not num_summary:
+        return cfg, []
+
+    splits = num_summary.get("splits") or {}
+    seq_len = _safe_int(num_summary.get("seq_len") or num_summary.get("sequence_length_requested") or 128, 128)
+    channels = _safe_int(num_summary.get("channels") or (splits.get("source_train") or {}).get("channels") or 1, 1)
+    cycle_stats = _collect_cycle_stats(num_summary)
+    tgt_cycles = cycle_stats.get("target_train_cycles", 0)
+    src_cycles = cycle_stats.get("source_train_cycles", 0)
+    total_target_examples = _split_total_examples(splits.get("target_train"))
+    notes = str(num_summary.get("notes", "")).lower()
+
+    arch_scores: Dict[str, float] = {arch: 0.0 for arch in _ALLOWED_ARCH}
+    complexity = seq_len * max(channels, 1)
+
+    for arch in arch_scores:
+        if arch.endswith("_sa"):
+            arch_scores[arch] += 0.4 if seq_len >= 256 else -0.2
+        if arch.startswith("wideresnet"):
+            arch_scores[arch] += 0.6 if complexity >= 4096 else -0.3
+            arch_scores[arch] += 0.4 if channels >= 6 else 0.0
+        if arch.startswith("cnn"):
+            arch_scores[arch] += 0.5 if complexity <= 4096 else -0.2
+            arch_scores[arch] += 0.3 if tgt_cycles <= 400 else 0.0
+
+        if tgt_cycles and tgt_cycles < 150:
+            arch_scores[arch] -= 0.4 if arch.startswith("wideresnet") else 0.0
+
+    current_arch = cfg.get("architecture") or ""
+    if current_arch in arch_scores:
+        arch_scores[current_arch] += 0.25  # retain some prior weight
+
+    best_arch = max(arch_scores.items(), key=lambda kv: kv[1])[0]
+
+    heuristic_notes: list[str] = []
+
+    if best_arch != current_arch:
+        cfg["architecture"] = best_arch
+        cfg["model_name"] = _arch_to_model_name(best_arch, cfg.get("self_attention", False), cfg.get("openmax", False))
+        heuristic_notes.append(
+            f"Numeric complexity score favored {best_arch} for {channels}×{seq_len} windows."
+        )
+
+    # Toggle reasoning
+    wants_attention = seq_len >= 256 or channels >= 6
+    cfg["self_attention"] = bool(cfg.get("self_attention") or best_arch.endswith("_sa") or wants_attention and best_arch.startswith("wide"))
+    if cfg["self_attention"]:
+        arch = cfg.get("architecture", best_arch)
+        if arch.startswith("cnn") and not arch.endswith("_sa") and arch != "cnn_openmax":
+            cfg["architecture"] = "cnn_1d_sa"
+            cfg["model_name"] = _arch_to_model_name("cnn_1d_sa", True, cfg.get("openmax", False))
+        elif arch.startswith("wideresnet") and not arch.endswith("_sa") and "edited" not in arch:
+            cfg["architecture"] = "wideresnet_sa"
+            cfg["model_name"] = _arch_to_model_name("wideresnet_sa", True, cfg.get("openmax", False))
+
+    open_set = "label_inconsistent" in notes or "open" in notes
+    if open_set and not cfg.get("sngp", False):
+        cfg["sngp"] = True
+        heuristic_notes.append("Enabled SNGP to stabilise open-set transfer risk detected in metadata.")
+    if open_set and num_summary.get("dataset") == "CWRU_inconsistent" and not cfg.get("openmax", False):
+        cfg["openmax"] = True
+        heuristic_notes.append("OpenMax head activated for explicit unknown rejection on inconsistent labels.")
+
+    if cfg.get("openmax"):
+        cfg["architecture"] = "cnn_openmax"
+        cfg["model_name"] = "cnn_openmax"
+        cfg["self_attention"] = False
+        cfg["use_unknown_head"] = True
+    else:
+        cfg["use_unknown_head"] = bool(cfg.get("openmax", False))
+
+    # Hyperparameter tuning
+    if tgt_cycles and tgt_cycles < 180:
+        cfg["dropout"] = max(cfg.get("dropout", 0.3), 0.35)
+        cfg["learning_rate"] = min(cfg.get("learning_rate", 3e-4), 5e-4)
+        cfg["batch_size"] = min(cfg.get("batch_size", 64), 32)
+        heuristic_notes.append(
+            "Low target-cycle count → tightened lr/dropout and batch size to curb overfitting."
+        )
+    elif tgt_cycles and tgt_cycles > 600:
+        cfg["learning_rate"] = min(max(cfg.get("learning_rate", 3e-4), 7e-4), 2e-3)
+        cfg["batch_size"] = min(max(cfg.get("batch_size", 64), 96), 196)
+        heuristic_notes.append(
+            "Rich target coverage allows larger batch and step size for faster adaptation."
+        )
+
+    if total_target_examples and total_target_examples < cfg.get("batch_size", 64):
+        cfg["batch_size"] = max(8, 2 ** int(math.log2(max(4, total_target_examples // 2))))
+
+    if src_cycles and tgt_cycles:
+        ratio = tgt_cycles / max(src_cycles, 1)
+        if ratio < 0.4:
+            cfg["lambda_src"] = max(cfg.get("lambda_src", 1.0), 1.5)
+            heuristic_notes.append("Target has far fewer cycles than source → keeping stronger source supervision.")
+        elif ratio > 1.2:
+            cfg["lambda_src"] = min(cfg.get("lambda_src", 1.0), 0.6)
+            heuristic_notes.append("Target richer than source → down-weighting source loss for quicker domain fit.")
+
+    return cfg, heuristic_notes
+
+
+def _autofill_rationale(cfg: dict, num_summary: dict, provider_reason: str = "", heuristic_notes: Optional[list[str]] = None) -> str:
     ch = num_summary.get("channels")
     sl = num_summary.get("seq_len")
     notes = str(num_summary.get("notes", "")).lower()
-    parts = []
+    cycle_stats = _collect_cycle_stats(num_summary)
+    tgt_cycles = cycle_stats.get("target_train_cycles")
+    src_cycles = cycle_stats.get("source_train_cycles")
+    parts: list[str] = []
+
     if provider_reason:
-        parts.append(provider_reason.strip())
+        parts.append(provider_reason.strip().rstrip(".") + ".")
     if ch is not None and sl is not None:
-        parts.append(f"Input has {ch} channels and sequence length {sl}.")
-    if "label_inconsistent" in notes or "open" in notes:
-        parts.append("Label inconsistency/open-set risk detected; prefer calibrated heads (SNGP/OpenMax) when appropriate.")
-    arch = cfg.get("architecture", "")
-    if arch:
-        parts.append(f"Architecture chosen: {arch}.")
-    if cfg.get("self_attention", False):
-        parts.append("Self-attention enabled for long-range temporal dependencies.")
-    if cfg.get("sngp", False):
-        parts.append("SNGP enabled for calibrated uncertainty under domain shift.")
-    if cfg.get("openmax", False):
-        parts.append("OpenMax enabled for explicit unknown rejection.")
-    return " ".join(parts) if parts else "Configuration selected from data shape and task setup."
+        parts.append(f"Evaluated {ch} channels × {sl}-step windows and matched them with {cfg.get('architecture')} capacity.")
+
+    if tgt_cycles or src_cycles:
+        if tgt_cycles and src_cycles:
+            parts.append(
+                f"Target fine-tune spans ≈{tgt_cycles} cycles versus {src_cycles} source cycles, guiding lr={cfg['learning_rate']:.2e} and dropout={cfg['dropout']:.2f}."
+            )
+        elif tgt_cycles:
+            parts.append(
+                f"Observed ≈{tgt_cycles} target cycles and set lr={cfg['learning_rate']:.2e} with batch size {cfg['batch_size']} to stay stable."
+            )
+
+    if ("label_inconsistent" in notes or "open" in notes) and (cfg.get("sngp") or cfg.get("openmax")):
+        parts.append("Label inconsistency flagged → calibrated heads (SNGP/OpenMax) stay enabled for open-set robustness.")
+
+    if heuristic_notes:
+        for msg in heuristic_notes:
+            if len(parts) >= 4:
+                break
+            parts.append(msg.rstrip(".") + ".")
+
+    # Ensure between 2-4 sentences by padding with architecture summary if required
+    if not parts:
+        parts = ["Configuration selected from data shape and task setup."]
+    if len(parts) < 2 and cfg.get("architecture"):
+        parts.append(f"Architecture {cfg['architecture']} keeps self_attention={cfg.get('self_attention')} and sngp={cfg.get('sngp')} for stability.")
+
+    return " ".join(parts[:4])
 # -------------------------------------------------------------------------------
 
 
@@ -502,22 +662,7 @@ def _validate_or_default(payload, num_summary=None) -> dict:
     if not prov_rat or prov_rat.lower().startswith("fallback"):
         prov_rat = ""
         
-    def _count_split_samples(split: dict) -> int:
-        if not split:
-            return 0
-        counts = split.get("class_distribution") or {}
-        if counts:
-            try:
-                return int(sum(int(v) for v in counts.values()))
-            except Exception:
-                pass
-        batch_shape = split.get("batch_shape") or []
-        if batch_shape:
-            try:
-                return int(batch_shape[0])
-            except Exception:
-                return 0
-        return 0
+    
 
     cfg = {
         "architecture": arch,
@@ -533,28 +678,14 @@ def _validate_or_default(payload, num_summary=None) -> dict:
         "lambda_src": lam_src,
     }
     
-    try:
-        dataset_tag = (num_summary or {}).get("dataset")
-        splits = (num_summary or {}).get("splits") or {}
-        target_samples = _count_split_samples(splits.get("target_train"))
-        if target_samples == 0:
-            target_samples = _count_split_samples(splits.get("source_train"))
-        if dataset_tag == "Battery_inconsistent" and 0 < target_samples <= 400:
-            cfg.update({
-                "architecture": "cnn_1d",
-                "model_name": "cnn_features_1d",
-                "self_attention": False,
-                "sngp": False,
-                "openmax": False,
-                "use_unknown_head": False,
-                "dropout": min(cfg["dropout"], 0.3),
-                "lambda_src": min(cfg["lambda_src"], 1.0),
-            })
-    except Exception:
-        pass
-    
-    
-    cfg["rationale"] = prov_rat or _autofill_rationale(cfg, num_summary, provider_reason="")
+    cfg, heuristic_notes = _numeric_heuristic_adjust(cfg, num_summary)
+
+    cfg["rationale"] = _autofill_rationale(
+        cfg,
+        num_summary or {},
+        provider_reason=prov_rat,
+        heuristic_notes=heuristic_notes,
+    )
 
     return cfg
 

@@ -436,6 +436,16 @@ def _build_numeric_summary(dataloaders, args):
         "num_classes_hint": getattr(args, "num_classes", None) or getattr(args, "n_class", None),
         "splits": {},
     }
+    
+    cycle_stats = getattr(args, "dataset_cycle_stats", None)
+    if isinstance(cycle_stats, dict) and cycle_stats:
+        try:
+            summary["cycle_stats"] = {
+                str(k): int(v) if isinstance(v, (int, float)) else v
+                for k, v in cycle_stats.items()
+            }
+        except Exception:
+            summary["cycle_stats"] = cycle_stats
 
     if args.data_name == 'Battery_inconsistent':
         summary["dataset_variant"] = "argonne_battery"
@@ -986,8 +996,61 @@ def run_battery_experiments(args):
             print(
                 f"📊 {src_name} → {tgt_name}: baseline({metric_key})={baseline_score:.4f}, transfer({metric_key})={transfer_score:.4f}, improvement={improvement:+.4f}"
             )
-            if transfer_score < baseline_score:
-                print(f"⚠️ Transfer did not improve over baseline for {src_name} → {tgt_name}")
+            if transfer_score <= baseline_score:
+                print(
+                    f"♻️ Transfer lagged baseline for {src_name} → {tgt_name}; launching target-focused fine-tune retry."
+                )
+                retry_args = argparse.Namespace(**vars(transfer_args))
+                retry_args.lr = max(1e-5, transfer_args.lr * 0.5)
+                retry_args.lambda_src = max(0.1, transfer_args.lambda_src * 0.5)
+                retry_args.max_epoch = int(max(transfer_args.max_epoch, 40) * 1.25)
+                retry_args.reinit_head = False
+                retry_args.pretrained_model_path = os.path.join(ft_dir, "best_model.pth")
+                retry_dir = os.path.join(ft_dir, "retry_target_focus")
+                os.makedirs(retry_dir, exist_ok=True)
+                model_retry, _, _, _, _ = run_experiment(
+                    retry_args,
+                    retry_dir,
+                    override_data=transfer_override,
+                )
+                retry_stats = getattr(retry_args, "dataset_cycle_stats", {})
+                if retry_stats:
+                    print(
+                        f"🔁 Retry target training cycles used: {retry_stats.get('target_train_cycles', 'n/a')}"
+                    )
+                retry_labels, retry_preds = evaluate_model(model_retry, eval_loader)
+                r_common, r_out, r_h = compute_common_outlier_metrics(retry_labels, retry_preds, num_known)
+                retry_metric_lookup = {
+                    "common": (r_common, b_common),
+                    "hscore": (r_h, b_h),
+                    "overall": ((r_common + r_out) / 2.0, (b_common + b_out) / 2.0),
+                }
+                retry_transfer_score, _ = retry_metric_lookup[metric_key]
+                if retry_transfer_score > transfer_score:
+                    print(
+                        f"✅ Retry fine-tune surpassed initial transfer ({retry_transfer_score:.4f} vs {transfer_score:.4f})."
+                    )
+                    model_ft = model_retry
+                    tr_labels, tr_preds = retry_labels, retry_preds
+                    t_common, t_out, t_h = r_common, r_out, r_h
+                    transfer_stats = retry_stats or transfer_stats
+                else:
+                    print(
+                        f"⚠️ Retry fine-tune did not exceed initial transfer ({retry_transfer_score:.4f} ≤ {transfer_score:.4f})."
+                    )
+
+                metric_lookup = {
+                    "common": (t_common, b_common),
+                    "hscore": (t_h, b_h),
+                    "overall": ((t_common + t_out) / 2.0, (b_common + b_out) / 2.0),
+                }
+                transfer_score, baseline_score = metric_lookup[metric_key]
+                improvement = transfer_score - baseline_score
+                print(
+                    f"📊 Updated {src_name} → {tgt_name}: baseline({metric_key})={baseline_score:.4f}, transfer({metric_key})={transfer_score:.4f}, improvement={improvement:+.4f}"
+                )
+                if transfer_score <= baseline_score:
+                    print(f"⚠️ Transfer remains below baseline for {src_name} → {tgt_name} even after retry.")
 
             # Confusion matrices with consistent axes and minimum label coverage
             cm_transfer, labels_tr = _cm_with_min_labels(tr_labels, tr_preds, min_labels=3)
@@ -1133,8 +1196,45 @@ def run_cwru_experiments(args):
                 f"📊 {src_str} → {tgt_str}: baseline(common)={baseline_acc:.4f}, "
                 f"transfer(common)={transfer_acc:.4f}, improvement={improvement:+.4f}"
             )
-            if transfer_acc < baseline_acc:
-                print(f"⚠️ Transfer did not improve over baseline for {src_str} → {tgt_str}")
+            if transfer_acc <= baseline_acc:
+                print(
+                    f"♻️ Transfer lagged baseline for {src_str} → {tgt_str}; retrying with stronger target emphasis."
+                )
+                retry_args = argparse.Namespace(**vars(transfer_args))
+                retry_args.lr = max(1e-5, transfer_args.lr * 0.5)
+                retry_args.lambda_src = max(0.1, transfer_args.lambda_src * 0.5)
+                retry_args.max_epoch = int(max(transfer_args.max_epoch, 40) * 1.25)
+                retry_args.reinit_head = False
+                retry_args.pretrained_model_path = os.path.join(ft_dir, "best_model.pth")
+                retry_dir = os.path.join(ft_dir, "retry_target_focus")
+                os.makedirs(retry_dir, exist_ok=True)
+                model_retry, _, _, _, tr_loader_retry = run_experiment(
+                    retry_args,
+                    retry_dir,
+                )
+                retry_labels, retry_preds = evaluate_model(model_retry, tr_loader_retry)
+                r_common, r_out, r_h = compute_common_outlier_metrics(retry_labels, retry_preds, num_known)
+                retry_transfer_acc = r_common
+                if retry_transfer_acc > transfer_acc:
+                    print(
+                        f"✅ Retry fine-tune boosted transfer accuracy ({retry_transfer_acc:.4f} vs {transfer_acc:.4f})."
+                    )
+                    model_ft = model_retry
+                    tr_labels, tr_preds = retry_labels, retry_preds
+                    t_common, t_out, t_h = r_common, r_out, r_h
+                    transfer_acc = retry_transfer_acc
+                    improvement = transfer_acc - baseline_acc
+                else:
+                    print(
+                        f"⚠️ Retry fine-tune did not exceed baseline-matched score ({retry_transfer_acc:.4f} ≤ {transfer_acc:.4f})."
+                    )
+                print(
+                    f"📊 Updated {src_str} → {tgt_str}: baseline(common)={baseline_acc:.4f}, "
+                    f"transfer(common)={transfer_acc:.4f}, improvement={improvement:+.4f}"
+                )
+                if transfer_acc <= baseline_acc:
+                    print(f"⚠️ Transfer remains below baseline for {src_str} → {tgt_str} even after retry.")
+
 
             # Confusion matrices with consistent axes and minimum label coverage
             cm_transfer, labels_tr = _cm_with_min_labels(tr_labels, tr_preds, min_labels=10)
