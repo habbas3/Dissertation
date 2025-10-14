@@ -27,6 +27,7 @@ from utils.sngp_utils import to_numpy, Accumulator, mean_field_logits
 from sklearn.metrics import accuracy_score, roc_auc_score, precision_recall_curve, auc
 import random
 import torch
+import pandas as pd
 import numpy
 import optuna
 from my_datasets.Battery_label_inconsistent import load_battery_dataset
@@ -292,6 +293,85 @@ class train_utils_open_univ(object):
         activation_vectors = np.concatenate(activation_vectors, axis=0)
         labels_vector = np.concatenate(labels_vector, axis=0)
         return activation_vectors, labels_vector
+    
+    def _export_sngp_uncertainty(self, loader, split_name: str):
+        if loader is None or getattr(self.args, 'method', '') != 'sngp':
+            return
+        if not hasattr(self, 'sngp_model'):
+            return
+
+        self.model.eval()
+        self.sngp_model.eval()
+        records = []
+        probs_batches = []
+
+        with torch.no_grad():
+            for batch_idx, (inputs, labels) in enumerate(loader):
+                inputs = inputs.to(self.device, non_blocking=True)
+                labels = labels.to(self.device, non_blocking=True)
+
+                outputs = self.model(inputs)
+                if isinstance(outputs, tuple):
+                    backbone_logits = outputs[0]
+                    features = outputs[1] if len(outputs) > 1 else None
+                else:
+                    backbone_logits, features = outputs, None
+
+                if features is not None:
+                    feats = features
+                    if self.args.bottleneck and hasattr(self, 'bottleneck_layer') and not isinstance(self.bottleneck_layer, nn.Identity):
+                        feats = self.bottleneck_layer(feats)
+                    gp_feature, gp_logits = self.sngp_model.gp_layer(feats, update_cov=False)
+                    cov = self.sngp_model.compute_predictive_covariance(gp_feature)
+                    logits = mean_field_logits(gp_logits, cov)
+                else:
+                    logits = backbone_logits
+
+                probs = torch.softmax(logits, dim=-1)
+                entropy = -(probs.clamp_min(1e-12) * probs.clamp_min(1e-12).log()).sum(dim=1)
+                max_prob, preds = torch.max(probs, dim=1)
+
+                for idx in range(labels.size(0)):
+                    label_val = int(labels[idx].item())
+                    records.append({
+                        "split": split_name,
+                        "index": len(records),
+                        "label": label_val,
+                        "pred": int(preds[idx].item()),
+                        "max_prob": float(max_prob[idx].item()),
+                        "entropy": float(entropy[idx].item()),
+                        "is_outlier": bool(label_val >= self.num_classes),
+                    })
+
+                probs_batches.append(probs.detach().cpu().numpy())
+
+        if not records:
+            return
+
+        df = pd.DataFrame.from_records(records)
+        known_mask = ~df["is_outlier"]
+        summary = {
+            "mean_entropy": float(df["entropy"].mean()),
+            "mean_entropy_known": float(df.loc[known_mask, "entropy"].mean()) if known_mask.any() else float('nan'),
+            "mean_entropy_outlier": float(df.loc[~known_mask, "entropy"].mean()) if (~known_mask).any() else float('nan'),
+            "mean_max_prob_known": float(df.loc[known_mask, "max_prob"].mean()) if known_mask.any() else float('nan'),
+            "mean_max_prob_outlier": float(df.loc[~known_mask, "max_prob"].mean()) if (~known_mask).any() else float('nan'),
+        }
+
+        os.makedirs(self.save_dir, exist_ok=True)
+        csv_path = os.path.join(self.save_dir, f"sngp_uncertainty_{split_name}.csv")
+        df.to_csv(csv_path, index=False)
+        with open(os.path.join(self.save_dir, f"sngp_uncertainty_{split_name}_summary.json"), "w") as fh:
+            json.dump(summary, fh, indent=2)
+
+        try:
+            stacked = numpy.concatenate(probs_batches, axis=0)
+            global_habbas3.probs_list = stacked
+        except Exception:
+            global_habbas3.probs_list = probs_batches
+
+        print(f"📈 SNGP uncertainty saved to {csv_path}")
+        
     
     def _load_pretrained_weights(self, pretrained_path):
         print(f"🔁 Loading pretrained model from: {pretrained_path}")
@@ -1378,6 +1458,12 @@ class train_utils_open_univ(object):
                                         labels_override=labels_override)
         except Exception as e:
             print(f"⚠️ Failed to save confusion matrices: {e}")
+            
+        if getattr(self.args, 'method', '') == 'sngp':
+            try:
+                self._export_sngp_uncertainty(self.dataloaders.get('target_val'), 'target_val')
+            except Exception as e:
+                print(f"⚠️ Failed to export SNGP uncertainty: {e}")
 
         # now return the model instance *and* the target‐val accuracy (so optuna can optimize it)
         return eval_model, self.best_val_acc_class

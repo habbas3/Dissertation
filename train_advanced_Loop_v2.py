@@ -76,14 +76,17 @@ def reset_seed(seed=SEED):
 
 def parse_args():
     parser = argparse.ArgumentParser(description='Train')
-    parser.add_argument('--data_name', type=str, default='CWRU_inconsistent',
+    parser.add_argument('--data_name', type=str, default='Battery_inconsistent',
                         choices=['Battery_inconsistent', 'CWRU_inconsistent'])
     parser.add_argument('--data_dir', type=str, default='./my_datasets/Battery',
                         help='Root directory for datasets')
     parser.add_argument('--csv', type=str, default='./my_datasets/Battery/battery_cycles_labeled.csv',
                         help='Cycle-level CSV for Battery dataset (run my_datasets/prepare_cycle_csv.py to generate if missing)')
     parser.add_argument('--normlizetype', type=str, default='mean-std')
-    parser.add_argument('--method', type=str, default='sngp', choices=['deterministic', 'sngp'])
+    parser.add_argument('--method', type=str, default='auto',
+                        choices=['deterministic', 'sngp', 'auto'],
+                        help="Uncertainty head to use. 'auto' selects SNGP only when the dataset"
+                             " exhibits open-set/outlier structure.")
     parser.add_argument('--gp_hidden_dim', type=int, default=2048)
     parser.add_argument('--spectral_norm_bound', type=float, default=0.95)
     parser.add_argument('--n_power_iterations', type=int, default=1)
@@ -165,6 +168,144 @@ def parse_args():
         except Exception:
             pass
     return args
+
+ARCHITECTURE_ORDER = [
+    "cnn_features_1d",
+    "cnn_features_1d_sa",
+    "cnn_openmax",
+    "WideResNet",
+    "WideResNet_sa",
+    "WideResNet_edited",
+]
+
+
+def _unique_preserve(seq):
+    seen = set()
+    ordered = []
+    for item in seq:
+        if item not in seen:
+            ordered.append(item)
+            seen.add(item)
+    return ordered
+
+
+def _dataset_profile_from_dataset(ds, num_classes, sequence_length_hint=None):
+    profile = {
+        "total_samples": 0,
+        "sequence_length": None,
+        "channels": None,
+        "known_fraction": 0.0,
+        "outlier_fraction": 0.0,
+        "unknown_count": 0,
+        "class_counts": {},
+    }
+
+    if ds is None:
+        return profile
+
+    try:
+        length = len(ds)
+    except TypeError:
+        length = 0
+    profile["total_samples"] = int(max(length, 0))
+
+    if length > 0:
+        try:
+            sample_x, _ = ds[0]
+            if isinstance(sample_x, torch.Tensor):
+                profile["channels"] = int(sample_x.shape[0])
+                profile["sequence_length"] = int(sample_x.shape[-1])
+            else:
+                sample_x = np.asarray(sample_x)
+                if sample_x.ndim >= 2:
+                    profile["channels"] = int(sample_x.shape[0])
+                    profile["sequence_length"] = int(sample_x.shape[-1])
+        except Exception:
+            pass
+
+    labels = getattr(ds, "labels", None)
+    if labels is None:
+        return profile
+
+    labels_np = np.asarray(labels)
+    seq_len = getattr(ds, "sequence_length", None) or sequence_length_hint or 1
+    seq_len = max(int(seq_len), 1)
+
+    if labels_np.size >= seq_len:
+        effective = labels_np[seq_len - 1: seq_len - 1 + profile["total_samples"]]
+    else:
+        effective = labels_np[-profile["total_samples"]:] if profile["total_samples"] > 0 else labels_np
+
+    if effective.size == 0:
+        return profile
+
+    effective = effective.astype(int, copy=False)
+    known_mask = effective < num_classes
+    unknown_mask = ~known_mask
+
+    profile["unknown_count"] = int(unknown_mask.sum())
+    profile["outlier_fraction"] = float(profile["unknown_count"] / effective.size)
+    profile["known_fraction"] = float(known_mask.sum() / effective.size)
+
+    if known_mask.any():
+        class_ids, counts = np.unique(effective[known_mask], return_counts=True)
+        profile["class_counts"] = {int(c): int(n) for c, n in zip(class_ids, counts)}
+    return profile
+
+
+def _dataset_profile_from_loader(loader, num_classes, sequence_length_hint=None):
+    ds = getattr(loader, "dataset", None) if loader is not None else None
+    return _dataset_profile_from_dataset(ds, num_classes, sequence_length_hint)
+
+
+def _decide_uncertainty_method(requested, profile):
+    if requested != 'auto':
+        return requested
+    if profile.get("unknown_count", 0) > 0 or profile.get("outlier_fraction", 0.0) >= 0.05:
+        return 'sngp'
+    return 'deterministic'
+
+
+def _choose_architectures(profile):
+    if profile is None:
+        return ARCHITECTURE_ORDER
+
+    seq_len = profile.get("sequence_length") or 0
+    channels = profile.get("channels") or 1
+    total = profile.get("total_samples", 0)
+    outlier_frac = profile.get("outlier_fraction", 0.0)
+
+    preferred = []
+
+    if total and total < 300:
+        preferred.extend(["cnn_features_1d", "cnn_features_1d_sa"])
+    elif seq_len and seq_len >= 256:
+        preferred.extend(["WideResNet", "WideResNet_sa"])
+    else:
+        preferred.extend(["cnn_features_1d", "cnn_features_1d_sa", "WideResNet", "WideResNet_sa"])
+
+    if outlier_frac > 0.02 or profile.get("unknown_count", 0) > 0:
+        preferred.extend(["cnn_openmax", "WideResNet_edited"])
+    else:
+        preferred.append("cnn_openmax")
+
+    if channels and channels > 3:
+        preferred.insert(0, "WideResNet")
+
+    return _unique_preserve(preferred + ARCHITECTURE_ORDER)
+
+
+def _log_profile(prefix, profile):
+    if not profile or profile.get("total_samples", 0) == 0:
+        print(f"ℹ️ {prefix}: no samples available for profiling.")
+        return
+    msg = (
+        f"{prefix}: {profile['total_samples']} samples · seq_len={profile.get('sequence_length', 'n/a')} · "
+        f"channels={profile.get('channels', 'n/a')} · known={(profile.get('known_fraction', 0.0) * 100):.1f}% · "
+        f"outliers={(profile.get('outlier_fraction', 0.0) * 100):.1f}%"
+    )
+    print(f"📊 {msg}")
+
 
 # --- Chemistry-aware cathode grouping and compatibility ---
     
@@ -310,6 +451,31 @@ def _baseline_cycle_stats(shared_stats: dict[str, int | bool]):
         "source_val_sequences": shared_stats.get("target_val_sequences", 0),
         "target_train_sequences": 0,
         "target_val_sequences": 0,
+    }
+
+def _cwru_shared_stats(src_train, src_val, tgt_train, tgt_val):
+    def _len(ds):
+        try:
+            return len(ds)
+        except Exception:
+            return 0
+
+    return {
+        "source_train_sequences": _len(src_train),
+        "source_val_sequences": _len(src_val),
+        "target_train_sequences": _len(tgt_train),
+        "target_val_sequences": _len(tgt_val),
+    }
+
+
+def _cwru_baseline_stats(shared_stats: dict[str, int]):
+    if not shared_stats:
+        return {}
+    return {
+        "source_train_sequences": shared_stats.get("target_train_sequences", 0),
+        "source_val_sequences": shared_stats.get("target_val_sequences", 0),
+        "target_train_sequences": 0,
+        "target_val_sequences": shared_stats.get("target_val_sequences", 0),
     }
 
 
@@ -667,9 +833,9 @@ def run_experiment(args, save_dir, trial=None, baseline=False, override_data=Non
     else:
         cwru_dataset = CWRU_inconsistent(args.data_dir, args.transfer_task, args.inconsistent, args.normlizetype)
         if baseline:
-            source_train_dataset, source_val_dataset, target_val_dataset = cwru_dataset.data_split(transfer_learning=False)
+            source_train_dataset, source_val_dataset, _, target_val_dataset, num_classes = cwru_dataset.data_split(transfer_learning=True)
             target_train_dataset = None
-            args.num_classes = len(np.unique(source_train_dataset.labels))
+            args.num_classes = num_classes
         else:
             source_train_dataset, source_val_dataset, target_train_dataset, target_val_dataset, num_classes = cwru_dataset.data_split(transfer_learning=True)
             args.num_classes = num_classes
@@ -682,10 +848,16 @@ def run_experiment(args, save_dir, trial=None, baseline=False, override_data=Non
         else:
             target_train_loader = None
 
-        if target_val_dataset is not None:
-            target_val_loader = DataLoader(target_val_dataset, batch_size=args.batch_size, shuffle=False, drop_last=False)
-        else:
-            target_val_loader = None
+    if target_val_dataset is not None:
+        target_val_loader = DataLoader(target_val_dataset, batch_size=args.batch_size, shuffle=False, drop_last=False)
+    else:
+        target_val_loader = None
+
+    profile_for_method = _dataset_profile_from_loader(target_val_loader, args.num_classes or 0, getattr(args, 'sequence_length', None))
+    chosen_method = _decide_uncertainty_method(getattr(args, 'method', 'deterministic'), profile_for_method)
+    if chosen_method != getattr(args, 'method', None):
+        print(f"⚖️  Auto-selected method: {chosen_method} (requested={getattr(args, 'method', None)})")
+        args.method = chosen_method
 
 
     # ✅ Inject Optuna trial hyperparameters
@@ -786,57 +958,76 @@ def compute_open_set_metrics(labels, preds, num_known):
 
 def run_battery_experiments(args):
 
-    # Baseline architecture defaults to CNN-1D but other models can be
-    # explored by overriding --model_name.
-    
-
-    model_architectures = [
-        "cnn_features_1d",
-        "cnn_features_1d_sa",
-        "cnn_openmax",
-        "WideResNet",
-        "WideResNet_sa",
-        "WideResNet_edited",
-    ]
-
-    
     groups, compat = build_cathode_groups(args.csv)
     
     print("🔍 Cathode families discovered:")
     for fam, items in groups.items():
-        print(f"   - {fam}: {len(items)} cathodes → {', '.join(items[:5])}{'…' if len(items) > 5 else ''}")
+        preview = ', '.join(items[:5])
+        suffix = '…' if len(items) > 5 else ''
+        print(f"   - {fam}: {len(items)} cathodes → {preview}{suffix}")
         
     print("🔁 Allowed transfer directions (data-driven):")
     for fam, targets in sorted(compat.items()):
-        arrow = ", ".join(sorted(targets)) if targets else "(none)"
+        arrow = ', '.join(sorted(targets)) if targets else '(none)'
         print(f"   - {fam} → {arrow}")
 
-    # Build experiment list using chemistry-aware compatibility
+
     experiment_configs = []
     for src_name, src_cathodes in groups.items():
         for tgt_name, tgt_cathodes in groups.items():
             if src_name == tgt_name:
                 continue
             if tgt_name not in compat.get(src_name, set()):
-                print(
-                    f"⏭️  Skipping {src_name} → {tgt_name} (incompatible families: {src_name} → {tgt_name})"
-                )
+                print(f"⏭️  Skipping {src_name} → {tgt_name} (incompatible families: {src_name} → {tgt_name})")
                 continue
             experiment_configs.append((src_name, tgt_name, src_cathodes, tgt_cathodes))
 
-    # Allow command-line overrides for a single experiment or model.
     if args.source_cathode and args.target_cathode:
         experiment_configs = [("custom", "custom", args.source_cathode, args.target_cathode)]
-    if args.model_name:
-        model_architectures = [args.model_name]
+    forced_architectures = [args.model_name] if args.model_name else None
+    original_method = args.method
 
     results = []
-    for model_name in model_architectures:
-        for src_name, tgt_name, source_cathodes, target_cathodes in experiment_configs:
+    for src_name, tgt_name, source_cathodes, target_cathodes in experiment_configs:
+        shared_tuple = load_battery_dataset(
+            csv_path=args.csv,
+            source_cathodes=source_cathodes,
+            target_cathodes=target_cathodes,
+            classification_label=args.classification_label,
+            batch_size=args.batch_size,
+            sequence_length=args.sequence_length,
+            num_classes=args.num_classes,
+            cycles_per_file=args.cycles_per_file,
+            sample_random_state=args.sample_random_state,
+        )
+        (
+            shared_src_train_loader,
+            shared_src_val_loader,
+            shared_tgt_train_loader,
+            shared_tgt_val_loader,
+            label_names,
+            _shared_df,
+            shared_stats,
+        ) = shared_tuple
+
+        target_profile = _dataset_profile_from_loader(shared_tgt_val_loader, len(label_names), args.sequence_length)
+        _log_profile(f"Battery target {src_name}→{tgt_name}", target_profile)
+
+        arch_sequence = forced_architectures or _choose_architectures(target_profile)
+        print(f"🧠 Architecture order for {src_name}→{tgt_name}: {', '.join(arch_sequence)}")
+
+        method_choice = _decide_uncertainty_method(original_method, target_profile)
+        if method_choice != original_method:
+            print(f"⚖️  Selected method '{method_choice}' for {src_name}→{tgt_name} (requested={original_method}).")
+        else:
+            print(f"⚖️  Using method '{method_choice}' for {src_name}→{tgt_name}.")
+
+        for model_name in arch_sequence:
             global_habbas3.init()
             args.model_name = model_name
+            args.method = method_choice
             args.source_cathode = source_cathodes
-            # ---------------- Pretraining on source cathodes ----------------
+            
             pre_args = argparse.Namespace(**vars(args))
             pre_args.target_cathode = []
             pre_args.pretrained = False
@@ -848,26 +1039,6 @@ def run_battery_experiments(args):
             os.makedirs(pre_dir, exist_ok=True)
             run_experiment(pre_args, pre_dir)
 
-            shared_tuple = load_battery_dataset(
-                csv_path=args.csv,
-                source_cathodes=source_cathodes,
-                target_cathodes=target_cathodes,
-                classification_label=args.classification_label,
-                batch_size=args.batch_size,
-                sequence_length=args.sequence_length,
-                num_classes=args.num_classes,
-                cycles_per_file=args.cycles_per_file,
-                sample_random_state=args.sample_random_state,
-            )
-            (
-                shared_src_train_loader,
-                shared_src_val_loader,
-                shared_tgt_train_loader,
-                shared_tgt_val_loader,
-                label_names,
-                _shared_df,
-                shared_stats,
-            ) = shared_tuple
 
             transfer_override = {
                 "source_train_loader": _clone_loader(shared_src_train_loader, force_shuffle=True),
@@ -883,13 +1054,12 @@ def run_battery_experiments(args):
                 "source_train_loader": _clone_loader(shared_tgt_train_loader, force_shuffle=True),
                 "source_val_loader": _clone_loader(shared_tgt_val_loader, force_shuffle=False),
                 "target_train_loader": None,
-                "target_val_loader": None,
+                "target_val_loader": _clone_loader(shared_tgt_val_loader, force_shuffle=False),
                 "label_names": label_names,
                 "num_classes": len(label_names),
                 "cycle_stats": _baseline_cycle_stats(shared_stats),
             }
 
-            # ---------------- Baseline: train target from scratch (matched data) ----------------
             baseline_args = argparse.Namespace(**vars(args))
             baseline_args.source_cathode = target_cathodes
             baseline_args.target_cathode = []
@@ -908,17 +1078,11 @@ def run_battery_experiments(args):
             
             baseline_stats = getattr(baseline_args, "dataset_cycle_stats", {})
             if baseline_stats:
-                print(
-                    f"🧵 Baseline training cycles used: {baseline_stats.get('source_train_cycles', 'n/a')}"
-                )
+                print(f"🧵 Baseline training cycles used: {baseline_stats.get('source_train_cycles', 'n/a')}")
 
-            # ---------------- Transfer learning ----------------
             transfer_args = argparse.Namespace(**vars(args))
             transfer_args.pretrained = True
             transfer_args.pretrained_model_path = os.path.join(pre_dir, "best_model.pth")
-            # During fine-tuning we keep the original source cathodes and
-            # provide the new target cathodes so that `load_battery_dataset`
-            # returns target loaders and enables transfer_mode.
             transfer_args.source_cathode = source_cathodes
             transfer_args.target_cathode = target_cathodes
             ft_dir = os.path.join(
@@ -933,73 +1097,39 @@ def run_battery_experiments(args):
             )
             transfer_stats = getattr(transfer_args, "dataset_cycle_stats", {})
             if transfer_stats:
-                print(
-                    f"🔁 Transfer target training cycles used: {transfer_stats.get('target_train_cycles', 'n/a')}"
-                )
+                print(f"🔁 Transfer target training cycles used: {transfer_stats.get('target_train_cycles', 'n/a')}")
+                
             eval_loader = transfer_override.get("target_val_loader")
             tr_labels, tr_preds = evaluate_model(model_ft, eval_loader)
             
-            # Evaluate baseline on the SAME target validation loader
             bl_labels, bl_preds = evaluate_model(model_bl, eval_loader)
             baseline_labels_np = np.array(bl_labels)
             baseline_preds_np = np.array(bl_preds)
             
-            # Use the same num_known (transfer_args.num_classes) to score both runs fairly.
             num_known = transfer_args.num_classes
             
             t_common, t_out, t_h = compute_common_outlier_metrics(tr_labels, tr_preds, num_known)
-            b_common, b_out, b_h = compute_common_outlier_metrics(
-                baseline_labels_np, baseline_preds_np, num_known
-            )
+            b_common, b_out, b_h = compute_common_outlier_metrics(baseline_labels_np, baseline_preds_np, num_known)
+
+            metric_key = args.improvement_metric
             
             metric_lookup = {
                 "common": (t_common, b_common),
                 "hscore": (t_h, b_h),
                 "overall": ((t_common + t_out) / 2.0, (b_common + b_out) / 2.0),
             }
-            metric_key = args.improvement_metric
-            if metric_key not in metric_lookup:
-                metric_key = "common"
+           
             transfer_score, baseline_score = metric_lookup[metric_key]
             
-            print(
-                f"✅ Baseline {tgt_name}: {baseline_score:.4f} ({len(bl_labels)} samples)"
-            )
-            print(
-                f"✅ Transfer {src_name} → {tgt_name}: {transfer_score:.4f} ({len(tr_labels)} samples)"
-            )
-            eval_cycles = getattr(eval_loader, "cycle_count", None)
-            eval_sequences = getattr(eval_loader, "sequence_count", None)
-            if eval_cycles is None and transfer_stats:
-                eval_cycles = transfer_stats.get("target_val_cycles")
-            if eval_sequences is None and transfer_stats:
-                eval_sequences = transfer_stats.get("target_val_sequences")
-            holdout_flag = None
-            if transfer_stats:
-                holdout_flag = transfer_stats.get("target_val_has_holdout")
-            if eval_cycles is not None:
-                msg = f"   ↳ evaluated_cycles={eval_cycles}"
-                if eval_sequences is not None:
-                    msg += f", evaluated_sequences={eval_sequences}"
-                if holdout_flag is not None:
-                    msg += f", holdout_split={'yes' if holdout_flag else 'no'}"
-                print(msg)
-                
-            print(
-                f"   ↳ common_acc={t_common:.4f}, outlier_acc={t_out:.4f}, hscore={t_h:.4f}"
-            )
-            print(
-                f"🧪 Baseline scored on same split: common_acc={b_common:.4f}, outlier_acc={b_out:.4f}, hscore={b_h:.4f}"
-            )
             
             improvement = transfer_score - baseline_score
             print(
-                f"📊 {src_name} → {tgt_name}: baseline({metric_key})={baseline_score:.4f}, transfer({metric_key})={transfer_score:.4f}, improvement={improvement:+.4f}"
+                f"📊 {src_name} → {tgt_name}: baseline({metric_key})={baseline_score:.4f}, "
+                f"transfer({metric_key})={transfer_score:.4f}, improvement={improvement:+.4f}"
             )
             if transfer_score <= baseline_score:
-                print(
-                    f"♻️ Transfer lagged baseline for {src_name} → {tgt_name}; launching target-focused fine-tune retry."
-                )
+                print(f"♻️ Transfer lagged baseline for {src_name} → {tgt_name}; launching target-focused fine-tune retry.")
+                
                 retry_args = argparse.Namespace(**vars(transfer_args))
                 retry_args.lr = max(1e-5, transfer_args.lr * 0.5)
                 retry_args.lambda_src = max(0.1, transfer_args.lambda_src * 0.5)
@@ -1008,36 +1138,29 @@ def run_battery_experiments(args):
                 retry_args.pretrained_model_path = os.path.join(ft_dir, "best_model.pth")
                 retry_dir = os.path.join(ft_dir, "retry_target_focus")
                 os.makedirs(retry_dir, exist_ok=True)
-                model_retry, _, _, _, _ = run_experiment(
+                model_retry, _, _, _, tr_loader_retry = run_experiment(
                     retry_args,
                     retry_dir,
                     override_data=transfer_override,
                 )
-                retry_stats = getattr(retry_args, "dataset_cycle_stats", {})
-                if retry_stats:
-                    print(
-                        f"🔁 Retry target training cycles used: {retry_stats.get('target_train_cycles', 'n/a')}"
-                    )
-                retry_labels, retry_preds = evaluate_model(model_retry, eval_loader)
+                retry_labels, retry_preds = evaluate_model(model_retry, tr_loader_retry)
                 r_common, r_out, r_h = compute_common_outlier_metrics(retry_labels, retry_preds, num_known)
-                retry_metric_lookup = {
-                    "common": (r_common, b_common),
-                    "hscore": (r_h, b_h),
-                    "overall": ((r_common + r_out) / 2.0, (b_common + b_out) / 2.0),
-                }
-                retry_transfer_score, _ = retry_metric_lookup[metric_key]
-                if retry_transfer_score > transfer_score:
-                    print(
-                        f"✅ Retry fine-tune surpassed initial transfer ({retry_transfer_score:.4f} vs {transfer_score:.4f})."
-                    )
+                retry_stats = getattr(retry_args, "dataset_cycle_stats", {})
+                retry_score = {
+                    "common": r_common,
+                    "hscore": r_h,
+                    "overall": (r_common + r_out) / 2.0,
+                }[metric_key]
+
+                if retry_score > transfer_score:
+                    print(f"✅ Retry fine-tune surpassed initial transfer ({retry_score:.4f} vs {transfer_score:.4f}).")
                     model_ft = model_retry
                     tr_labels, tr_preds = retry_labels, retry_preds
                     t_common, t_out, t_h = r_common, r_out, r_h
+                    transfer_score = retry_score
                     transfer_stats = retry_stats or transfer_stats
                 else:
-                    print(
-                        f"⚠️ Retry fine-tune did not exceed initial transfer ({retry_transfer_score:.4f} ≤ {transfer_score:.4f})."
-                    )
+                    print(f"⚠️ Retry fine-tune did not exceed initial transfer ({retry_score:.4f} ≤ {transfer_score:.4f}).")
 
                 metric_lookup = {
                     "common": (t_common, b_common),
@@ -1047,12 +1170,12 @@ def run_battery_experiments(args):
                 transfer_score, baseline_score = metric_lookup[metric_key]
                 improvement = transfer_score - baseline_score
                 print(
-                    f"📊 Updated {src_name} → {tgt_name}: baseline({metric_key})={baseline_score:.4f}, transfer({metric_key})={transfer_score:.4f}, improvement={improvement:+.4f}"
+                    f"📊 Updated {src_name} → {tgt_name}: baseline({metric_key})={baseline_score:.4f}, "
+                    f"transfer({metric_key})={transfer_score:.4f}, improvement={improvement:+.4f}"
                 )
                 if transfer_score <= baseline_score:
                     print(f"⚠️ Transfer remains below baseline for {src_name} → {tgt_name} even after retry.")
 
-            # Confusion matrices with consistent axes and minimum label coverage
             cm_transfer, labels_tr = _cm_with_min_labels(tr_labels, tr_preds, min_labels=5)
             cm_baseline, labels_bl = _cm_with_min_labels(baseline_labels_np, baseline_preds_np, min_labels=5)
             labels = sorted(set(labels_tr) | set(labels_bl))
@@ -1068,25 +1191,24 @@ def run_battery_experiments(args):
             disp.plot(cmap='Blues')
             plt.savefig(os.path.join(ft_dir, f"cm_baseline_{src_name}_to_{tgt_name}.png"))
             plt.close()
-
-
-            results.append(
-                {
-                    "model": model_name,
-                    "source": src_name,
-                    "target": tgt_name,
-                    "comparison_metric": metric_key,
-                    "baseline_score": baseline_score,
-                    "transfer_score": transfer_score,
-                    "improvement": improvement,
-                    "baseline_common_acc": b_common,
-                    "transfer_common_acc": t_common,
-                    "baseline_outlier_acc": b_out,
-                    "transfer_outlier_acc": t_out,
-                    "baseline_hscore": b_h,
-                    "transfer_hscore": t_h,
-                }
-            )
+            
+            results.append({
+                "model": model_name,
+                "source": src_name,
+                "target": tgt_name,
+                "comparison_metric": metric_key,
+                "baseline_score": baseline_score,
+                "transfer_score": transfer_score,
+                "improvement": improvement,
+                "baseline_common_acc": b_common,
+                "transfer_common_acc": t_common,
+                "baseline_outlier_acc": b_out,
+                "transfer_outlier_acc": t_out,
+                "baseline_hscore": b_h,
+                "transfer_hscore": t_h,
+            })
+            
+            args.method = original_method
 
     if results:
         summary_df = pd.DataFrame(results)
@@ -1112,54 +1234,160 @@ def run_battery_experiments(args):
         
         
 def run_cwru_experiments(args):
-    model_architectures = [
-        "cnn_features_1d",
-        "cnn_features_1d_sa",
-        "cnn_openmax",
-        "WideResNet",
-        "WideResNet_sa",
-        "WideResNet_edited",
-    ]
-    transfer_tasks = [args.transfer_task]
+    raw_task = args.transfer_task
+
+    if isinstance(raw_task, str):
+        try:
+            normalized = json.loads(raw_task)
+        except Exception:
+            normalized = eval(raw_task)
+    else:
+        normalized = raw_task
+
+    if (
+        isinstance(normalized, list)
+        and normalized
+        and isinstance(normalized[0], list)
+        and normalized
+        and isinstance(normalized[0][0], list)
+    ):
+        transfer_tasks = normalized
+    else:
+        transfer_tasks = [normalized]
+
+    forced_architectures = [args.model_name] if args.model_name else None
+    original_method = args.method
     results = []
-    for model_name in model_architectures:
-        for transfer_task in transfer_tasks:
+    for transfer_task in transfer_tasks:
+        if not transfer_task:
+            continue
+
+        src_ids = transfer_task[0]
+        tgt_ids = transfer_task[1] if len(transfer_task) > 1 else []
+        src_str = '-'.join(map(str, src_ids))
+        tgt_str = '-'.join(map(str, tgt_ids))
+
+        cwru_dataset = CWRU_inconsistent(
+            args.data_dir, transfer_task, args.inconsistent, args.normlizetype
+        )
+        (
+            shared_src_train_dataset,
+            shared_src_val_dataset,
+            shared_tgt_train_dataset,
+            shared_tgt_val_dataset,
+            num_classes,
+        ) = cwru_dataset.data_split(transfer_learning=True)
+
+        shared_src_train_loader = DataLoader(
+            shared_src_train_dataset,
+            batch_size=args.batch_size,
+            shuffle=True,
+            drop_last=True,
+        )
+        shared_src_val_loader = DataLoader(
+            shared_src_val_dataset,
+            batch_size=args.batch_size,
+            shuffle=False,
+            drop_last=False,
+        )
+        shared_tgt_train_loader = DataLoader(
+            shared_tgt_train_dataset,
+            batch_size=args.batch_size,
+            shuffle=True,
+            drop_last=True,
+        )
+        shared_tgt_val_loader = DataLoader(
+            shared_tgt_val_dataset,
+            batch_size=args.batch_size,
+            shuffle=False,
+            drop_last=False,
+        )
+
+        shared_stats = _cwru_shared_stats(
+            shared_src_train_dataset,
+            shared_src_val_dataset,
+            shared_tgt_train_dataset,
+            shared_tgt_val_dataset,
+        )
+
+        label_names = list(range(num_classes))
+        target_profile = _dataset_profile_from_loader(
+            shared_tgt_val_loader,
+            num_classes,
+            getattr(shared_tgt_val_dataset, 'sequence_length', None),
+        )
+        _log_profile(f"CWRU target {src_str}→{tgt_str}", target_profile)
+
+        arch_sequence = forced_architectures or _choose_architectures(target_profile)
+        print(f"🧠 Architecture order for {src_str}→{tgt_str}: {', '.join(arch_sequence)}")
+
+        method_choice = _decide_uncertainty_method(original_method, target_profile)
+        if method_choice != original_method:
+            print(f"⚖️  Selected method '{method_choice}' for {src_str}→{tgt_str} (requested={original_method}).")
+        else:
+            print(f"⚖️  Using method '{method_choice}' for {src_str}→{tgt_str}.")
+
+        for model_name in arch_sequence:
             global_habbas3.init()
             args.model_name = model_name
+            args.method = method_choice
             args.transfer_task = transfer_task
-            src_str = '-'.join(map(str, transfer_task[0]))
-            tgt_str = '-'.join(map(str, transfer_task[1]))
+            args.num_classes = num_classes
+
 
             pre_args = argparse.Namespace(**vars(args))
-            pre_args.transfer_task = [transfer_task[0], transfer_task[0]]
             pre_args.pretrained = False
             pre_dir = os.path.join(
                 args.checkpoint_dir,
                 f"pretrain_{model_name}_{src_str}_{datetime.now().strftime('%m%d')}",
             )
             os.makedirs(pre_dir, exist_ok=True)
-            run_experiment(pre_args, pre_dir, baseline=True)
+            pre_override = {
+                "source_train_loader": _clone_loader(shared_src_train_loader, force_shuffle=True),
+                "source_val_loader": _clone_loader(shared_src_val_loader, force_shuffle=False),
+                "target_train_loader": None,
+                "target_val_loader": None,
+                "label_names": label_names,
+                "num_classes": num_classes,
+                "cycle_stats": shared_stats,
+            }
+            run_experiment(pre_args, pre_dir, override_data=pre_override)
+
+            transfer_override = {
+                "source_train_loader": _clone_loader(shared_src_train_loader, force_shuffle=True),
+                "source_val_loader": _clone_loader(shared_src_val_loader, force_shuffle=False),
+                "target_train_loader": _clone_loader(shared_tgt_train_loader, force_shuffle=True),
+                "target_val_loader": _clone_loader(shared_tgt_val_loader, force_shuffle=False),
+                "label_names": label_names,
+                "num_classes": num_classes,
+                "cycle_stats": shared_stats,
+            }
+
+            baseline_override = {
+                "source_train_loader": _clone_loader(shared_tgt_train_loader, force_shuffle=True),
+                "source_val_loader": _clone_loader(shared_tgt_val_loader, force_shuffle=False),
+                "target_train_loader": None,
+                "target_val_loader": _clone_loader(shared_tgt_val_loader, force_shuffle=False),
+                "label_names": label_names,
+                "num_classes": num_classes,
+                "cycle_stats": _cwru_baseline_stats(shared_stats),
+            }
 
             baseline_args = argparse.Namespace(**vars(args))
-            baseline_args.transfer_task = [transfer_task[1], transfer_task[1]]
             baseline_args.pretrained = False
+            baseline_args.transfer_task = [tgt_ids, tgt_ids]
             baseline_dir = os.path.join(
                 args.checkpoint_dir,
                 f"baseline_{model_name}_{tgt_str}_{datetime.now().strftime('%m%d')}",
             )
             os.makedirs(baseline_dir, exist_ok=True)
-            model_bl, baseline_acc, _, _, bl_loader = run_experiment(baseline_args, baseline_dir, baseline=True)
-            bl_labels, bl_preds = evaluate_model(model_bl, bl_loader)
+            model_bl, _, _, _, _ = run_experiment(
+                baseline_args,
+                baseline_dir,
+                baseline=True,
+                override_data=baseline_override,
+            )
             
-            # Stash raw arrays; we’ll score later using the transfer-defined num_known
-            baseline_labels_np = np.array(bl_labels)
-            baseline_preds_np = np.array(bl_preds)
-            
-            if baseline_labels_np.size:
-                baseline_acc = accuracy_score(baseline_labels_np, baseline_preds_np)
-            print(f"✅ Baseline {tgt_str}: {baseline_acc:.4f} ({len(bl_labels)} samples)")
-                
-            # Use the same "known" count that the *transfer* task will use
             transfer_args = argparse.Namespace(**vars(args))
             transfer_args.pretrained = True
             transfer_args.transfer_task = transfer_task
@@ -1170,34 +1398,46 @@ def run_cwru_experiments(args):
                 f"transfer_{model_name}_{src_str}_to_{tgt_str}_{datetime.now().strftime('%m%d')}",
             )
             os.makedirs(ft_dir, exist_ok=True)
-            model_ft, transfer_acc, _, _, tr_loader = run_experiment(transfer_args, ft_dir)
-            tr_labels, tr_preds = evaluate_model(model_ft, tr_loader)
+            model_ft, _, _, _, _ = run_experiment(
+                transfer_args,
+                ft_dir,
+                override_data=transfer_override,
+            )
+
+            eval_loader = transfer_override["target_val_loader"]
+            tr_labels, tr_preds = evaluate_model(model_ft, eval_loader)
+            bl_labels, bl_preds = evaluate_model(model_bl, eval_loader)
+
+            baseline_labels_np = np.array(bl_labels)
+            baseline_preds_np = np.array(bl_preds)
             
-            # Score both baseline and transfer on the SAME split:
-            # num_known comes from the transfer configuration (CWRU has no cathodes; this is just the known-class count)
             num_known = transfer_args.num_classes
             
             t_common, t_out, t_h = compute_common_outlier_metrics(tr_labels, tr_preds, num_known)
             b_common, b_out, b_h = compute_common_outlier_metrics(baseline_labels_np, baseline_preds_np, num_known)
             
-            # Compare apples-to-apples on common-class accuracy (or switch to hscore if you prefer)
-            baseline_acc = b_common
-            transfer_acc = t_common
+            metric_key = args.improvement_metric
+            metric_lookup = {
+                "common": (t_common, b_common),
+                "hscore": (t_h, b_h),
+                "overall": ((t_common + t_out) / 2.0, (b_common + b_out) / 2.0),
+            }
+            transfer_score, baseline_score = metric_lookup[metric_key]
+            improvement = transfer_score - baseline_score
             
             print(
-                f"✅ Transfer {src_str} → {tgt_str}: {transfer_acc:.4f} ({len(tr_labels)} samples)\n"
-                f"   ↳ common_acc={t_common:.4f}, outlier_acc={t_out:.4f}, hscore={t_h:.4f}"
+                f"✅ Transfer {src_str} → {tgt_str}: common={t_common:.4f}, outlier={t_out:.4f}, hscore={t_h:.4f}"
             )
             print(
-                f"🧪 Baseline scored on same split: common_acc={b_common:.4f}, outlier_acc={b_out:.4f}, hscore={b_h:.4f}"
+                f"🧪 Baseline on same split: common={b_common:.4f}, outlier={b_out:.4f}, hscore={b_h:.4f}"
             )
             
-            improvement = transfer_acc - baseline_acc
             print(
-                f"📊 {src_str} → {tgt_str}: baseline(common)={baseline_acc:.4f}, "
-                f"transfer(common)={transfer_acc:.4f}, improvement={improvement:+.4f}"
+                f"📊 {src_str} → {tgt_str}: baseline({metric_key})={baseline_score:.4f}, "
+                f"transfer({metric_key})={transfer_score:.4f}, improvement={improvement:+.4f}"
             )
-            if transfer_acc <= baseline_acc:
+            
+            if transfer_score <= baseline_score:
                 print(
                     f"♻️ Transfer lagged baseline for {src_str} → {tgt_str}; retrying with stronger target emphasis."
                 )
@@ -1209,35 +1449,47 @@ def run_cwru_experiments(args):
                 retry_args.pretrained_model_path = os.path.join(ft_dir, "best_model.pth")
                 retry_dir = os.path.join(ft_dir, "retry_target_focus")
                 os.makedirs(retry_dir, exist_ok=True)
-                model_retry, _, _, _, tr_loader_retry = run_experiment(
+                model_retry, _, _, _, retry_loader = run_experiment(
                     retry_args,
                     retry_dir,
+                    override_data=transfer_override,
                 )
-                retry_labels, retry_preds = evaluate_model(model_retry, tr_loader_retry)
+                retry_labels, retry_preds = evaluate_model(model_retry, retry_loader)
                 r_common, r_out, r_h = compute_common_outlier_metrics(retry_labels, retry_preds, num_known)
-                retry_transfer_acc = r_common
-                if retry_transfer_acc > transfer_acc:
+                retry_metric = {
+                    "common": r_common,
+                    "hscore": r_h,
+                    "overall": (r_common + r_out) / 2.0,
+                }[metric_key]
+
+                if retry_metric > transfer_score:
                     print(
-                        f"✅ Retry fine-tune boosted transfer accuracy ({retry_transfer_acc:.4f} vs {transfer_acc:.4f})."
+                        f"✅ Retry fine-tune surpassed initial transfer ({retry_metric:.4f} vs {transfer_score:.4f})."
                     )
                     model_ft = model_retry
                     tr_labels, tr_preds = retry_labels, retry_preds
                     t_common, t_out, t_h = r_common, r_out, r_h
-                    transfer_acc = retry_transfer_acc
-                    improvement = transfer_acc - baseline_acc
+                    transfer_score = retry_metric
                 else:
                     print(
-                        f"⚠️ Retry fine-tune did not exceed baseline-matched score ({retry_transfer_acc:.4f} ≤ {transfer_acc:.4f})."
+                        f"⚠️ Retry fine-tune did not exceed baseline-aligned score ({retry_metric:.4f} ≤ {transfer_score:.4f})."
                     )
+                    
+                metric_lookup = {
+                    "common": (t_common, b_common),
+                    "hscore": (t_h, b_h),
+                    "overall": ((t_common + t_out) / 2.0, (b_common + b_out) / 2.0),
+                }
+                transfer_score, baseline_score = metric_lookup[metric_key]
+                improvement = transfer_score - baseline_score
+                
                 print(
-                    f"📊 Updated {src_str} → {tgt_str}: baseline(common)={baseline_acc:.4f}, "
-                    f"transfer(common)={transfer_acc:.4f}, improvement={improvement:+.4f}"
+                    f"📊 Updated {src_str} → {tgt_str}: baseline({metric_key})={baseline_score:.4f}, "
+                    f"transfer({metric_key})={transfer_score:.4f}, improvement={improvement:+.4f}"
                 )
-                if transfer_acc <= baseline_acc:
+                if transfer_score <= baseline_score:
                     print(f"⚠️ Transfer remains below baseline for {src_str} → {tgt_str} even after retry.")
 
-
-            # Confusion matrices with consistent axes and minimum label coverage
             cm_transfer, labels_tr = _cm_with_min_labels(tr_labels, tr_preds, min_labels=10)
             cm_baseline, labels_bl = _cm_with_min_labels(baseline_labels_np, baseline_preds_np, min_labels=10)
             labels = sorted(set(labels_tr) | set(labels_bl))
@@ -1258,21 +1510,43 @@ def run_cwru_experiments(args):
                     "model": model_name,
                     "source": src_str,
                     "target": tgt_str,
-                    "baseline_acc": baseline_acc,
-                    "transfer_acc": transfer_acc,
+                    "comparison_metric": metric_key,
+                    "baseline_score": baseline_score,
+                    "transfer_score": transfer_score,
                     "improvement": improvement,
+                    "baseline_common_acc": b_common,
+                    "transfer_common_acc": t_common,
+                    "baseline_outlier_acc": b_out,
+                    "transfer_outlier_acc": t_out,
+                    "baseline_hscore": b_h,
+                    "transfer_hscore": t_h,
                 }
             )
+            
+        args.method = original_method
 
     if results:
         summary_df = pd.DataFrame(results)
         summary_path = os.path.join(
             args.checkpoint_dir,
-            f"summary_{datetime.now().strftime('%m%d')}.csv",
+            f"summary_{datetime.now().strftime('%m%d')}_{args.data_name}.csv",
         )
         summary_df.to_csv(summary_path, index=False)
         print(f"Saved summary to {summary_path}")
-        print(summary_df[["source", "target", "baseline_acc", "transfer_acc", "improvement"]])
+        
+        cols_to_show = [
+            "source",
+            "target",
+            "comparison_metric",
+            "baseline_score",
+            "transfer_score",
+            "improvement",
+        ]
+        print(summary_df[cols_to_show])
+        mean_impr = summary_df["improvement"].mean()
+        overall = summary_df["transfer_score"].mean() - summary_df["baseline_score"].mean()
+        print(f"Average improvement across experiments: {mean_impr:+.4f}")
+        print(f"Overall transfer vs baseline: {overall:+.4f}")
 
 
 def main():
