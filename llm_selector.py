@@ -7,7 +7,7 @@ Created on Sat Aug 16 13:07:22 2025
 """
 
 # llm_selector.py
-import os, json, math, textwrap
+import os, json, math, textwrap, csv
 from dataclasses import dataclass, asdict
 from typing import Any, Dict, Optional, Tuple
 
@@ -154,6 +154,114 @@ def _collect_cycle_stats(num_summary: Optional[dict]) -> Dict[str, int]:
     return stats
 
 
+def _mean_csv_column(path: Path, column: str) -> Optional[float]:
+    values: list[float] = []
+    try:
+        with path.open("r", encoding="utf-8") as f:
+            reader = csv.DictReader(f)
+            for row in reader:
+                raw = row.get(column)
+                if raw is None:
+                    continue
+                try:
+                    values.append(float(raw))
+                except ValueError:
+                    continue
+    except Exception:
+        return None
+    if not values:
+        return None
+    return float(sum(values) / len(values))
+
+
+_HISTORICAL_TAG_OVERRIDES: dict[str, dict[str, Any]] = {
+    "deterministic_cnn": {
+        "architecture": "cnn_1d",
+        "self_attention": False,
+        "sngp": False,
+        "openmax": False,
+        "dropout": 0.25,
+        "learning_rate": 3e-4,
+        "batch_size": 64,
+        "lambda_src": 1.0,
+        "model_name": "cnn_features_1d",
+    },
+    "sngp_wrn_sa": {
+        "architecture": "wideresnet_sa",
+        "self_attention": True,
+        "sngp": True,
+        "openmax": False,
+        "dropout": 0.3,
+        "learning_rate": 5e-4,
+        "batch_size": 96,
+        "lambda_src": 0.8,
+        "model_name": "WideResNet_sa",
+    },
+}
+
+
+def _maybe_apply_historical_winner(cfg: dict, num_summary: Optional[dict]) -> Tuple[dict, Optional[str]]:
+    dataset = ""
+    if num_summary:
+        dataset = str(num_summary.get("dataset") or num_summary.get("dataset_variant") or "").strip()
+    if not dataset:
+        return cfg, None
+
+    checkpoint_root = Path("checkpoint")
+    if not checkpoint_root.exists():
+        return cfg, None
+
+    best_tag: Optional[str] = None
+    best_score = float("-inf")
+    pattern = f"*_{dataset}.csv"
+    for run_dir in sorted(checkpoint_root.glob("llm_run_*")):
+        compare_dir = run_dir / "compare"
+        if not compare_dir.is_dir():
+            continue
+        for csv_path in compare_dir.glob(pattern):
+            tag = csv_path.stem.split("_summary_", 1)[0]
+            avg = _mean_csv_column(csv_path, "improvement")
+            if avg is None:
+                continue
+            if avg > best_score:
+                best_score = avg
+                best_tag = tag
+
+    if not best_tag or best_tag == "llm_pick":
+        return cfg, None
+    if best_score <= 0:
+        return cfg, None
+
+    override = _HISTORICAL_TAG_OVERRIDES.get(best_tag)
+    if not override:
+        return cfg, None
+
+    updated = dict(cfg)
+    updated.update({k: v for k, v in override.items() if k not in {"architecture", "model_name"}})
+
+    if "architecture" in override:
+        updated["architecture"] = override["architecture"]
+    if "openmax" in override:
+        updated["openmax"] = override["openmax"]
+        updated["use_unknown_head"] = bool(override["openmax"])
+    updated["self_attention"] = override.get("self_attention", updated.get("self_attention", False))
+    updated["sngp"] = override.get("sngp", updated.get("sngp", False))
+
+    arch = updated.get("architecture", cfg.get("architecture", ""))
+    updated["model_name"] = override.get(
+        "model_name",
+        _arch_to_model_name(arch, updated.get("self_attention", False), updated.get("openmax", False)),
+    )
+
+    note = (
+        f"Historical leaderboard favoured {best_tag} on {dataset} (avg Δ={best_score:+.4f}); "
+        "applied its hyperparameters."
+    )
+    return updated, note
+
+
+
+
 def _numeric_heuristic_adjust(cfg: dict, num_summary: Optional[dict]) -> Tuple[dict, list[str]]:
     """Refine the config using numeric signals so the selection is data-aware."""
 
@@ -254,7 +362,10 @@ def _numeric_heuristic_adjust(cfg: dict, num_summary: Optional[dict]) -> Tuple[d
         elif ratio > 1.2:
             cfg["lambda_src"] = min(cfg.get("lambda_src", 1.0), 0.6)
             heuristic_notes.append("Target richer than source → down-weighting source loss for quicker domain fit.")
-
+            
+    cfg, hist_note = _maybe_apply_historical_winner(cfg, num_summary)
+    if hist_note:
+        heuristic_notes.append(hist_note)
     return cfg, heuristic_notes
 
 

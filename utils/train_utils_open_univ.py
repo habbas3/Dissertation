@@ -187,6 +187,20 @@ def _save_confusion_outputs(model: nn.Module,
 
     # Label set for axes
     labels = list(labels_override) if labels_override is not None else list(range(num_classes))
+    
+    # Ensure Battery confusion matrices always expose the same five classes
+    # (0-4) even if a particular split is missing later-life classes.  This
+    # keeps figure layouts consistent across experiments.
+    try:
+        numeric_labels = [int(l) for l in labels]
+    except Exception:
+        numeric_labels = []
+    if numeric_labels:
+        max_label = max(numeric_labels)
+        desired_max = max(max_label, 4)
+        labels = list(range(desired_max + 1))
+    elif labels_override is None and num_classes < 5:
+        labels = list(range(5))
 
     cm = confusion_matrix(y_true, y_pred, labels=labels)
 
@@ -1339,7 +1353,7 @@ class train_utils_open_univ(object):
         # === Confusion matrices for this run ===
         # Battery datasets pin labels to [0,1,2]; others (e.g., CWRU) use full range
         labels_override = (
-            [0, 1, 2]
+            list(range(5))
             if self.args.data_name == "Battery_inconsistent"
             else list(range(self.num_classes))
         )

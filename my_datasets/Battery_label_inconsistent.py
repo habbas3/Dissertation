@@ -192,16 +192,16 @@ def load_battery_dataset(
     cycle_counts = df.groupby("filename")["cycle_number"].max()
     print("\U0001F501 Total cycles per cell:\n", cycle_counts)
 
-    rng = np.random.default_rng(sample_random_state)
 
     def _split_train_eval_cycles(group: pd.DataFrame) -> Tuple[pd.DataFrame, pd.DataFrame]:
         """Return (train_cycles, eval_cycles) for a single cell.
 
-        Training is limited to ``cycles_per_file`` contiguous cycles when the
-        parameter is positive, while evaluation keeps every remaining cycle so we
-        can score on substantially longer horizons. When the group itself is
-        shorter than ``cycles_per_file`` we simply return the available cycles for
-        training and leave the evaluation portion empty.
+        Training is limited to the *first* ``cycles_per_file`` cycles when the
+        parameter is positive so that every cell contributes the same early-life
+        portion to the transfer stage. Evaluation keeps the remaining cycles so
+        I can still score on the full degradation trajectory. When the group
+        itself is shorter than ``cycles_per_file`` I return the available
+        cycles for training and leave the evaluation portion empty.
         """
     
         group = group.sort_values("cycle_number").reset_index(drop=True)
@@ -212,13 +212,11 @@ def load_battery_dataset(
         if len(group) <= cycles_per_file:
             return group.copy(), group.iloc[0:0].copy()
     
-        start_max = len(group) - cycles_per_file
-        start = int(rng.integers(0, start_max + 1))
-    
-        train_slice = group.iloc[start : start + cycles_per_file].copy()
-        eval_slice = pd.concat(
-            [group.iloc[:start], group.iloc[start + cycles_per_file :]], ignore_index=True
-        )
+        # ✅ Always take the earliest ``cycles_per_file`` cycles so each cathode
+        #    contributes the same 50-cycle horizon.  This removes randomness that
+        #    previously made baseline/transfer comparisons noisy.
+        train_slice = group.iloc[:cycles_per_file].copy()
+        eval_slice = group.iloc[cycles_per_file:].copy().reset_index(drop=True)
     
         return train_slice, eval_slice
 

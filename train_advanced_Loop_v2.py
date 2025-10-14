@@ -76,7 +76,7 @@ def reset_seed(seed=SEED):
 
 def parse_args():
     parser = argparse.ArgumentParser(description='Train')
-    parser.add_argument('--data_name', type=str, default='Battery_inconsistent',
+    parser.add_argument('--data_name', type=str, default='CWRU_inconsistent',
                         choices=['Battery_inconsistent', 'CWRU_inconsistent'])
     parser.add_argument('--data_dir', type=str, default='./my_datasets/Battery',
                         help='Root directory for datasets')
@@ -1053,11 +1053,12 @@ def run_battery_experiments(args):
                     print(f"⚠️ Transfer remains below baseline for {src_name} → {tgt_name} even after retry.")
 
             # Confusion matrices with consistent axes and minimum label coverage
-            cm_transfer, labels_tr = _cm_with_min_labels(tr_labels, tr_preds, min_labels=3)
-            cm_baseline, labels_bl = _cm_with_min_labels(baseline_labels_np, baseline_preds_np, min_labels=3)
+            cm_transfer, labels_tr = _cm_with_min_labels(tr_labels, tr_preds, min_labels=5)
+            cm_baseline, labels_bl = _cm_with_min_labels(baseline_labels_np, baseline_preds_np, min_labels=5)
             labels = sorted(set(labels_tr) | set(labels_bl))
-            cm_transfer, labels = _cm_with_min_labels(tr_labels, tr_preds, min_labels=len(labels))
-            cm_baseline, _ = _cm_with_min_labels(baseline_labels_np, baseline_preds_np, min_labels=len(labels))
+            desired = max(len(labels), 5)
+            cm_transfer, labels = _cm_with_min_labels(tr_labels, tr_preds, min_labels=desired)
+            cm_baseline, _ = _cm_with_min_labels(baseline_labels_np, baseline_preds_np, min_labels=desired)
             disp = ConfusionMatrixDisplay(confusion_matrix=cm_transfer, display_labels=labels)
             disp.plot(cmap='Blues')
             plt.savefig(os.path.join(ft_dir, f"cm_transfer_{src_name}_to_{tgt_name}.png"))
