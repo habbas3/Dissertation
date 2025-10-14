@@ -47,6 +47,7 @@ from torch.utils.data import WeightedRandomSampler
 from sklearn.metrics import confusion_matrix, classification_report
 import matplotlib.pyplot as plt
 import numpy as np
+from torch.utils.data.sampler import RandomSampler
 
 
 
@@ -372,6 +373,85 @@ class train_utils_open_univ(object):
 
         print(f"📈 SNGP uncertainty saved to {csv_path}")
         
+    def _rebalance_training_loaders(self):
+        """Attach class-balanced samplers to imbalanced source/target train loaders."""
+
+        def _imbalance_ratio(labels: np.ndarray):
+            if labels.size == 0:
+                return None
+            labels = labels[labels >= 0]
+            if labels.size == 0:
+                return None
+            counts = np.bincount(labels.astype(int))
+            counts = counts[counts > 0]
+            if counts.size == 0:
+                return None
+            ratio = counts.max() / counts.min()
+            threshold = float(getattr(self.args, 'rebalance_threshold', 1.6))
+            return ratio if ratio >= threshold else None
+
+        for name in ['source_train', 'target_train']:
+            loader = self.dataloaders.get(name)
+            if loader is None:
+                continue
+
+            sampler = getattr(loader, 'sampler', None)
+            if isinstance(sampler, WeightedRandomSampler) or not isinstance(sampler, RandomSampler):
+                # Custom samplers (e.g., WeightedRandomSampler) already handle class imbalance.
+                continue
+
+            dataset = loader.dataset
+            labels = None
+            for attr in ('targets', 'labels', 'y', 'ys'):
+                if hasattr(dataset, attr):
+                    data_attr = getattr(dataset, attr)
+                    if torch.is_tensor(data_attr):
+                        labels = data_attr.detach().cpu().numpy()
+                    else:
+                        labels = np.asarray(data_attr if isinstance(data_attr, (list, np.ndarray)) else list(data_attr))
+                    break
+            if labels is None:
+                try:
+                    max_scan = int(getattr(self.args, 'rebalance_scan_limit', 5000))
+                    total_len = len(dataset)
+                    if total_len > max_scan:
+                        rng = np.random.RandomState(0)
+                        indices = rng.choice(total_len, size=max_scan, replace=False)
+                    else:
+                        indices = range(total_len)
+                    labels = np.array([
+                        int(dataset[i][1].item()) if torch.is_tensor(dataset[i][1]) else int(dataset[i][1])
+                        for i in indices
+                    ])
+                except Exception:
+                    labels = np.array([])
+
+            imbalance_ratio = _imbalance_ratio(labels)
+            if imbalance_ratio is None:
+                continue
+
+            new_loader = _wrap_with_class_balanced_sampler(
+                loader,
+                batch_size=self.args.batch_size,
+                num_workers=self.args.num_workers,
+                device=self.device,
+            )
+
+            if new_loader is None:
+                continue
+
+            for attr in ('sequence_count', 'cycle_count'):
+                if hasattr(loader, attr):
+                    setattr(new_loader, attr, getattr(loader, attr))
+
+            self.dataloaders[name] = new_loader
+            if name == 'source_train':
+                self.source_train_loader = new_loader
+            else:
+                self.target_train_loader = new_loader
+
+            print(f"⚖️ Applied class-balanced sampling to {name} (imbalance ratio {imbalance_ratio:.2f}).")
+        
     
     def _load_pretrained_weights(self, pretrained_path):
         print(f"🔁 Loading pretrained model from: {pretrained_path}")
@@ -576,6 +656,9 @@ class train_utils_open_univ(object):
         # Fix 0-batch train loaders (tiny sets + drop_last)
         _rebuild_nonempty_train_loader('source_train')
         _rebuild_nonempty_train_loader('target_train')
+        
+        # Attach balanced samplers when large class skew is detected
+        self._rebalance_training_loaders()
         
         # Target sample count (safe)
         self.target_sample_count = 0
@@ -1129,6 +1212,15 @@ class train_utils_open_univ(object):
                 if self.dataloaders.get(phase) is None:
                     continue
                 
+                if (phase == 'target_val' and self.transfer_mode and
+                        self.dataloaders.get('target_train') is not None):
+                    calibrate_bn(
+                        self.model,
+                        self.dataloaders['target_train'],
+                        self.device,
+                        max_batches=int(getattr(self.args, 'bn_calibration_batches', 32))
+                    )
+                    
                 self.model.train() if phase.endswith('train') else self.model.eval()
     
                 running_loss = 0.0
@@ -1366,6 +1458,14 @@ class train_utils_open_univ(object):
             self.best_val_acc_class = best_common_acc if best_common_acc > 0 else best_hscore
         else:
             self.best_val_acc_class = self.best_source_val_acc
+            
+        if self.transfer_mode and self.dataloaders.get('target_train') is not None:
+            calibrate_bn(
+                self.model,
+                self.dataloaders['target_train'],
+                self.device,
+                max_batches=int(getattr(self.args, 'bn_calibration_batches', 64))
+            )
         
         torch.save(
             self.model.state_dict(),
