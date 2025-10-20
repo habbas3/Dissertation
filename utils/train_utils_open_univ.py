@@ -24,7 +24,7 @@ from utils.lib import *
 from models.sngp import Deterministic as deterministic
 from models.sngp import SNGP as sngp
 from utils.sngp_utils import to_numpy, Accumulator, mean_field_logits
-from sklearn.metrics import accuracy_score, roc_auc_score, precision_recall_curve, auc
+from sklearn.metrics import accuracy_score, roc_auc_score, precision_recall_curve, auc, balanced_accuracy_score
 import random
 import torch
 import pandas as pd
@@ -44,6 +44,7 @@ import torch.nn as nn
 import math
 import json
 from torch.utils.data import WeightedRandomSampler
+from torch.utils.data.sampler import RandomSampler
 from sklearn.metrics import confusion_matrix, classification_report
 import matplotlib.pyplot as plt
 import numpy as np
@@ -451,6 +452,85 @@ class train_utils_open_univ(object):
                 self.target_train_loader = new_loader
 
             print(f"⚖️ Applied class-balanced sampling to {name} (imbalance ratio {imbalance_ratio:.2f}).")
+            
+    def _rebalance_training_loaders(self):
+        """Attach class-balanced samplers to imbalanced source/target train loaders."""
+
+        def _imbalance_ratio(labels: np.ndarray):
+            if labels.size == 0:
+                return None
+            labels = labels[labels >= 0]
+            if labels.size == 0:
+                return None
+            counts = np.bincount(labels.astype(int))
+            counts = counts[counts > 0]
+            if counts.size == 0:
+                return None
+            ratio = counts.max() / counts.min()
+            threshold = float(getattr(self.args, 'rebalance_threshold', 1.6))
+            return ratio if ratio >= threshold else None
+
+        for name in ['source_train', 'target_train']:
+            loader = self.dataloaders.get(name)
+            if loader is None:
+                continue
+
+            sampler = getattr(loader, 'sampler', None)
+            if isinstance(sampler, WeightedRandomSampler) or not isinstance(sampler, RandomSampler):
+                # Custom samplers (e.g., WeightedRandomSampler) already handle class imbalance.
+                continue
+
+            dataset = loader.dataset
+            labels = None
+            for attr in ('targets', 'labels', 'y', 'ys'):
+                if hasattr(dataset, attr):
+                    data_attr = getattr(dataset, attr)
+                    if torch.is_tensor(data_attr):
+                        labels = data_attr.detach().cpu().numpy()
+                    else:
+                        labels = np.asarray(data_attr if isinstance(data_attr, (list, np.ndarray)) else list(data_attr))
+                    break
+            if labels is None:
+                try:
+                    max_scan = int(getattr(self.args, 'rebalance_scan_limit', 5000))
+                    total_len = len(dataset)
+                    if total_len > max_scan:
+                        rng = np.random.RandomState(0)
+                        indices = rng.choice(total_len, size=max_scan, replace=False)
+                    else:
+                        indices = range(total_len)
+                    labels = np.array([
+                        int(dataset[i][1].item()) if torch.is_tensor(dataset[i][1]) else int(dataset[i][1])
+                        for i in indices
+                    ])
+                except Exception:
+                    labels = np.array([])
+
+            imbalance_ratio = _imbalance_ratio(labels)
+            if imbalance_ratio is None:
+                continue
+
+            new_loader = _wrap_with_class_balanced_sampler(
+                loader,
+                batch_size=self.args.batch_size,
+                num_workers=self.args.num_workers,
+                device=self.device,
+            )
+
+            if new_loader is None:
+                continue
+
+            for attr in ('sequence_count', 'cycle_count'):
+                if hasattr(loader, attr):
+                    setattr(new_loader, attr, getattr(loader, attr))
+
+            self.dataloaders[name] = new_loader
+            if name == 'source_train':
+                self.source_train_loader = new_loader
+            else:
+                self.target_train_loader = new_loader
+
+            print(f"⚖️ Applied class-balanced sampling to {name} (imbalance ratio {imbalance_ratio:.2f}).")
         
     
     def _load_pretrained_weights(self, pretrained_path):
@@ -660,6 +740,7 @@ class train_utils_open_univ(object):
         # Attach balanced samplers when large class skew is detected
         self._rebalance_training_loaders()
         
+        
         # Target sample count (safe)
         self.target_sample_count = 0
         if self.dataloaders.get('target_train') is not None:
@@ -676,6 +757,53 @@ class train_utils_open_univ(object):
             if self.target_sample_count < 100:
                 args.lr = min(args.lr, 1e-4)
                 logging.info(f"Reducing learning rate to {args.lr} for {self.target_sample_count} target samples")
+                
+        # --- Target class prior for balanced regularization ---
+        self.target_class_prior = None
+        target_labels = None
+        tgt_loader = self.dataloaders.get('target_train')
+        if tgt_loader is not None:
+            dataset = tgt_loader.dataset
+            for attr in ('targets', 'labels', 'y', 'ys'):
+                if hasattr(dataset, attr):
+                    data_attr = getattr(dataset, attr)
+                    if torch.is_tensor(data_attr):
+                        target_labels = data_attr.detach().cpu().numpy()
+                    else:
+                        target_labels = np.asarray(data_attr if isinstance(data_attr, (list, np.ndarray)) else list(data_attr))
+                    break
+            if target_labels is None:
+                try:
+                    extracted = []
+                    for i in range(len(dataset)):
+                        lbl = dataset[i][1]
+                        if torch.is_tensor(lbl):
+                            extracted.append(int(lbl.item()))
+                        else:
+                            extracted.append(int(lbl))
+                    target_labels = np.array(extracted)
+                except Exception:
+                    target_labels = None
+
+        if target_labels is not None and target_labels.size > 0:
+            known_target = target_labels[target_labels < self.num_classes]
+            if known_target.size > 0:
+                counts = np.bincount(known_target.astype(int), minlength=self.num_classes).astype(np.float32)
+                if counts.sum() > 0:
+                    prior = counts / counts.sum()
+                    prior = np.clip(prior, 1e-6, None)
+                    prior = prior / prior.sum()
+                    self.target_class_prior = torch.tensor(prior, dtype=torch.float)
+                    print(f"🎯 Target class prior (known classes): {prior.tolist()}")
+
+        default_balance_lambda = 0.05 if getattr(self.args, 'data_name', None) == 'Battery_inconsistent' else 0.0
+        self.target_balance_lambda = float(getattr(self.args, 'target_balance_lambda', default_balance_lambda))
+        if self.target_balance_lambda > 0 and self.target_class_prior is None and self.num_classes > 0:
+            uniform_prior = np.full(self.num_classes, 1.0 / float(self.num_classes), dtype=np.float32)
+            self.target_class_prior = torch.tensor(uniform_prior, dtype=torch.float)
+            print("🎯 Target prior defaulted to uniform distribution.")
+        if self.target_balance_lambda > 0:
+            print(f"🧮 Target balance regularization λ={self.target_balance_lambda:.4f}")
 
         tgt_dl = self.dataloaders.get('target_train')
         
@@ -1166,6 +1294,7 @@ class train_utils_open_univ(object):
         best_model_wts = copy.deepcopy(self.model.state_dict())
         best_hscore = 0.0
         best_common_acc = 0.0
+        best_balanced_acc = 0.0
         patience = getattr(self.args, 'early_stop_patience', None)
         epochs_no_improve = 0
         
@@ -1220,6 +1349,7 @@ class train_utils_open_univ(object):
                         self.device,
                         max_batches=int(getattr(self.args, 'bn_calibration_batches', 32))
                     )
+                
                     
                 self.model.train() if phase.endswith('train') else self.model.eval()
     
@@ -1353,6 +1483,30 @@ class train_utils_open_univ(object):
                             # If no valid src labels for this step, just skip source loss for this batch.
                         # <<< END NEW >>>
                         
+                        # Encourage balanced target predictions by matching the batch-average
+                        # probability distribution to the empirical target prior (or uniform fallback).
+                        balance_lambda = getattr(self, 'target_balance_lambda', 0.0)
+                        if (self.transfer_mode and phase == 'target_train' and balance_lambda > 0
+                                and known_mask_batch.any()):
+                            probs = torch.softmax(logits[known_mask_batch], dim=1)
+                            mean_probs = probs.mean(dim=0)
+                            prior = getattr(self, 'target_class_prior', None)
+                            if prior is not None:
+                                prior = prior.to(self.device)
+                                if prior.device == self.device:
+                                    self.target_class_prior = prior.detach()
+                                if prior.numel() != mean_probs.numel():
+                                    prior = torch.ones_like(mean_probs) / float(mean_probs.numel())
+                            else:
+                                prior = torch.ones_like(mean_probs) / float(mean_probs.numel())
+
+                            mean_probs = mean_probs.clamp_min(1e-6)
+                            prior = prior.clamp_min(1e-6)
+                            prior = prior / prior.sum()
+                            mean_probs = mean_probs / mean_probs.sum()
+                            balance_loss = torch.sum(mean_probs * (mean_probs.log() - prior.log()))
+                            total_loss = total_loss + balance_lambda * balance_loss if total_loss is not None else balance_lambda * balance_loss
+                        
                         # L2-SP: keep weights near pretrained solution (helps on tiny/different targets)
                         if self.transfer_mode and getattr(self, "lambda_l2sp", 0.0) > 0 and getattr(self, "_l2sp_ref", None) is not None:
                             reg = torch.tensor(0.0, device=self.device)
@@ -1386,13 +1540,46 @@ class train_utils_open_univ(object):
                     
     
                 epoch_loss = running_loss / running_total if running_total > 0 else 0.0
-                epoch_acc = running_corrects.double() / running_total if running_total > 0 else 0.0
-                print(f"{datetime.now().strftime('%m-%d %H:%M:%S')} Epoch: {epoch} {phase}-Loss: {epoch_loss:.4f} {phase}-Acc: {epoch_acc:.4f}")
-    
-                if phase in ['source_val', 'target_val'] and epoch_acc > best_eval_acc:
-                    best_eval_acc = epoch_acc
+                epoch_acc = running_corrects.double() / running_total if running_total > 0 else torch.tensor(0.0)
+                epoch_acc_value = float(epoch_acc)
+                balanced_acc_value = float('nan')
+
+                if phase == 'target_val':
+                    preds_np = np.array(preds_all)
+                    labels_np = np.array(labels_all)
+                    known_eval_mask = labels_np < self.num_classes
+                    if known_eval_mask.any():
+                        unique_known = np.unique(labels_np[known_eval_mask])
+                        if unique_known.size == 1:
+                            balanced_acc_value = float(np.mean(preds_np[known_eval_mask] == labels_np[known_eval_mask]))
+                        else:
+                            try:
+                                balanced_acc_value = float(
+                                    balanced_accuracy_score(labels_np[known_eval_mask], preds_np[known_eval_mask])
+                                )
+                            except Exception:
+                                balanced_acc_value = float('nan')
+
+                log_msg = [
+                    f"{datetime.now().strftime('%m-%d %H:%M:%S')} Epoch: {epoch}",
+                    f"{phase}-Loss: {epoch_loss:.4f}",
+                    f"{phase}-Acc: {epoch_acc_value:.4f}"
+                ]
+                if phase == 'target_val':
+                    if not math.isnan(balanced_acc_value):
+                        log_msg.append(f"{phase}-BalAcc: {balanced_acc_value:.4f}")
+                    else:
+                        log_msg.append(f"{phase}-BalAcc: nan")
+                print(' '.join(log_msg))
+
+                metric_for_selection = epoch_acc_value
+                if phase == 'target_val' and not math.isnan(balanced_acc_value):
+                    metric_for_selection = balanced_acc_value
+
+                if phase in ['source_val', 'target_val'] and metric_for_selection > best_eval_acc:
+                    best_eval_acc = metric_for_selection
                     best_model_wts = copy.deepcopy(self.model.state_dict())
-                    print("✓ Best model updated based on validation accuracy.")
+                    print("✓ Best model updated based on validation metric.")
                     val_improved = True
                     self._best_epoch = epoch
                     self._best_metric_time = time.time() - self._train_start_time
@@ -1430,13 +1617,24 @@ class train_utils_open_univ(object):
                     if improved_h:
                         best_hscore = hscore
                 
-                    print(f"{datetime.now().strftime('%m-%d %H:%M:%S')} Epoch: {epoch} {phase}-common: {common_acc:.4f} outlier: {outlier_acc:.4f} hscore: {hscore:.4f}")
+                    metrics_log = (
+                        f"{datetime.now().strftime('%m-%d %H:%M:%S')} Epoch: {epoch} {phase}-common: {common_acc:.4f} "
+                        f"outlier: {outlier_acc:.4f} hscore: {hscore:.4f} "
+                    )
+                    if not math.isnan(balanced_acc_value):
+                        metrics_log += f"bal_acc: {balanced_acc_value:.4f}"
+                    else:
+                        metrics_log += "bal_acc: nan"
+                    print(metrics_log)
                 
                     # Also update BEST MODEL on improved hscore/common so we save the right model for transfer
-                    if improved_h or improved_common:
+                    improved_balanced = (not math.isnan(balanced_acc_value)) and (balanced_acc_value > best_balanced_acc)
+                    if improved_balanced:
+                        best_balanced_acc = balanced_acc_value
+                    if improved_h or improved_common or improved_balanced:
                         best_model_wts = copy.deepcopy(self.model.state_dict())
                         val_improved = True
-                        print("✓ Best target model updated based on hscore/common.")
+                        print("✓ Best target model updated based on target metrics (hscore/common/balanced).")
                         self._best_epoch = epoch
                         self._best_metric_time = time.time() - self._train_start_time
     
@@ -1455,9 +1653,23 @@ class train_utils_open_univ(object):
         self.best_source_val_acc = float(best_eval_acc)
         if self.dataloaders.get('target_val') is not None:
             # Always prefer target-side metric when available (transfer or baseline)
-            self.best_val_acc_class = best_common_acc if best_common_acc > 0 else best_hscore
+            self.best_target_balanced_acc = float(best_balanced_acc)
+            if self.best_target_balanced_acc > 0:
+                self.best_val_acc_class = self.best_target_balanced_acc
+            else:
+                self.best_val_acc_class = best_common_acc if best_common_acc > 0 else best_hscore
         else:
             self.best_val_acc_class = self.best_source_val_acc
+            
+            self.best_target_balanced_acc = 0.0
+
+        if self.transfer_mode and self.dataloaders.get('target_train') is not None:
+            calibrate_bn(
+                self.model,
+                self.dataloaders['target_train'],
+                self.device,
+                max_batches=int(getattr(self.args, 'bn_calibration_batches', 64))
+            )
             
         if self.transfer_mode and self.dataloaders.get('target_train') is not None:
             calibrate_bn(
@@ -1472,7 +1684,11 @@ class train_utils_open_univ(object):
             os.path.join(self.save_dir, "best_model.pth")
         )
         print(f"🔖  Saved best source model to {self.save_dir}/best_model.pth")
-        print(f"🏁 Final best target validation accuracy: {self.best_val_acc_class:.4f}")
+        if self.dataloaders.get('target_val') is not None:
+            print(f"🏁 Final best target validation balanced accuracy: {self.best_val_acc_class:.4f}")
+            print(f"📊 Final best target validation common accuracy: {best_common_acc:.4f}")
+        else:
+            print(f"🏁 Final best validation accuracy: {self.best_val_acc_class:.4f}")
         
         
         total_time = time.time() - self._train_start_time
@@ -1482,6 +1698,8 @@ class train_utils_open_univ(object):
             "best_epoch": int(self._best_epoch),
             "transfer_mode": bool(self.transfer_mode),
             "num_target_samples": int(self.target_sample_count),
+            "best_target_balanced_accuracy": float(getattr(self, 'best_target_balanced_acc', 0.0)),
+            "best_target_common_accuracy": float(best_common_acc),
         }
         try:
             os.makedirs(self.save_dir, exist_ok=True)
