@@ -189,6 +189,26 @@ def load_battery_dataset(
     
     df = pd.read_csv(csv_path)
     
+    # Normalise string columns once at load time so downstream filtering by
+    # cathode/cell names is reliable regardless of stray whitespace in the raw
+    # CSV.  This mirrors the trimming performed when the cycle-level file is
+    # generated and fixes cases where groups such as "NMC532" were previously
+    # missed because the value was stored as " NMC532".
+    string_cols = [
+        "filename",
+        "battery_name",
+        "batch",
+        "cell_id",
+        "anode",
+        "cathode",
+        "electrolyte",
+        "dataset_name",
+    ]
+    for col in string_cols:
+        if col in df.columns:
+            df[col] = df[col].astype(str).str.strip()
+            
+            
     cycle_counts = df.groupby("filename")["cycle_number"].max()
     print("\U0001F501 Total cycles per cell:\n", cycle_counts)
 

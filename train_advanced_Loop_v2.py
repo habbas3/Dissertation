@@ -316,12 +316,18 @@ def build_cathode_groups(csv_path):
     """
 
     df = pd.read_csv(csv_path)
-    cath = df["cathode"].astype(str).str.strip()
+    if "cathode" not in df.columns:
+        raise ValueError(f"'cathode' column not found in {csv_path}")
+
+    # Trim whitespace once so the regex patterns below see canonical names
+    # (e.g. "NMC532" instead of " NMC532").
+    df["cathode"] = df["cathode"].astype(str).str.strip()
+    cath = df["cathode"]
 
     groups = {
         # NMC family (+ HE5050 bucketed here as NMC-like)
         "nmc": sorted(
-            cath[cath.str.contains(r"(?:^|\W)(NMC|HE5050)(?:$|\W)", case=False, regex=True)]
+            cath[cath.str.contains(r"^(?:NMC|HE5050)", case=False, regex=True)]
             .unique().tolist()
         ),
         # Li-rich layered compositions
@@ -331,7 +337,7 @@ def build_cathode_groups(csv_path):
         ),
         # 5V spinel
         "spinel5v": sorted(
-            cath[cath.str.contains("5Vspinel", case=False)]
+            cath[cath.str.contains("5Vspinel", case=False, regex=True)]
             .unique().tolist()
         ),
         # FCG (+ variant)

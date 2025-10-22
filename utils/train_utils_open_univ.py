@@ -1198,6 +1198,18 @@ class train_utils_open_univ(object):
                 collected.extend(lbl.numpy().tolist() if isinstance(lbl, torch.Tensor) else lbl)
             if collected:
                 all_labels = np.array(collected)
+                
+        # Blend in target-side supervision when available so the class weights
+        # reflect the distribution the transfer step actually trains on.
+        if target_labels is not None:
+            target_labels_arr = np.asarray(target_labels)
+            tgt_known = target_labels_arr[target_labels_arr < self.num_classes]
+            if tgt_known.size > 0:
+                if all_labels is None:
+                    all_labels = tgt_known.copy()
+                else:
+                    all_labels = np.concatenate([all_labels, tgt_known])
+
 
         if all_labels is not None and len(all_labels) > 0:
             # -------------------------------------------------------------

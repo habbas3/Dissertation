@@ -53,6 +53,12 @@ def build_cycle_csv(processed_dir: Path, labels_csv: Path, cycles_csv: Path, num
 
     labels = counts.reset_index()
     labels.sort_values("eol_cycle", inplace=True)
+    
+    # Normalise string columns up front so downstream lookups (e.g. cathode
+    # grouping) do not have to worry about stray whitespace from the original
+    # Argonne metadata.
+    if "filename" in labels.columns:
+        labels["filename"] = labels["filename"].astype(str).str.strip()
 
     if num_classes != 5:
         # Automatically generate labels if a different number requested
@@ -71,6 +77,24 @@ def build_cycle_csv(processed_dir: Path, labels_csv: Path, cycles_csv: Path, num
 
     df = cycles.merge(labels, on="filename", how="left")
     df.sort_values(["filename", "cycle_number"], inplace=True)
+    
+    # Ensure all categorical/string columns are trimmed.  The raw parquet
+    # files contain leading spaces in several fields which previously caused
+    # cathode-family detection to miss many cells (e.g. " NMC532").
+    string_cols = [
+        "filename",
+        "battery_name",
+        "batch",
+        "cell_id",
+        "anode",
+        "cathode",
+        "electrolyte",
+        "dataset_name",
+    ]
+    for col in string_cols:
+        if col in df.columns:
+            df[col] = df[col].astype(str).str.strip()
+            
 
     cycles_csv.parent.mkdir(parents=True, exist_ok=True)
     df.to_csv(cycles_csv, index=False)
