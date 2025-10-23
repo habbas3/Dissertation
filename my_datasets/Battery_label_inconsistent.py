@@ -298,7 +298,8 @@ def load_battery_dataset(
             print(f'⚠️ {name}: 0 cells available.')
             return
 
-        group_count = len(set(groups)) if groups else 0
+        groups_list = list(groups) if groups is not None else []
+        group_count = len(set(groups_list))
         per_cell_counts = df_subset.groupby('filename')['cycle_number'].nunique()
         stats = per_cell_counts.describe()
         median = stats.get('50%', float('nan'))
