@@ -47,11 +47,29 @@ def build_cycle_csv(processed_dir: Path, labels_csv: Path, cycles_csv: Path, num
     print(f"Loading merged cycles from {merged_path}")
     cycles = pd.read_parquet(merged_path)
 
-    # Total cycles per cell
-    counts = cycles.groupby("filename")["cycle_number"].max().rename("eol_cycle")
-    print("\U0001F501 Total cycles per cell:\n", counts)
+    # Summarise cycle coverage for each cell so downstream analysis can
+    # understand how many charge/discharge cycles were recorded before
+    # failure.  ``count`` represents the number of rows while ``max`` provides
+    # the last cycle index which, for well-formed files, matches the EOL.
+    per_cell = cycles.groupby("filename").agg(
+        total_cycles=("cycle_number", "count"),
+        eol_cycle=("cycle_number", "max"),
+    )
+    for meta_col in ["cathode", "batch", "cell_id"]:
+        if meta_col in cycles.columns:
+            per_cell[meta_col] = cycles.groupby("filename")[meta_col].first()
 
-    labels = counts.reset_index()
+    counts = per_cell["eol_cycle"].rename("eol_cycle")
+    print("\U0001F501 Total cycles per cell (max cycle index):\n", counts)
+
+    # Persist a full table so researchers can inspect the cycle coverage for
+    # every cell without having to re-run the script.
+    labels_csv.parent.mkdir(parents=True, exist_ok=True)
+    cycle_count_path = labels_csv.parent / "battery_cell_cycle_counts.csv"
+    per_cell.reset_index().to_csv(cycle_count_path, index=False)
+    print(f"Saved cycle-count summary to {cycle_count_path}")
+
+    labels = per_cell.reset_index()[["filename", "eol_cycle"]]
     labels.sort_values("eol_cycle", inplace=True)
     
     # Normalise string columns up front so downstream lookups (e.g. cathode
@@ -59,6 +77,7 @@ def build_cycle_csv(processed_dir: Path, labels_csv: Path, cycles_csv: Path, num
     # Argonne metadata.
     if "filename" in labels.columns:
         labels["filename"] = labels["filename"].astype(str).str.strip()
+    
 
     if num_classes != 5:
         # Automatically generate labels if a different number requested
@@ -71,7 +90,6 @@ def build_cycle_csv(processed_dir: Path, labels_csv: Path, cycles_csv: Path, num
 
     labels["eol_class_encoded"] = LabelEncoder().fit_transform(labels["eol_class"])
 
-    labels_csv.parent.mkdir(parents=True, exist_ok=True)
     labels.to_csv(labels_csv, index=False)
     print(f"Wrote per-cell labels to {labels_csv}")
 
@@ -94,6 +112,7 @@ def build_cycle_csv(processed_dir: Path, labels_csv: Path, cycles_csv: Path, num
     for col in string_cols:
         if col in df.columns:
             df[col] = df[col].astype(str).str.strip()
+
             
 
     cycles_csv.parent.mkdir(parents=True, exist_ok=True)

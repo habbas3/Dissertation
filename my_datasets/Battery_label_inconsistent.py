@@ -22,7 +22,7 @@ class Compose:
 
 
 # --- Splitting utilities ---
-from typing import Optional, Tuple
+from typing import Optional, Tuple, Sequence
 
 
 
@@ -211,49 +211,80 @@ def load_battery_dataset(
             
     cycle_counts = df.groupby("filename")["cycle_number"].max()
     print("\U0001F501 Total cycles per cell:\n", cycle_counts)
-
-
-    def _split_train_eval_cycles(group: pd.DataFrame) -> Tuple[pd.DataFrame, pd.DataFrame]:
-        """Return (train_cycles, eval_cycles) for a single cell.
-
-        Training is limited to the *first* ``cycles_per_file`` cycles when the
-        parameter is positive so that every cell contributes the same early-life
-        portion to the transfer stage. Evaluation keeps the remaining cycles so
-        I can still score on the full degradation trajectory. When the group
-        itself is shorter than ``cycles_per_file`` I return the available
-        cycles for training and leave the evaluation portion empty.
-        """
     
-        group = group.sort_values("cycle_number").reset_index(drop=True)
-    
-        if cycles_per_file is None or cycles_per_file <= 0:
-            return group.copy(), group.copy()
-    
-        if len(group) <= cycles_per_file:
-            return group.copy(), group.iloc[0:0].copy()
-    
-        # ✅ Always take the earliest ``cycles_per_file`` cycles so each cathode
-        #    contributes the same 50-cycle horizon.  This removes randomness that
-        #    previously made baseline/transfer comparisons noisy.
-        train_slice = group.iloc[:cycles_per_file].copy()
-        eval_slice = group.iloc[cycles_per_file:].copy().reset_index(drop=True)
-    
-        return train_slice, eval_slice
+    per_cathode_cycles = (
+        df.groupby(["cathode", "filename"])["cycle_number"].nunique().rename("cycle_count").sort_values()
+    )
+    if len(per_cathode_cycles) <= 40:
+        print("🔁 Cycle counts by cathode/filename:\n", per_cathode_cycles)
+    else:
+        print("🔁 Cycle counts by cathode/filename (first 10):\n", per_cathode_cycles.head(10))
+        print("⋮")
+        print("🔁 Cycle counts by cathode/filename (last 10):\n", per_cathode_cycles.tail(10))
+
+    def _limit_cycles_per_cell(df_subset: pd.DataFrame, limit: Optional[int]) -> pd.DataFrame:
+        if df_subset is None or df_subset.empty or limit is None or limit <= 0:
+            return df_subset.copy()
+
+        parts = []
+        truncated = []
+        for name, group in df_subset.groupby("filename"):
+            ordered = group.sort_values("cycle_number")
+            parts.append(ordered.head(limit))
+            if len(ordered) > limit:
+                truncated.append(name)
+
+        if truncated:
+            print(
+                f"✂️  Truncated {len(truncated)} cells to the first {limit} cycles "
+                "so baseline and transfer compare the same early-life horizon."
+            )
+            
+        return pd.concat(parts, ignore_index=True) if parts else df_subset.iloc[0:0].copy()
 
 
-    def _partition_cycles(df: pd.DataFrame) -> Tuple[pd.DataFrame, pd.DataFrame]:
-        train_parts = []
-        eval_parts = []
-        for _, group in df.groupby("filename"):
-            train_slice, eval_slice = _split_train_eval_cycles(group)
-            if not train_slice.empty:
-                train_parts.append(train_slice)
-            if not eval_slice.empty:
-                eval_parts.append(eval_slice)
+    def _train_val_split_by_group(
+        df_subset: pd.DataFrame,
+        group_col: str,
+        label_col: str,
+        val_fraction: float,
+        seed: int,
+    ) -> Tuple[pd.DataFrame, pd.DataFrame, Sequence, Sequence]:
+        if df_subset is None or df_subset.empty:
+            return df_subset.iloc[0:0].copy(), df_subset.iloc[0:0].copy(), [], []
 
-        train_df = pd.concat(train_parts, ignore_index=True) if train_parts else df.iloc[0:0].copy()
-        eval_df = pd.concat(eval_parts, ignore_index=True) if eval_parts else df.iloc[0:0].copy()
-        return train_df, eval_df
+        base = (
+            df_subset[[group_col, label_col]]
+            .drop_duplicates(subset=[group_col])
+            .set_index(group_col)[label_col]
+        )
+        group_names = base.index.to_numpy()
+        y_groups = base.to_numpy()
+
+        if len(group_names) <= 1:
+            return df_subset.copy(), df_subset.iloc[0:0].copy(), group_names, []
+
+        val_fraction = min(0.5, max(val_fraction, 1.0 / max(2, len(group_names))))
+        min_val = max(1, int(round(val_fraction * len(group_names))))
+        
+        tr_idx, va_idx = _safe_stratified_split(
+            y_groups,
+            groups=group_names,
+            test_size=val_fraction,
+            seed=seed,
+            min_val=min_val,
+        )
+
+        train_groups = group_names[tr_idx]
+        val_groups = group_names[va_idx]
+
+        if len(val_groups) == 0 and len(train_groups) > 1:
+            val_groups = train_groups[:1]
+            train_groups = train_groups[1:]
+
+        train_df = df_subset[df_subset[group_col].isin(train_groups)].copy()
+        val_df = df_subset[df_subset[group_col].isin(val_groups)].copy()
+        return train_df, val_df, train_groups, val_groups
 
     def _count_cycles(df_subset: pd.DataFrame) -> int:
         if df_subset is None or df_subset.empty:
@@ -261,6 +292,21 @@ def load_battery_dataset(
         if "cycle_number" in df_subset.columns:
             return int(pd.to_numeric(df_subset["cycle_number"], errors="coerce").notna().sum())
         return int(len(df_subset))
+    
+    def _describe_split(name: str, df_subset: pd.DataFrame, groups: Sequence) -> None:
+        if df_subset is None or df_subset.empty:
+            print(f'⚠️ {name}: 0 cells available.')
+            return
+
+        group_count = len(set(groups)) if groups else 0
+        per_cell_counts = df_subset.groupby('filename')['cycle_number'].nunique()
+        stats = per_cell_counts.describe()
+        median = stats.get('50%', float('nan'))
+        print(
+            f'🧮 {name}: {group_count} cells, {df_subset.shape[0]} cycles, '
+            f'median per-cell horizon {median:.1f} (min {stats.get("min", float("nan")):.0f}, '
+            f'max {stats.get("max", float("nan")):.0f})'
+        )
     
     if classification_label not in df.columns:
         raise ValueError(f"Missing classification label: {classification_label}")
@@ -314,24 +360,54 @@ def load_battery_dataset(
         if target_df.empty:
             print(f"⚠️ No rows found for target cathodes: {target_cathodes}")
 
-    source_train_cycles, source_eval_cycles = _partition_cycles(source_df)
+    source_limited = _limit_cycles_per_cell(source_df, cycles_per_file)
+    target_limited = _limit_cycles_per_cell(target_df, cycles_per_file) if not target_df.empty else target_df.copy()
 
-    if not target_df.empty:
-        target_train_cycles, target_eval_cycles = _partition_cycles(target_df)
+    src_group_col = "cell_id" if "cell_id" in source_limited.columns else "filename"
+    tgt_group_col = "cell_id" if (not target_limited.empty and "cell_id" in target_limited.columns) else "filename"
+
+    source_train_cycles, source_eval_cycles, src_train_groups, src_val_groups = _train_val_split_by_group(
+        source_limited,
+        group_col=src_group_col,
+        label_col=classification_label + "_encoded",
+        val_fraction=0.25,
+        seed=sample_random_state,
+    )
+
+    if not target_limited.empty:
+        target_train_cycles, target_eval_cycles, tgt_train_groups, tgt_val_groups = _train_val_split_by_group(
+            target_limited,
+            group_col=tgt_group_col,
+            label_col=classification_label + "_encoded",
+            val_fraction=0.3,
+            seed=sample_random_state,
+        )
     else:
-        target_train_cycles = target_df.copy()
-        target_eval_cycles = target_df.copy()
+        target_train_cycles = target_limited.copy()
+        target_eval_cycles = target_limited.copy()
+        tgt_train_groups = []
+        tgt_val_groups = []
 
     src_train_cycle_count = _count_cycles(source_train_cycles)
     src_eval_cycle_count = _count_cycles(source_eval_cycles)
     tgt_train_cycle_count = _count_cycles(target_train_cycles)
     tgt_eval_cycle_count = _count_cycles(target_eval_cycles)
+    
+    _describe_split('Source train', source_train_cycles, src_train_groups)
+    _describe_split('Source val', source_eval_cycles, src_val_groups)
+    if not target_limited.empty:
+        _describe_split('Target train', target_train_cycles, tgt_train_groups)
+        _describe_split('Target val', target_eval_cycles, tgt_val_groups)
 
     feature_cols = ['cycle_number', 'energy_charge', 'capacity_charge', 'energy_discharge',
                     'capacity_discharge', 'cycle_start', 'cycle_duration']
 
     scaler = StandardScaler()
-    scaler.fit(df[feature_cols])
+    scaler_fit_parts = [frame for frame in [source_train_cycles, source_eval_cycles, target_train_cycles, target_eval_cycles] if frame is not None and not frame.empty]
+    if scaler_fit_parts:
+        scaler.fit(pd.concat(scaler_fit_parts, ignore_index=True)[feature_cols])
+    else:
+        scaler.fit(df[feature_cols])
 
     def _transform(df_subset: pd.DataFrame) -> pd.DataFrame:
         if df_subset is None or df_subset.empty:
@@ -356,7 +432,6 @@ def load_battery_dataset(
         return build_sequences(df_subset, feature_cols, label_col, seq_len=sequence_length, group_col=group_col)
 
     # --- Source split ---
-    src_group_col = "cell_id" if "cell_id" in source_df.columns else "filename"
     X_src_all, y_src_all, g_src_all = _build_arrays(source_train_cycles, src_group_col)
     X_src_val_all, y_src_val_all, g_src_val_all = _build_arrays(source_eval_cycles, src_group_col)
 
@@ -382,8 +457,7 @@ def load_battery_dataset(
     X_tgt_val = np.zeros((0, sequence_length, len(feature_cols)))
     y_tgt_val = np.zeros((0,), dtype=int)
 
-    if not target_df.empty:
-        tgt_group_col = "cell_id" if "cell_id" in target_df.columns else "filename"
+    if not target_limited.empty:
         X_tgt_all, y_tgt_all, g_tgt_all = _build_arrays(target_train_cycles, tgt_group_col)
         X_tgt_val_all, y_tgt_val_all, g_tgt_val_all = _build_arrays(target_eval_cycles, tgt_group_col)
 
@@ -447,20 +521,25 @@ def load_battery_dataset(
         "source_val_sequences": len(source_val_dataset),
         "target_train_sequences": len(target_train_dataset) if target_train_dataset is not None else 0,
         "target_val_sequences": len(target_val_dataset) if target_val_dataset is not None else 0,
+        "source_train_cells": len(set(src_train_groups)) if src_train_groups else 0,
+        "source_val_cells": len(set(src_val_groups)) if src_val_groups else 0,
+        "target_train_cells": len(set(tgt_train_groups)) if tgt_train_groups else 0,
+        "target_val_cells": len(set(tgt_val_groups)) if tgt_val_groups else 0,
     }
 
-    for loader, seq_key, cyc_key in [
-        (source_train, "source_train_sequences", "source_train_cycles"),
-        (source_val, "source_val_sequences", "source_val_cycles"),
-        (target_train, "target_train_sequences", "target_train_cycles"),
-        (target_val, "target_val_sequences", "target_val_cycles"),
+    for loader, seq_key, cyc_key, cell_key in [
+        (source_train, "source_train_sequences", "source_train_cycles", "source_train_cells"),
+        (source_val, "source_val_sequences", "source_val_cycles", "source_val_cells"),
+        (target_train, "target_train_sequences", "target_train_cycles", "target_train_cells"),
+        (target_val, "target_val_sequences", "target_val_cycles", "target_val_cells"),
     ]:
         if loader is not None:
             setattr(loader, "sequence_count", stats[seq_key])
             setattr(loader, "cycle_count", stats[cyc_key])
+            setattr(loader, "cell_count", stats.get(cell_key, 0))
 
     print("📊 Source val class counts:", Counter(y_val))
-    if not target_df.empty:
+    if not target_limited.empty:
         print("📊 Target val class counts:", Counter(y_tgt_val))
 
     return source_train, source_val, target_train, target_val, label_names, df, stats
