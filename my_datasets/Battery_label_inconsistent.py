@@ -7,6 +7,14 @@ import pandas as pd
 import torch
 from .sequence_aug import RandomAddGaussian, RandomScale, RandomStretch, RandomTimeShift
 
+DEFAULT_LIFETIME_LABELS = [
+    "short life",
+    "short-mid life",
+    "mid life",
+    "mid-long life",
+    "long life",
+]
+
 # --- Data transforms ---
 class Reshape:
     def __call__(self, x):
@@ -188,6 +196,7 @@ def load_battery_dataset(
 ):
     
     df = pd.read_csv(csv_path)
+    label_names: Optional[list[str]] = None
     
     # Normalise string columns once at load time so downstream filtering by
     # cathode/cell names is reliable regardless of stray whitespace in the raw
@@ -209,8 +218,44 @@ def load_battery_dataset(
             df[col] = df[col].astype(str).str.strip()
             
             
-    cycle_counts = df.groupby("filename")["cycle_number"].max()
-    print("\U0001F501 Total cycles per cell:\n", cycle_counts)
+    df["cycle_number"] = pd.to_numeric(df["cycle_number"], errors="coerce")
+    missing_cycles = int(df["cycle_number"].isna().sum())
+    if missing_cycles:
+        print(f"⚠️ Dropping {missing_cycles} rows with non-numeric cycle indices.")
+        df = df.dropna(subset=["cycle_number"]).copy()
+
+    df["cycle_number"] = df["cycle_number"].astype(int)
+
+    per_cell_cycles = (
+        df.groupby("filename")["cycle_number"].max().rename("computed_eol_cycle")
+    )
+    df = df.merge(per_cell_cycles, on="filename", how="left")
+
+    if "eol_cycle" in df.columns:
+        existing_eol = (
+            df[["filename", "eol_cycle"]]
+            .dropna(subset=["eol_cycle"])
+            .drop_duplicates(subset=["filename"])
+        )
+    else:
+        existing_eol = pd.DataFrame(columns=["filename", "eol_cycle"])
+
+    mismatch_cycles = True
+    if not existing_eol.empty:
+        existing_series = (
+            pd.to_numeric(existing_eol["eol_cycle"], errors="coerce")
+            .astype("Int64")
+        )
+        aligned_existing = pd.Series(
+            existing_series.values, index=existing_eol["filename"]
+        )
+        computed_aligned = per_cell_cycles.reindex(aligned_existing.index).astype("Int64")
+        mismatch_cycles = not aligned_existing.equals(computed_aligned)
+
+    df["eol_cycle"] = df["filename"].map(per_cell_cycles).astype(int)
+
+    cycle_counts = per_cell_cycles.sort_values()
+    print("\U0001F501 Total cycles per cell (computed EOL):\n", cycle_counts)
     
     per_cathode_cycles = (
         df.groupby(["cathode", "filename"])["cycle_number"].nunique().rename("cycle_count").sort_values()
@@ -309,43 +354,79 @@ def load_battery_dataset(
             f'max {stats.get("max", float("nan")):.0f})'
         )
     
-    if classification_label not in df.columns:
-        raise ValueError(f"Missing classification label: {classification_label}")
     if "cathode" not in df.columns:
         raise ValueError("'cathode' column missing in CSV.")
 
-    # Optionally rebin the target column into a different number of classes.
-    # This is useful when the raw label is numeric and a user wants to
-    # evaluate a coarser or finer-grained classification task without
-    # regenerating the CSV file.
-    if num_classes is not None:
-        if pd.api.types.is_numeric_dtype(df[classification_label]):
-            try:
-                df[classification_label] = pd.qcut(
-                    df[classification_label],
-                    q=num_classes,
-                    labels=False,
-                    duplicates="drop",
-                )
-    
-    
-    
-            except Exception as exc:  # pragma: no cover - defensive, feature optional
-                raise ValueError(
-                    f"Failed to bin '{classification_label}' into {num_classes} classes"
-                ) from exc
-        else:
+    label_col_lower = (classification_label or "").lower()
+    label_is_lifetime = (not classification_label) or ("eol" in label_col_lower) or ("life" in label_col_lower)
+
+    if label_is_lifetime:
+        if not existing_eol.empty and mismatch_cycles:
             print(
-                f"⚠️ classification label '{classification_label}' is non-numeric; "
-                "skipping quantile binning and using existing categories."
+                "🛠️ Replacing provided EOL labels with counts derived from the raw cycle data."
             )
 
-    # Encode labels
-    df[classification_label + "_encoded"] = LabelEncoder().fit_transform(
-        df[classification_label]
-    )
+        unique_cycle_counts = per_cell_cycles.sort_values()
+        available_bins = unique_cycle_counts.nunique()
+        requested_bins = num_classes or min(len(DEFAULT_LIFETIME_LABELS), available_bins)
+        effective_bins = min(requested_bins, available_bins)
 
-    print("🔢 Class distribution:\n", df[classification_label + "_encoded"].value_counts())
+        if effective_bins < 2:
+            raise ValueError(
+                "Not enough distinct end-of-life cycles to create multiple lifetime classes."
+            )
+
+        lifetime_codes = pd.qcut(
+            unique_cycle_counts,
+            q=effective_bins,
+            labels=False,
+            duplicates="drop",
+        )
+        effective_bins = int(lifetime_codes.max()) + 1
+        if effective_bins < 2:
+            raise ValueError(
+                "Quantile binning collapsed to a single class; check the underlying cycle counts."
+            )
+
+        if effective_bins <= len(DEFAULT_LIFETIME_LABELS):
+            lifetime_names = DEFAULT_LIFETIME_LABELS[:effective_bins]
+        else:
+            lifetime_names = [f"class_{i}" for i in range(effective_bins)]
+
+        lifetime_codes = lifetime_codes.astype(int)
+        encoded_col = f"{classification_label}_encoded"
+        df[encoded_col] = df["filename"].map(lifetime_codes).astype(int)
+        name_lookup = {idx: lifetime_names[idx] for idx in range(effective_bins)}
+        df[classification_label] = df[encoded_col].map(name_lookup)
+        label_names = lifetime_names
+    else:
+        if classification_label not in df.columns:
+            raise ValueError(f"Missing classification label: {classification_label}")
+
+        if num_classes is not None:
+            if pd.api.types.is_numeric_dtype(df[classification_label]):
+                try:
+                    df[classification_label] = pd.qcut(
+                        df[classification_label],
+                        q=num_classes,
+                        labels=False,
+                        duplicates="drop",
+                    )
+                except Exception as exc:  # pragma: no cover - defensive, feature optional
+                    raise ValueError(
+                        f"Failed to bin '{classification_label}' into {num_classes} classes"
+                    ) from exc
+            else:
+                print(
+                    f"⚠️ classification label '{classification_label}' is non-numeric; "
+                    "skipping quantile binning and using existing categories."
+                )
+
+        encoder = LabelEncoder()
+        df[f"{classification_label}_encoded"] = encoder.fit_transform(df[classification_label])
+        label_names = list(encoder.classes_)
+
+    print("🔢 Class distribution:\n", df[f"{classification_label}_encoded"].value_counts())
     print("🔬 Cathode distribution:\n", df["cathode"].value_counts())
     df["cathode"] = df["cathode"].astype(str).str.strip()
 
@@ -506,10 +587,19 @@ def load_battery_dataset(
         target_train = None
         target_val = None
 
-    label_names = sorted(df[classification_label].dropna().unique().tolist())
+    if label_names is None:
+        label_names = sorted(df[classification_label].dropna().unique().tolist())
 
     src_val_cycle_effective = src_eval_cycle_count if src_eval_cycle_count > 0 else (src_train_cycle_count if len(y_val) > 0 else 0)
     tgt_val_cycle_effective = tgt_eval_cycle_count if tgt_eval_cycle_count > 0 else (tgt_train_cycle_count if len(y_tgt_val) > 0 else 0)
+    
+    def _unique_group_count(groups):
+        if groups is None:
+            return 0
+        arr = np.asarray(groups)
+        if arr.size == 0:
+            return 0
+        return len(np.unique(arr))
 
     stats = {
         "source_train_cycles": src_train_cycle_count,
@@ -522,10 +612,10 @@ def load_battery_dataset(
         "source_val_sequences": len(source_val_dataset),
         "target_train_sequences": len(target_train_dataset) if target_train_dataset is not None else 0,
         "target_val_sequences": len(target_val_dataset) if target_val_dataset is not None else 0,
-        "source_train_cells": len(set(src_train_groups)) if src_train_groups else 0,
-        "source_val_cells": len(set(src_val_groups)) if src_val_groups else 0,
-        "target_train_cells": len(set(tgt_train_groups)) if tgt_train_groups else 0,
-        "target_val_cells": len(set(tgt_val_groups)) if tgt_val_groups else 0,
+        "source_train_cells": _unique_group_count(src_train_groups),
+        "source_val_cells": _unique_group_count(src_val_groups),
+        "target_train_cells": _unique_group_count(tgt_train_groups),
+        "target_val_cells": _unique_group_count(tgt_val_groups),
     }
 
     for loader, seq_key, cyc_key, cell_key in [
