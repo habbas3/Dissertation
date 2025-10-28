@@ -46,7 +46,12 @@ class dataset(Dataset):
         the last possible window.
         """
 
-        return max(0, len(self.seq_data) - self.sequence_length + 1)
+        if self.labels is not None:
+            effective_length = min(len(self.seq_data), len(self.labels))
+        else:
+            effective_length = len(self.seq_data)
+
+        return max(0, effective_length - self.sequence_length + 1)
 
     def __getitem__(self, item):
         seq = self.seq_data[item:item + self.sequence_length]
@@ -61,7 +66,12 @@ class dataset(Dataset):
         if self.test:
             return seq, item
         else:
-            label = self.labels[item + self.sequence_length - 1]  # predict last label
+            label_index = item + self.sequence_length - 1
+
+            if label_index >= len(self.labels):
+                label_index = len(self.labels) - 1
+
+            label = self.labels[label_index]  # predict last label
             return seq, label
 
 
