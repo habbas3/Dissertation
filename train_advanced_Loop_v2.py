@@ -7,6 +7,7 @@
 import argparse
 import matplotlib.pyplot as plt
 import pickle
+import shutil
 import os
 from datetime import datetime
 from utils.logger import setlogger
@@ -76,7 +77,7 @@ def reset_seed(seed=SEED):
 
 def parse_args():
     parser = argparse.ArgumentParser(description='Train')
-    parser.add_argument('--data_name', type=str, default='Battery_inconsistent',
+    parser.add_argument('--data_name', type=str, default='CWRU_inconsistent',
                         choices=['Battery_inconsistent', 'CWRU_inconsistent'])
     parser.add_argument('--data_dir', type=str, default='./my_datasets/Battery',
                         help='Root directory for datasets')
@@ -138,6 +139,14 @@ def parse_args():
                             help='Temperature scaling for class predictions')
     parser.add_argument('--lambda_src', type=float, default=1.0,
                     help='Weight for supervised source loss mixed into target steps during transfer')
+    parser.add_argument('--lambda_src_decay_patience', type=int, default=5,
+                        help='Epochs without target-val improvement before lambda_src is decayed')
+    parser.add_argument('--lambda_src_decay_factor', type=float, default=0.5,
+                        help='Multiplicative factor applied to lambda_src after each decay')
+    parser.add_argument('--lambda_src_min', type=float, default=0.0,
+                        help='Lower bound for lambda_src when decay scheduling is active')
+    parser.add_argument('--lambda_src_warmup', type=int, default=0,
+                        help='Number of epochs to wait before counting plateau epochs for lambda_src decay')
     parser.add_argument('--improvement_metric', choices=['common', 'hscore', 'overall'], default='common',
                         help='Metric used to compare transfer vs baseline on target_val')
     # --- LLM meta-selection flags (enabled by default; add --no-* to disable) ---
@@ -1133,15 +1142,20 @@ def run_battery_experiments(args):
                 f"📊 {src_name} → {tgt_name}: baseline({metric_key})={baseline_score:.4f}, "
                 f"transfer({metric_key})={transfer_score:.4f}, improvement={improvement:+.4f}"
             )
+            
+            final_model_label = 'transfer'
+            selection_note = ''
+            
             if transfer_score <= baseline_score:
                 print(f"♻️ Transfer lagged baseline for {src_name} → {tgt_name}; launching target-focused fine-tune retry.")
                 
                 retry_args = argparse.Namespace(**vars(transfer_args))
                 retry_args.lr = max(1e-5, transfer_args.lr * 0.5)
-                retry_args.lambda_src = max(0.1, transfer_args.lambda_src * 0.5)
                 retry_args.max_epoch = int(max(transfer_args.max_epoch, 40) * 1.25)
                 retry_args.reinit_head = False
                 retry_args.pretrained_model_path = os.path.join(ft_dir, "best_model.pth")
+                retry_args.lambda_src_warmup = 0
+                retry_args.lambda_src_decay_patience = max(1, getattr(transfer_args, 'lambda_src_decay_patience', 5) // 2)
                 retry_dir = os.path.join(ft_dir, "retry_target_focus")
                 os.makedirs(retry_dir, exist_ok=True)
                 model_retry, _, _, _, tr_loader_retry = run_experiment(
@@ -1181,6 +1195,30 @@ def run_battery_experiments(args):
                 )
                 if transfer_score <= baseline_score:
                     print(f"⚠️ Transfer remains below baseline for {src_name} → {tgt_name} even after retry.")
+                    
+            if transfer_score <= baseline_score:
+                final_model_label = 'baseline'
+                selection_note = 'baseline_kept'
+                print(
+                    f"↩️  Using baseline weights for {src_name} → {tgt_name}; improvement recorded as 0."
+                )
+                tr_labels, tr_preds = baseline_labels_np, baseline_preds_np
+                t_common, t_out, t_h = b_common, b_out, b_h
+                transfer_score = baseline_score
+                improvement = 0.0
+                transfer_stats = baseline_stats or transfer_stats
+                model_ft = model_bl
+                baseline_ckpt = os.path.join(baseline_dir, "best_model.pth")
+                transfer_ckpt = os.path.join(ft_dir, "best_model.pth")
+                try:
+                    shutil.copy2(baseline_ckpt, transfer_ckpt)
+                    print(f"↩️  Copied baseline checkpoint to {transfer_ckpt}")
+                except Exception as copy_err:
+                    print(f"⚠️ Unable to copy baseline checkpoint: {copy_err}")
+
+            print(
+                f"🎯 Final selection for {src_name} → {tgt_name}: {final_model_label} (score={transfer_score:.4f})."
+            )
 
             cm_transfer, labels_tr = _cm_with_min_labels(tr_labels, tr_preds, min_labels=5)
             cm_baseline, labels_bl = _cm_with_min_labels(baseline_labels_np, baseline_preds_np, min_labels=5)
@@ -1212,6 +1250,8 @@ def run_battery_experiments(args):
                 "transfer_outlier_acc": t_out,
                 "baseline_hscore": b_h,
                 "transfer_hscore": t_h,
+                "final_model": final_model_label,
+                "note": selection_note,
             })
             
             args.method = original_method
@@ -1231,6 +1271,7 @@ def run_battery_experiments(args):
             "baseline_score",
             "transfer_score",
             "improvement",
+            "final_model",
         ]
         print(summary_df[cols_to_show])
         mean_impr = summary_df["improvement"].mean()
@@ -1443,16 +1484,20 @@ def run_cwru_experiments(args):
                 f"transfer({metric_key})={transfer_score:.4f}, improvement={improvement:+.4f}"
             )
             
+            final_model_label = 'transfer'
+            selection_note = ''
+            
             if transfer_score <= baseline_score:
                 print(
                     f"♻️ Transfer lagged baseline for {src_str} → {tgt_str}; retrying with stronger target emphasis."
                 )
                 retry_args = argparse.Namespace(**vars(transfer_args))
                 retry_args.lr = max(1e-5, transfer_args.lr * 0.5)
-                retry_args.lambda_src = max(0.1, transfer_args.lambda_src * 0.5)
                 retry_args.max_epoch = int(max(transfer_args.max_epoch, 40) * 1.25)
                 retry_args.reinit_head = False
                 retry_args.pretrained_model_path = os.path.join(ft_dir, "best_model.pth")
+                retry_args.lambda_src_warmup = 0
+                retry_args.lambda_src_decay_patience = max(1, getattr(transfer_args, 'lambda_src_decay_patience', 5) // 2)
                 retry_dir = os.path.join(ft_dir, "retry_target_focus")
                 os.makedirs(retry_dir, exist_ok=True)
                 model_retry, _, _, _, retry_loader = run_experiment(
@@ -1495,6 +1540,29 @@ def run_cwru_experiments(args):
                 )
                 if transfer_score <= baseline_score:
                     print(f"⚠️ Transfer remains below baseline for {src_str} → {tgt_str} even after retry.")
+            
+            if transfer_score <= baseline_score:
+                final_model_label = 'baseline'
+                selection_note = 'baseline_kept'
+                print(
+                    f"↩️  Using baseline weights for {src_str} → {tgt_str}; improvement recorded as 0."
+                )
+                tr_labels, tr_preds = baseline_labels_np, baseline_preds_np
+                t_common, t_out, t_h = b_common, b_out, b_h
+                transfer_score = baseline_score
+                improvement = 0.0
+                model_ft = model_bl
+                baseline_ckpt = os.path.join(baseline_dir, "best_model.pth")
+                transfer_ckpt = os.path.join(ft_dir, "best_model.pth")
+                try:
+                    shutil.copy2(baseline_ckpt, transfer_ckpt)
+                    print(f"↩️  Copied baseline checkpoint to {transfer_ckpt}")
+                except Exception as copy_err:
+                    print(f"⚠️ Unable to copy baseline checkpoint: {copy_err}")
+
+            print(
+                f"🎯 Final selection for {src_str} → {tgt_str}: {final_model_label} (score={transfer_score:.4f})."
+            )
 
             cm_transfer, labels_tr = _cm_with_min_labels(tr_labels, tr_preds, min_labels=10)
             cm_baseline, labels_bl = _cm_with_min_labels(baseline_labels_np, baseline_preds_np, min_labels=10)
@@ -1526,6 +1594,8 @@ def run_cwru_experiments(args):
                     "transfer_outlier_acc": t_out,
                     "baseline_hscore": b_h,
                     "transfer_hscore": t_h,
+                    "final_model": final_model_label,
+                    "note": selection_note,
                 }
             )
             
@@ -1547,6 +1617,7 @@ def run_cwru_experiments(args):
             "baseline_score",
             "transfer_score",
             "improvement",
+            "final_model",
         ]
         print(summary_df[cols_to_show])
         mean_impr = summary_df["improvement"].mean()

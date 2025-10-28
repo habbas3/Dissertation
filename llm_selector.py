@@ -7,7 +7,7 @@ Created on Sat Aug 16 13:07:22 2025
 """
 
 # llm_selector.py
-import os, json, math, textwrap, csv
+import os, json, math, textwrap, csv, statistics
 from dataclasses import dataclass, asdict
 from typing import Any, Dict, Optional, Tuple
 
@@ -154,7 +154,7 @@ def _collect_cycle_stats(num_summary: Optional[dict]) -> Dict[str, int]:
     return stats
 
 
-def _mean_csv_column(path: Path, column: str) -> Optional[float]:
+def _csv_column_stats(path: Path, column: str) -> Optional[dict[str, float]]:
     values: list[float] = []
     try:
         with path.open("r", encoding="utf-8") as f:
@@ -171,7 +171,26 @@ def _mean_csv_column(path: Path, column: str) -> Optional[float]:
         return None
     if not values:
         return None
-    return float(sum(values) / len(values))
+    count = len(values)
+    mean_val = statistics.fmean(values) if hasattr(statistics, "fmean") else float(sum(values) / count)
+    median_val = statistics.median(values)
+    std_val = statistics.pstdev(values) if count > 1 else 0.0
+    stderr = std_val / math.sqrt(count) if count > 1 else 0.0
+    lower_bound = mean_val - 1.96 * stderr if count > 1 else mean_val
+    positive_count = sum(1 for v in values if v > 0)
+    return {
+        "mean": float(mean_val),
+        "median": float(median_val),
+        "std": float(std_val),
+        "count": float(count),
+        "positive_count": float(positive_count),
+        "lower_bound": float(lower_bound),
+    }
+
+
+def _mean_csv_column(path: Path, column: str) -> Optional[float]:
+    stats = _csv_column_stats(path, column)
+    return None if stats is None else stats["mean"]
 
 
 _HISTORICAL_TAG_OVERRIDES: dict[str, dict[str, Any]] = {
@@ -213,6 +232,9 @@ def _maybe_apply_historical_winner(cfg: dict, num_summary: Optional[dict]) -> Tu
 
     best_tag: Optional[str] = None
     best_score = float("-inf")
+    best_stats: Optional[dict[str, float]] = None
+    min_runs = int(os.environ.get("LLM_HIST_MIN_RUNS", 3))
+    min_positive_frac = float(os.environ.get("LLM_HIST_MIN_POSITIVE_FRAC", 0.6))
     pattern = f"*_{dataset}.csv"
     for run_dir in sorted(checkpoint_root.glob("llm_run_*")):
         compare_dir = run_dir / "compare"
@@ -220,12 +242,25 @@ def _maybe_apply_historical_winner(cfg: dict, num_summary: Optional[dict]) -> Tu
             continue
         for csv_path in compare_dir.glob(pattern):
             tag = csv_path.stem.split("_summary_", 1)[0]
-            avg = _mean_csv_column(csv_path, "improvement")
-            if avg is None:
+            stats = _csv_column_stats(csv_path, "improvement")
+            if stats is None:
                 continue
+            count = int(stats.get("count", 0))
+            positive_count = float(stats.get("positive_count", 0.0))
+            if count < min_runs:
+                continue
+            if stats.get("median", 0.0) <= 0:
+                continue
+            frac_positive = positive_count / count if count > 0 else 0.0
+            if frac_positive < min_positive_frac:
+                continue
+            if stats.get("lower_bound", float("-inf")) <= 0:
+                continue
+            avg = float(stats.get("mean", float("-inf")))
             if avg > best_score:
                 best_score = avg
                 best_tag = tag
+                best_stats = stats
 
     if not best_tag or best_tag == "llm_pick":
         return cfg, None
@@ -252,9 +287,14 @@ def _maybe_apply_historical_winner(cfg: dict, num_summary: Optional[dict]) -> Tu
         "model_name",
         _arch_to_model_name(arch, updated.get("self_attention", False), updated.get("openmax", False)),
     )
+    
+    if best_stats is None:
+        return cfg, None
 
     note = (
-        f"Historical leaderboard favoured {best_tag} on {dataset} (avg Δ={best_score:+.4f}); "
+        f"Historical leaderboard favoured {best_tag} on {dataset} "
+        f"(mean Δ={best_stats['mean']:+.4f}, median Δ={best_stats['median']:+.4f}, "
+        f"n={int(best_stats['count'])}, 95% LCB={best_stats['lower_bound']:+.4f}); "
         "applied its hyperparameters."
     )
     return updated, note

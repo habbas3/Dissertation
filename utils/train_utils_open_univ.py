@@ -270,6 +270,16 @@ class train_utils_open_univ(object):
             self.dataloaders['target_train'] = self.target_train_loader
         if self.target_val_loader is not None:
             self.dataloaders['target_val'] = self.target_val_loader
+            
+        
+        # --- Adaptive source-loss schedule knobs ---
+        self.lambda_src_init = float(getattr(self.args, 'lambda_src', 1.0))
+        self.lambda_src_current = self.lambda_src_init
+        self.lambda_src_decay_patience = int(getattr(self.args, 'lambda_src_decay_patience', 5))
+        self.lambda_src_decay_factor = float(getattr(self.args, 'lambda_src_decay_factor', 0.5))
+        self.lambda_src_min = float(getattr(self.args, 'lambda_src_min', 0.0))
+        self.lambda_src_warmup = int(getattr(self.args, 'lambda_src_warmup', 0))
+        self._lambda_plateau_epochs = 0
         
 
         
@@ -1315,6 +1325,9 @@ class train_utils_open_univ(object):
         self._train_start_time = time.time()
         self._best_metric_time = None
         self._best_epoch = 0
+        
+        self.lambda_src_current = self.lambda_src_init
+        self._lambda_plateau_epochs = 0
     
         for epoch in range(self.args.max_epoch):
             source_iter = None
@@ -1435,7 +1448,9 @@ class train_utils_open_univ(object):
                             total_loss = loss_tgt
                         
                         # >>> NEW: supervised SOURCE loss mixed in every target step (during transfer) <<<
-                        if self.transfer_mode and phase == 'target_train' and self.dataloaders.get('source_train') is not None:
+                        if (self.transfer_mode and phase == 'target_train'
+                                and self.dataloaders.get('source_train') is not None
+                                and self.lambda_src_current > 0):
                             # Use a persistent iterator so we don't always read the first batch
                             if not hasattr(self, '_source_iter') or self._source_iter is None:
                                 self._source_iter = iter(self.dataloaders['source_train'])
@@ -1490,7 +1505,7 @@ class train_utils_open_univ(object):
                                 # ---------------------------------------------------
                         
                                 loss_src = crit_src(src_logits_valid, src_labels_valid)
-                                lam_src = getattr(self.args, 'lambda_src', 1.0)
+                                lam_src = self.lambda_src_current
                                 total_loss = loss_src * lam_src if total_loss is None else total_loss + lam_src * loss_src
                             # If no valid src labels for this step, just skip source loss for this batch.
                         # <<< END NEW >>>
@@ -1577,6 +1592,9 @@ class train_utils_open_univ(object):
                     f"{phase}-Loss: {epoch_loss:.4f}",
                     f"{phase}-Acc: {epoch_acc_value:.4f}"
                 ]
+                
+                if phase == 'target_train' and self.transfer_mode:
+                    log_msg.append(f"lambda_src: {self.lambda_src_current:.4f}")
                 if phase == 'target_val':
                     if not math.isnan(balanced_acc_value):
                         log_msg.append(f"{phase}-BalAcc: {balanced_acc_value:.4f}")
@@ -1595,6 +1613,8 @@ class train_utils_open_univ(object):
                     val_improved = True
                     self._best_epoch = epoch
                     self._best_metric_time = time.time() - self._train_start_time
+            
+            
     
                 if phase == 'target_val':
                     preds_np = np.array(preds_all)
@@ -1649,6 +1669,39 @@ class train_utils_open_univ(object):
                         print("✓ Best target model updated based on target metrics (hscore/common/balanced).")
                         self._best_epoch = epoch
                         self._best_metric_time = time.time() - self._train_start_time
+                        
+                        
+            if self.transfer_mode and self.dataloaders.get('target_train') is not None:
+                if val_improved:
+                    self._lambda_plateau_epochs = 0
+                else:
+                    if epoch >= self.lambda_src_warmup:
+                        self._lambda_plateau_epochs += 1
+                        if (self.lambda_src_decay_patience > 0
+                                and self._lambda_plateau_epochs >= self.lambda_src_decay_patience
+                                and self.lambda_src_current > self.lambda_src_min):
+                            new_lambda = max(
+                                self.lambda_src_min,
+                                self.lambda_src_current * self.lambda_src_decay_factor
+                            )
+                            if new_lambda < self.lambda_src_current - 1e-8:
+                                print(
+                                    f"🔄 Decayed lambda_src mixing weight to {new_lambda:.4f} "
+                                    f"after {self._lambda_plateau_epochs} plateau epochs."
+                                )
+                            elif new_lambda <= self.lambda_src_min + 1e-8:
+                                print(
+                                    f"🔄 lambda_src reached floor {new_lambda:.4f}; disabling source mixing."
+                                )
+                            else:
+                                print(
+                                    f"🔄 Adjusted lambda_src mixing weight to {new_lambda:.4f} "
+                                    f"after {self._lambda_plateau_epochs} plateau epochs."
+                                )
+                            self.lambda_src_current = new_lambda
+                            self._lambda_plateau_epochs = 0
+                if val_improved:
+                    self._lambda_plateau_epochs = 0
     
             self.lr_scheduler.step()
             if patience is not None:
