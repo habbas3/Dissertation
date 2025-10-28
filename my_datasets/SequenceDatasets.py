@@ -26,13 +26,34 @@ class dataset(Dataset):
             # Some sources store each window as ``(length, 1)`` which would
             # otherwise introduce an extra singleton dimension when stacked.
             self.seq_data = np.stack([np.asarray(x).squeeze() for x in data_series.to_list()])
-            self.labels = list_data['label'].to_numpy() if 'label' in list_data else None
+            raw_labels = list_data['label'].to_numpy() if 'label' in list_data else None
         elif isinstance(list_data, dict):
             self.seq_data = np.stack([np.asarray(x).squeeze() for x in list_data['data']])
-            self.labels = np.array(list_data.get('label')) if list_data.get('label') is not None else None
+            raw_labels = np.array(list_data.get('label')) if list_data.get('label') is not None else None
         else:  # assume a tuple/list like [data, labels]
             self.seq_data = np.stack([np.asarray(x).squeeze() for x in list_data[0]])
-            self.labels = np.array(list_data[1]) if len(list_data) > 1 else None
+            raw_labels = np.array(list_data[1]) if len(list_data) > 1 else None
+
+        self._raw_labels = raw_labels
+
+        if raw_labels is None:
+            num_sequences = max(0, len(self.seq_data) - self.sequence_length + 1)
+            self.labels = np.full((num_sequences,), -1, dtype=int)
+        else:
+            # ``raw_labels`` typically stores one label per raw window.  When we
+            # build sequences of ``sequence_length`` consecutive windows the
+            # number of samples exposed to the DataLoader becomes
+            # ``len(seq_data) - sequence_length + 1``.  Samplers (especially the
+            # class-balanced wrapper) expect the ``labels`` attribute to match
+            # ``__len__``.  We therefore precompute the label for each sequence
+            # using the label of the last window in the slice.
+            num_sequences = max(0, len(self.seq_data) - self.sequence_length + 1)
+            if num_sequences == 0:
+                self.labels = np.zeros((0,), dtype=int)
+            else:
+                indices = np.arange(num_sequences) + self.sequence_length - 1
+                indices = np.clip(indices, 0, len(raw_labels) - 1)
+                self.labels = np.asarray(raw_labels)[indices]
 
 
 
@@ -46,12 +67,7 @@ class dataset(Dataset):
         the last possible window.
         """
 
-        if self.labels is not None:
-            effective_length = min(len(self.seq_data), len(self.labels))
-        else:
-            effective_length = len(self.seq_data)
-
-        return max(0, effective_length - self.sequence_length + 1)
+        return len(self.labels)
 
     def __getitem__(self, item):
         seq = self.seq_data[item:item + self.sequence_length]
@@ -66,12 +82,11 @@ class dataset(Dataset):
         if self.test:
             return seq, item
         else:
-            label_index = item + self.sequence_length - 1
+            if self.labels.size == 0:
+                # No labels available (e.g. unlabeled target data)
+                return seq, -1
 
-            if label_index >= len(self.labels):
-                label_index = len(self.labels) - 1
-
-            label = self.labels[label_index]  # predict last label
+            label = self.labels[item]
             return seq, label
 
 
