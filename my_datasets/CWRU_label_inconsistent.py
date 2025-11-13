@@ -18,57 +18,67 @@ dataname= {0:["97.mat","105.mat", "118.mat", "130.mat", "169.mat", "185.mat", "1
 label = [i for i in range(0, 10)]
 
 def dataset_information(source_N, target_N, label_inconsistent):
+    default_names = list(range(len(dataname[0])))
+    default_labels = list(range(len(dataname[0])))
+
+    name_source = default_names
+    name_target = default_names
+    label_source = default_labels
+    label_target = default_labels
     if label_inconsistent == 'PADA':
         label_source = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
-        if (source_N == [0] and target_N == [1]) or (source_N == [0] and target_N == [2]) or (source_N == [0] and target_N == [3]):
-                label_target = [0, 1, 2, 4, 5, 7, 8, 9]
+
         name_source = label_source
-        name_target = label_target
-    if label_inconsistent == 'OSBP':
+        name_target = label_source
+        if (source_N == [0] and target_N == [1]) or (source_N == [0] and target_N == [2]) or (source_N == [0] and target_N == [3]):
+            label_target = [0, 1, 2, 4, 5, 7, 8, 9]
+            name_target = label_target
+    elif label_inconsistent == 'OSBP':
         name_target = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
         if (source_N == [0] and target_N == [1]) or (source_N == [0] and target_N == [2]) or (source_N == [0] and target_N == [3]):
-                name_source =  [0, 2, 3, 5, 6, 7, 8, 9]
-                label_source = [0, 1, 2, 3, 4, 5, 6, 7]
-                label_target = [0, 8, 1, 2, 8, 3, 4, 5, 6, 7]
-
-    if label_inconsistent == 'UAN':
+            name_source = [0, 2, 3, 5, 6, 7, 8, 9]
+            label_source = [0, 1, 2, 3, 4, 5, 6, 7]
+            label_target = [0, 8, 1, 2, 8, 3, 4, 5, 6, 7]
+    elif label_inconsistent == 'UAN':
+                
         
         if (source_N == [0] and target_N == [1]) or (source_N == [0] and target_N == [2]):
-                name_source =  [0, 1, 2, 4, 5, 6, 7, 8, 9]
-                label_source = [0, 1, 2, 3, 4, 5, 6, 7, 8]
-                name_target =  [1, 2, 3, 4, 5, 7, 8, 9]
-                label_target = [1, 2, 9, 3, 4, 6, 7, 8]
+            name_source = [0, 1, 2, 4, 5, 6, 7, 8, 9]
+            label_source = [0, 1, 2, 3, 4, 5, 6, 7, 8]
+            name_target = [1, 2, 3, 4, 5, 7, 8, 9]
+            label_target = [1, 2, 9, 3, 4, 6, 7, 8]
+            
         elif (source_N == [0] and target_N == [3]) or (source_N == [1] and target_N == [0]):
-                name_source = [0, 1, 2, 3, 4, 5, 7, 8]
-                label_source = [0, 1, 2, 3, 4, 5, 6, 7, 8]
-                name_target = [0, 2, 3, 4, 5, 6, 7, 8, 9]
-                label_target = [0, 2, 3, 4, 5, 9, 6, 7, 9]
-
-        # For task 1-2, 1-3
-        elif source_N == [1] and target_N == [2] or (source_N == [1] and target_N == [3]):
+            name_source = [0, 1, 2, 3, 4, 5, 7, 8]
+            label_source = [0, 1, 2, 3, 4, 5, 6, 7, 8]
+            name_target = [0, 2, 3, 4, 5, 6, 7, 8, 9]
+            label_target = [0, 2, 3, 4, 5, 9, 6, 7, 9]
+        elif (source_N == [1] and target_N == [2]) or (source_N == [1] and target_N == [3]):
+            
             name_source = [1, 2, 4, 5, 7, 8, 9]
             label_source = [0, 1, 2, 3, 4, 5, 6, 7, 8]
-            name_target = [1,3,6,8]
+            name_target = [1, 3, 6, 8]
             label_target = [0, 9, 9, 5]
             
-        elif source_N == [2] and target_N == [0] or (source_N == [2] and target_N == [1]):
+        elif (source_N == [2] and target_N == [0]) or (source_N == [2] and target_N == [1]):
             name_source = [1, 3, 4, 6, 7, 8]
             label_source = [0, 1, 2, 3, 4, 5, 6, 7, 8]
             name_target = [0, 1, 2, 3, 5, 6, 8, 9]
             label_target = [9, 0, 9, 1, 9, 3, 5, 9]
             
-        elif source_N == [2] and target_N == [3] or (source_N == [3] and target_N == [0]):
+        elif (source_N == [2] and target_N == [3]) or (source_N == [3] and target_N == [0]):
             name_source = [0, 1, 2, 7, 8]
             label_source = [0, 1, 2, 3, 4, 5, 6, 7, 8]
             name_target = [1, 2, 6, 9]
             label_target = [1, 2, 9, 9]
             
-        elif source_N == [3] and target_N == [1] or (source_N == [3] and target_N == [2]):
+        elif (source_N == [3] and target_N == [1]) or (source_N == [3] and target_N == [2]):
             name_source = [0, 1, 5, 7, 8]
             label_source = [0, 1, 2, 3, 4, 5, 6, 7, 8]
             name_target = [0, 4, 8]
             label_target = [0, 9, 4]
-    num_classes = len(label_source)
+            
+    num_classes = len(set(label_source)) if label_source else 0
     return name_source, name_target, label_source, label_target, num_classes
 
 def get_files(root, N, name, label):
@@ -151,15 +161,15 @@ class CWRU_inconsistent(object):
             list_data = get_files(self.data_dir, self.source_N, name_source, label_source)
             data_pd = pd.DataFrame({"data": list_data[0], "label": list_data[1]})
             train_pd, val_pd = train_test_split(data_pd, test_size=0.2, random_state=40, stratify=data_pd["label"])
-            source_train = dataset(list_data=train_pd, transform=self.data_transforms['train'])
-            source_val = dataset(list_data=val_pd, transform=self.data_transforms['val'])
+            source_train = dataset(list_data=train_pd, transform=self.data_transforms['train'], sequence_length=1)
+            source_val = dataset(list_data=val_pd, transform=self.data_transforms['val'], sequence_length=1)
 
             # get target train and val
             list_data = get_files(self.data_dir, self.target_N, name_target, label_target)
             data_pd = pd.DataFrame({"data": list_data[0], "label": list_data[1]})
             train_pd, val_pd = train_test_split(data_pd, test_size=0.2, random_state=40, stratify=data_pd["label"])
-            target_train = dataset(list_data=train_pd, transform=self.data_transforms['train'])
-            target_val = dataset(list_data=val_pd, transform=self.data_transforms['val'])
+            target_train = dataset(list_data=train_pd, transform=self.data_transforms['train'], sequence_length=1)
+            target_val = dataset(list_data=val_pd, transform=self.data_transforms['val'], sequence_length=1)
             return source_train, source_val, target_train, target_val, num_classes
         else:
             # Baseline: load all classes with consistent labeling
@@ -175,13 +185,13 @@ class CWRU_inconsistent(object):
                 random_state=40,
                 stratify=data_pd["label"],
             )
-            source_train = dataset(list_data=train_pd, transform=self.data_transforms['train'])
-            source_val = dataset(list_data=val_pd, transform=self.data_transforms['val'])
+            source_train = dataset(list_data=train_pd, transform=self.data_transforms['train'], sequence_length=1)
+            source_val = dataset(list_data=val_pd, transform=self.data_transforms['val'], sequence_length=1)
 
             # get target val (entire target domain with same labels)
             list_data = get_files(self.data_dir, self.target_N, all_names, all_labels)
             data_pd = pd.DataFrame({"data": list_data[0], "label": list_data[1]})
-            target_val = dataset(list_data=data_pd, transform=self.data_transforms['val'])
+            target_val = dataset(list_data=data_pd, transform=self.data_transforms['val'], sequence_length=1)
             return source_train, source_val, target_val
 
 

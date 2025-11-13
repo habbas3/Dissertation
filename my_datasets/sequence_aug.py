@@ -165,12 +165,24 @@ class Normalize(object):
         self.type = type
 
     def __call__(self, seq):
-        if  self.type == "0-1":
-            seq =(seq-seq.min())/(seq.max()-seq.min())
-        elif  self.type == "-1-1":
-            seq = 2*(seq-seq.min())/(seq.max()-seq.min()) + -1
+        seq = np.asarray(seq, dtype=np.float32)
+
+        # Normalize along the last dimension for each channel independently
+        if self.type == "0-1":
+            min_vals = seq.min(axis=-1, keepdims=True)
+            max_vals = seq.max(axis=-1, keepdims=True)
+            denom = np.where(max_vals > min_vals, max_vals - min_vals, 1.0)
+            seq = (seq - min_vals) / denom
+        elif self.type == "-1-1":
+            min_vals = seq.min(axis=-1, keepdims=True)
+            max_vals = seq.max(axis=-1, keepdims=True)
+            denom = np.where(max_vals > min_vals, max_vals - min_vals, 1.0)
+            seq = 2 * (seq - min_vals) / denom - 1
         elif self.type == "mean-std" :
-            seq = (seq-seq.mean())/seq.std()
+            mean = seq.mean(axis=-1, keepdims=True)
+            std = seq.std(axis=-1, keepdims=True)
+            denom = np.where(std > 0, std, 1.0)
+            seq = (seq - mean) / denom
         else:
             raise NameError('This normalization is not included!')
 

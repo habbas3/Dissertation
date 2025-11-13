@@ -102,7 +102,7 @@ def parse_args():
     parser.add_argument('--batch_size', type=int, default=64)
     parser.add_argument('--num_workers', type=int, default=0)
     parser.add_argument('--bottleneck', type=bool, default=True)
-    parser.add_argument('--bottleneck_num', type=int, default=256)
+    parser.add_argument('--bottleneck_num', type=int, default=256) 
     parser.add_argument('--last_batch', type=bool, default=False)
     parser.add_argument('--hidden_size', type=int, default=1024)
     parser.add_argument('--trade_off_adversarial', type=str, default='Step')
