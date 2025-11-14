@@ -15,6 +15,8 @@ DEFAULT_LIFETIME_LABELS = [
     "long life",
 ]
 
+EPS = 1e-6
+
 # --- Data transforms ---
 class Reshape:
     def __call__(self, x):
@@ -154,6 +156,100 @@ def build_sequences(df, feature_cols, label_col, seq_len=32, group_col=None):
         return sequences, labels, np.array(groups)
     return sequences, labels
 
+def _engineer_battery_features(df: pd.DataFrame) -> tuple[pd.DataFrame, list[str]]:
+    """Engineer cycle-level statistics to better expose degradation trends."""
+
+    engineered_cols = [
+        "norm_cycle",
+        "capacity_retention",
+        "energy_retention",
+        "delta_capacity_discharge",
+        "delta_energy_discharge",
+        "delta_cycle_duration",
+        "rolling_capacity_mean",
+        "rolling_capacity_std",
+        "rolling_energy_mean",
+        "rolling_energy_std",
+        "rolling_duration_mean",
+        "duration_ratio",
+        "coulombic_efficiency",
+        "energy_efficiency",
+        "time_per_capacity",
+    ]
+
+    def _per_cell(group: pd.DataFrame) -> pd.DataFrame:
+        ordered = group.sort_values("cycle_number").copy()
+        if ordered.empty:
+            return ordered
+
+        if "filename" not in ordered.columns:
+            ordered["filename"] = group.name
+
+        eol_cycle = float(ordered["eol_cycle"].iloc[0]) if "eol_cycle" in ordered.columns else float(len(ordered))
+        eol_cycle = max(eol_cycle, 1.0)
+        ordered["norm_cycle"] = ordered["cycle_number"].astype(float) / eol_cycle
+
+        window = min(5, max(1, len(ordered)))
+
+        base_cap = float(np.nanmean(np.abs(ordered["capacity_discharge"].iloc[:window])))
+        if not np.isfinite(base_cap) or base_cap < EPS:
+            base_cap = 1.0
+        ordered["capacity_retention"] = ordered["capacity_discharge"].astype(float) / base_cap
+
+        base_energy = float(np.nanmean(np.abs(ordered["energy_discharge"].iloc[:window])))
+        if not np.isfinite(base_energy) or base_energy < EPS:
+            base_energy = 1.0
+        ordered["energy_retention"] = ordered["energy_discharge"].astype(float) / base_energy
+
+        ordered["delta_capacity_discharge"] = ordered["capacity_discharge"].astype(float).diff().fillna(0.0)
+        ordered["delta_energy_discharge"] = ordered["energy_discharge"].astype(float).diff().fillna(0.0)
+        ordered["delta_cycle_duration"] = ordered["cycle_duration"].astype(float).diff().fillna(0.0)
+
+        ordered["rolling_capacity_mean"] = (
+            ordered["capacity_discharge"].astype(float).rolling(window=window, min_periods=1).mean()
+        )
+        min_std_periods = 2 if window >= 2 else 1
+        ordered["rolling_capacity_std"] = (
+            ordered["capacity_discharge"].astype(float).rolling(window=window, min_periods=min_std_periods).std().fillna(0.0)
+        )
+        ordered["rolling_energy_mean"] = (
+            ordered["energy_discharge"].astype(float).rolling(window=window, min_periods=1).mean()
+        )
+        ordered["rolling_energy_std"] = (
+            ordered["energy_discharge"].astype(float).rolling(window=window, min_periods=min_std_periods).std().fillna(0.0)
+        )
+        ordered["rolling_duration_mean"] = (
+            ordered["cycle_duration"].astype(float).rolling(window=window, min_periods=1).mean()
+        )
+
+        duration_mean = ordered["rolling_duration_mean"].replace(0, np.nan)
+        ordered["duration_ratio"] = (ordered["cycle_duration"].astype(float) / duration_mean).fillna(0.0)
+
+        denom_cap = ordered["capacity_charge"].astype(float).replace(0, np.nan)
+        ordered["coulombic_efficiency"] = (
+            (ordered["capacity_discharge"].astype(float) / denom_cap).replace([np.inf, -np.inf], np.nan).fillna(0.0)
+        )
+
+        denom_energy = ordered["energy_charge"].astype(float).replace(0, np.nan)
+        ordered["energy_efficiency"] = (
+            (ordered["energy_discharge"].astype(float) / denom_energy).replace([np.inf, -np.inf], np.nan).fillna(0.0)
+        )
+
+        denom_time = np.abs(ordered["capacity_discharge"].astype(float)).replace(0, np.nan)
+        ordered["time_per_capacity"] = (
+            (ordered["cycle_duration"].astype(float) / denom_time).replace([np.inf, -np.inf], np.nan).fillna(0.0)
+        )
+
+        return ordered
+
+    enriched = df.groupby("filename", group_keys=False).apply(_per_cell, include_groups=False).reset_index(drop=True)
+
+    if engineered_cols:
+        enriched[engineered_cols] = enriched[engineered_cols].replace([np.inf, -np.inf], np.nan).fillna(0.0)
+
+    return enriched, engineered_cols
+
+
 
 class BatteryDataset(Dataset):
     def __init__(self, sequences, labels, transform=None):
@@ -253,6 +349,8 @@ def load_battery_dataset(
         mismatch_cycles = not aligned_existing.equals(computed_aligned)
 
     df["eol_cycle"] = df["filename"].map(per_cell_cycles).astype(int)
+    
+    df, engineered_cols = _engineer_battery_features(df)
 
     cycle_counts = per_cell_cycles.sort_values()
     print("\U0001F501 Total cycles per cell (computed EOL):\n", cycle_counts)
@@ -481,11 +579,35 @@ def load_battery_dataset(
         _describe_split('Target train', target_train_cycles, tgt_train_groups)
         _describe_split('Target val', target_eval_cycles, tgt_val_groups)
 
-    feature_cols = ['cycle_number', 'energy_charge', 'capacity_charge', 'energy_discharge',
-                    'capacity_discharge', 'cycle_start', 'cycle_duration']
+    base_feature_cols = [
+        'cycle_number',
+        'energy_charge',
+        'capacity_charge',
+        'energy_discharge',
+        'capacity_discharge',
+        'cycle_start',
+        'cycle_duration',
+    ]
+
+    feature_cols = base_feature_cols + engineered_cols
+    available_features = [col for col in feature_cols if col in df.columns]
+    missing_features = sorted(set(feature_cols) - set(available_features))
+    if missing_features:
+        print(f"⚠️ Missing engineered features in CSV: {missing_features}")
+    feature_cols = available_features
+
+    df[feature_cols] = df[feature_cols].replace([np.inf, -np.inf], np.nan).fillna(0.0)
+    df[feature_cols] = df[feature_cols].astype(np.float32)
 
     scaler = StandardScaler()
-    scaler_fit_parts = [frame for frame in [source_train_cycles, source_eval_cycles, target_train_cycles, target_eval_cycles] if frame is not None and not frame.empty]
+    scaler_fit_parts = [
+        frame for frame in [source_train_cycles, target_train_cycles] if frame is not None and not frame.empty
+    ]
+    if not scaler_fit_parts:
+        scaler_fit_parts = [
+            frame for frame in [source_eval_cycles, target_eval_cycles] if frame is not None and not frame.empty
+        ]
+
     if scaler_fit_parts:
         scaler.fit(pd.concat(scaler_fit_parts, ignore_index=True)[feature_cols])
     else:

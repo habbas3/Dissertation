@@ -1775,43 +1775,45 @@ class train_utils_open_univ(object):
             print("⚠️ Could not write timing:", e)
 
         
-        # Build a wrapper so evaluation can call model(x) directly when SNGP
-        # Build a wrapper so evaluation can call model(x) directly when SNGP
-        if self.args.method == 'sngp':
-            class SNGPWrapper(nn.Module):
-                def __init__(self, backbone, bottleneck, head):
-                    super().__init__()
-                    self.backbone = backbone
-                    self.bottleneck = bottleneck
-                    self.head = head
+        # Build a wrapper so evaluation always routes through the same
+        # classification head used during training (SNGP or deterministic).
+        bottleneck_for_eval = getattr(self, 'bottleneck_layer', None)
+        if bottleneck_for_eval is None:
+            bottleneck_for_eval = nn.Identity()
 
-                def forward(self, x):
-                    """Run backbone and route extracted features through the GP head.
+        head_for_eval = getattr(self, 'sngp_model', None)
+        classifier_for_eval = getattr(self, 'classifier_layer', None)
 
-                    Some backbones return a tuple ``(logits, features, *extra)`` while
-                    others may return only logits.  Handle both cases so evaluation
-                    doesn't crash if features are missing (e.g. due to a different
-                    model implementation).  If features are unavailable, fall back to
-                    the backbone's logits.
-                    """
-                    out = self.backbone(x)
-                    if isinstance(out, tuple):
-                        model_logits = out[0]
-                        feats = out[1] if len(out) > 1 else None
-                    else:
-                        model_logits, feats = out, None
+        class EvalHeadWrapper(nn.Module):
+            def __init__(self, backbone, bottleneck, head, classifier):
+                super().__init__()
+                self.backbone = backbone
+                self.bottleneck = bottleneck if bottleneck is not None else nn.Identity()
+                self.head = head
+                self.classifier = classifier
 
-                    if feats is not None:
-                        if self.bottleneck is not None and not isinstance(self.bottleneck, nn.Identity):
-                            feats = self.bottleneck(feats)
+            def forward(self, x):
+                out = self.backbone(x)
+                if isinstance(out, tuple):
+                    model_logits = out[0]
+                    feats = out[1] if len(out) > 1 else None
+                else:
+                    model_logits, feats = out, None
+
+                if feats is not None:
+                    feats = self.bottleneck(feats)
+
+                    if self.head is not None and hasattr(self.head, 'forward_classifier'):
                         return self.head.forward_classifier(feats)
 
-                    # Fallback: backbone provided no features, so return its logits
-                    return model_logits
+                    if self.classifier is not None:
+                        return self.classifier(feats)
 
-            eval_model = SNGPWrapper(self.model, self.bottleneck_layer if self.args.bottleneck else nn.Identity(), self.sngp_model)
-        else:
-            eval_model = self.model
+            # If no features are available (some backbones return logits only),
+                # fall back to the backbone logits.
+                return model_logits
+
+        eval_model = EvalHeadWrapper(self.model, bottleneck_for_eval, head_for_eval, classifier_for_eval)
             
         # === Confusion matrices for this run ===
         # Battery datasets pin labels to [0,1,2]; others (e.g., CWRU) use full range
