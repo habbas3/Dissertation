@@ -77,7 +77,7 @@ def reset_seed(seed=SEED):
 
 def parse_args():
     parser = argparse.ArgumentParser(description='Train')
-    parser.add_argument('--data_name', type=str, default='CWRU_inconsistent',
+    parser.add_argument('--data_name', type=str, default='Battery_inconsistent',
                         choices=['Battery_inconsistent', 'CWRU_inconsistent'])
     parser.add_argument('--data_dir', type=str, default='./my_datasets/Battery',
                         help='Root directory for datasets')
@@ -1079,6 +1079,15 @@ def run_battery_experiments(args):
             baseline_args.source_cathode = target_cathodes
             baseline_args.target_cathode = []
             baseline_args.pretrained = False
+            baseline_args.model_name = "cnn_features_1d"
+            baseline_args.method = "deterministic"
+            baseline_args.droprate = 0.3
+            baseline_args.lr = getattr(args, "baseline_lr", 3e-4)
+            baseline_args.lambda_src = 0.0
+            baseline_args.sngp = False
+            baseline_args.openmax = False
+            baseline_args.use_unknown_head = False
+            baseline_args.pretrained_model_path = None
             baseline_dir = os.path.join(
                 args.checkpoint_dir,
                 f"baseline_{model_name}_{tgt_name}_{datetime.now().strftime('%m%d')}",
@@ -1093,7 +1102,7 @@ def run_battery_experiments(args):
             
             baseline_stats = getattr(baseline_args, "dataset_cycle_stats", {})
             if baseline_stats:
-                print(f"🧵 Baseline training cycles used: {baseline_stats.get('source_train_cycles', 'n/a')}")
+                print(f"🧵 Zhao CNN baseline training cycles: {baseline_stats.get('source_train_cycles', 'n/a')}")
 
             transfer_args = argparse.Namespace(**vars(args))
             transfer_args.pretrained = True
@@ -1139,7 +1148,7 @@ def run_battery_experiments(args):
             
             improvement = transfer_score - baseline_score
             print(
-                f"📊 {src_name} → {tgt_name}: baseline({metric_key})={baseline_score:.4f}, "
+                f"📊 {src_name} → {tgt_name}: Zhao-baseline({metric_key})={baseline_score:.4f}, "
                 f"transfer({metric_key})={transfer_score:.4f}, improvement={improvement:+.4f}"
             )
             
@@ -1147,7 +1156,7 @@ def run_battery_experiments(args):
             selection_note = ''
             
             if transfer_score <= baseline_score:
-                print(f"♻️ Transfer lagged baseline for {src_name} → {tgt_name}; launching target-focused fine-tune retry.")
+                print(f"♻️ Transfer lagged Zhao CNN baseline for {src_name} → {tgt_name}; launching target-focused fine-tune retry.")
                 
                 retry_args = argparse.Namespace(**vars(transfer_args))
                 retry_args.lr = max(1e-5, transfer_args.lr * 0.5)
@@ -1190,17 +1199,17 @@ def run_battery_experiments(args):
                 transfer_score, baseline_score = metric_lookup[metric_key]
                 improvement = transfer_score - baseline_score
                 print(
-                    f"📊 Updated {src_name} → {tgt_name}: baseline({metric_key})={baseline_score:.4f}, "
+                    f"📊 Updated {src_name} → {tgt_name}: Zhao-baseline({metric_key})={baseline_score:.4f}, "
                     f"transfer({metric_key})={transfer_score:.4f}, improvement={improvement:+.4f}"
                 )
                 if transfer_score <= baseline_score:
-                    print(f"⚠️ Transfer remains below baseline for {src_name} → {tgt_name} even after retry.")
+                    print(f"⚠️ Transfer remains below Zhao CNN baseline for {src_name} → {tgt_name} even after retry.")
                     
             if transfer_score <= baseline_score:
                 final_model_label = 'baseline'
                 selection_note = 'baseline_kept'
                 print(
-                    f"↩️  Using baseline weights for {src_name} → {tgt_name}; improvement recorded as 0."
+                    f"↩️  Using Zhao CNN baseline weights for {src_name} → {tgt_name}; improvement recorded as 0."
                 )
                 tr_labels, tr_preds = baseline_labels_np, baseline_preds_np
                 t_common, t_out, t_h = b_common, b_out, b_h
@@ -1274,6 +1283,7 @@ def run_battery_experiments(args):
             "final_model",
         ]
         print(summary_df[cols_to_show])
+        print("Baseline metrics reflect Zhao et al.'s CNN without transfer learning.")
         mean_impr = summary_df["improvement"].mean()
         overall = summary_df["transfer_score"].mean() - summary_df["baseline_score"].mean()
         print(f"Average improvement across experiments: {mean_impr:+.4f}")
@@ -1423,6 +1433,15 @@ def run_cwru_experiments(args):
             baseline_args = argparse.Namespace(**vars(args))
             baseline_args.pretrained = False
             baseline_args.transfer_task = [tgt_ids, tgt_ids]
+            baseline_args.model_name = "cnn_features_1d"
+            baseline_args.method = "deterministic"
+            baseline_args.droprate = 0.3
+            baseline_args.lr = getattr(args, "baseline_lr", 3e-4)
+            baseline_args.lambda_src = 0.0
+            baseline_args.sngp = False
+            baseline_args.openmax = False
+            baseline_args.use_unknown_head = False
+            baseline_args.pretrained_model_path = None
             baseline_dir = os.path.join(
                 args.checkpoint_dir,
                 f"baseline_{model_name}_{tgt_str}_{datetime.now().strftime('%m%d')}",
@@ -1476,11 +1495,11 @@ def run_cwru_experiments(args):
                 f"✅ Transfer {src_str} → {tgt_str}: common={t_common:.4f}, outlier={t_out:.4f}, hscore={t_h:.4f}"
             )
             print(
-                f"🧪 Baseline on same split: common={b_common:.4f}, outlier={b_out:.4f}, hscore={b_h:.4f}"
+                f"🧪 Zhao CNN baseline (no transfer): common={b_common:.4f}, outlier={b_out:.4f}, hscore={b_h:.4f}"
             )
             
             print(
-                f"📊 {src_str} → {tgt_str}: baseline({metric_key})={baseline_score:.4f}, "
+                f"📊 {src_str} → {tgt_str}: Zhao-baseline({metric_key})={baseline_score:.4f}, "
                 f"transfer({metric_key})={transfer_score:.4f}, improvement={improvement:+.4f}"
             )
             
@@ -1489,7 +1508,7 @@ def run_cwru_experiments(args):
             
             if transfer_score <= baseline_score:
                 print(
-                    f"♻️ Transfer lagged baseline for {src_str} → {tgt_str}; retrying with stronger target emphasis."
+                    f"♻️ Transfer lagged Zhao CNN baseline for {src_str} → {tgt_str}; retrying with stronger target emphasis."
                 )
                 retry_args = argparse.Namespace(**vars(transfer_args))
                 retry_args.lr = max(1e-5, transfer_args.lr * 0.5)
@@ -1535,17 +1554,17 @@ def run_cwru_experiments(args):
                 improvement = transfer_score - baseline_score
                 
                 print(
-                    f"📊 Updated {src_str} → {tgt_str}: baseline({metric_key})={baseline_score:.4f}, "
+                    f"📊 Updated {src_str} → {tgt_str}: Zhao-baseline({metric_key})={baseline_score:.4f}, "
                     f"transfer({metric_key})={transfer_score:.4f}, improvement={improvement:+.4f}"
                 )
                 if transfer_score <= baseline_score:
-                    print(f"⚠️ Transfer remains below baseline for {src_str} → {tgt_str} even after retry.")
+                    print(f"⚠️ Transfer remains below Zhao CNN baseline for {src_str} → {tgt_str} even after retry.")
             
             if transfer_score <= baseline_score:
                 final_model_label = 'baseline'
                 selection_note = 'baseline_kept'
                 print(
-                    f"↩️  Using baseline weights for {src_str} → {tgt_str}; improvement recorded as 0."
+                    f"↩️  Using Zhao CNN baseline weights for {src_str} → {tgt_str}; improvement recorded as 0."
                 )
                 tr_labels, tr_preds = baseline_labels_np, baseline_preds_np
                 t_common, t_out, t_h = b_common, b_out, b_h
@@ -1620,6 +1639,7 @@ def run_cwru_experiments(args):
             "final_model",
         ]
         print(summary_df[cols_to_show])
+        print("Baseline metrics reflect Zhao et al.'s CNN without transfer learning.")
         mean_impr = summary_df["improvement"].mean()
         overall = summary_df["transfer_score"].mean() - summary_df["baseline_score"].mean()
         print(f"Average improvement across experiments: {mean_impr:+.4f}")
@@ -1808,7 +1828,7 @@ def main():
         _valid = [r for r in leaderboard_rows if not (r["avg_improvement"] != r["avg_improvement"])]
         if _valid:
             best = max(_valid, key=lambda r: r["avg_improvement"])
-            print("\n🏆 Leaderboard (avg improvement over baseline):")
+            print("\n🏆 Leaderboard (avg improvement over Zhao CNN baseline):")
             for r in sorted(_valid, key=lambda x: x["avg_improvement"], reverse=True):
                 print(f" - {r['tag']:>18s}: {r['avg_improvement']:+.4f}  ({r['summary_csv']})")
             with open(_os.path.join(_llm_root, "winner.json"), "w") as _f:
