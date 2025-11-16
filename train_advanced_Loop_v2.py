@@ -455,6 +455,7 @@ def _clone_loader(loader, force_shuffle: bool | None = None):
 def _baseline_cycle_stats(shared_stats: dict[str, int | bool]):
     if not shared_stats:
         return {}
+    scoped_cycles = shared_stats.get("cycles_per_cell_per_cathode")
     return {
         "source_train_cycles": shared_stats.get("target_train_cycles", 0),
         "source_val_cycles": shared_stats.get("target_val_cycles", 0),
@@ -466,6 +467,7 @@ def _baseline_cycle_stats(shared_stats: dict[str, int | bool]):
         "source_val_sequences": shared_stats.get("target_val_sequences", 0),
         "target_train_sequences": 0,
         "target_val_sequences": 0,
+        "cycles_per_cell_per_cathode": scoped_cycles if scoped_cycles is not None else {},
     }
 
 def _cwru_shared_stats(src_train, src_val, tgt_train, tgt_val):
@@ -1003,6 +1005,7 @@ def run_battery_experiments(args):
     original_method = args.method
 
     results = []
+    cycle_details = []
     for src_name, tgt_name, source_cathodes, target_cathodes in experiment_configs:
         shared_tuple = load_battery_dataset(
             csv_path=args.csv,
@@ -1122,6 +1125,14 @@ def run_battery_experiments(args):
             transfer_stats = getattr(transfer_args, "dataset_cycle_stats", {})
             if transfer_stats:
                 print(f"🔁 Transfer target training cycles used: {transfer_stats.get('target_train_cycles', 'n/a')}")
+                
+            cycle_details.append(
+                {
+                    "source": src_name,
+                    "target": tgt_name,
+                    "cycles": transfer_stats.get("cycles_per_cell_per_cathode", {}),
+                }
+            )
                 
             eval_loader = transfer_override.get("target_val_loader")
             tr_labels, tr_preds = evaluate_model(model_ft, eval_loader)
@@ -1288,6 +1299,33 @@ def run_battery_experiments(args):
         overall = summary_df["transfer_score"].mean() - summary_df["baseline_score"].mean()
         print(f"Average improvement across experiments: {mean_impr:+.4f}")
         print(f"Overall transfer vs baseline: {overall:+.4f}")
+        
+        cycle_summary: dict[str, dict[str, dict[str, int]]] = {}
+        for entry in cycle_details:
+            scoped = entry.get("cycles") or {}
+            for scope, per_cathode in scoped.items():
+                if not per_cathode:
+                    continue
+                scope_bucket = cycle_summary.setdefault(scope, {})
+                for cathode, cell_list in per_cathode.items():
+                    if not cell_list:
+                        continue
+                    cathode_bucket = scope_bucket.setdefault(cathode, {})
+                    for cell_info in cell_list:
+                        name = cell_info.get("filename")
+                        cycles = cell_info.get("cycles")
+                        if name and cycles is not None:
+                            cathode_bucket[name] = int(cycles)
+
+        if cycle_summary:
+            print("🧮 Cycles per cell per cathode used (by split):")
+            for scope in sorted(cycle_summary):
+                print(f"   [{scope}]")
+                for cathode in sorted(cycle_summary[scope]):
+                    cells = dict(sorted(cycle_summary[scope][cathode].items()))
+                    print(f"      - {cathode} ({len(cells)} cells)")
+                    for cell_name, cycle_count in cells.items():
+                        print(f"           {cell_name}: {cycle_count}")
         
         
 def run_cwru_experiments(args):

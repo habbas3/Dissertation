@@ -364,6 +364,37 @@ def load_battery_dataset(
         print("🔁 Cycle counts by cathode/filename (first 10):\n", per_cathode_cycles.head(10))
         print("⋮")
         print("🔁 Cycle counts by cathode/filename (last 10):\n", per_cathode_cycles.tail(10))
+        
+    def _cycles_by_cathode_df(
+        df_subset: pd.DataFrame,
+        cathode_filter: Optional[Sequence[str]] = None,
+    ) -> dict:
+        nested: dict[str, list[dict[str, int]] | None] = {}
+        if df_subset is None or df_subset.empty:
+            return {}
+
+        counts = (
+            df_subset.groupby(["cathode", "filename"])["cycle_number"]
+            .nunique()
+            .reset_index()
+            .rename(columns={"cycle_number": "cycle_count"})
+        )
+
+        if cathode_filter:
+            cathode_filter = [c for c in cathode_filter if c]
+            if cathode_filter:
+                counts = counts[counts["cathode"].isin(cathode_filter)]
+
+        if counts.empty:
+            return {}
+
+        for cathode, group in counts.groupby("cathode"):
+            ordered = group.sort_values("cycle_count", ascending=False)
+            nested[cathode] = [
+                {"filename": row["filename"], "cycles": int(row["cycle_count"])}
+                for _, row in ordered.iterrows()
+            ]
+        return nested
 
     def _limit_cycles_per_cell(df_subset: pd.DataFrame, limit: Optional[int]) -> pd.DataFrame:
         if df_subset is None or df_subset.empty or limit is None or limit <= 0:
@@ -722,6 +753,25 @@ def load_battery_dataset(
         if arr.size == 0:
             return 0
         return len(np.unique(arr))
+    
+    relevant_cathodes = sorted(
+        set(c for c in (source_cathodes or [])) | set(c for c in (target_cathodes or []))
+    )
+
+    def _scoped_cycle_snapshot(label: str, df_subset: pd.DataFrame) -> tuple[str, dict]:
+        return label, _cycles_by_cathode_df(df_subset, cathode_filter=relevant_cathodes or None)
+
+    scoped_cycles = dict(
+        filter(
+            lambda kv: bool(kv[1]),
+            [
+                _scoped_cycle_snapshot("source_train", source_train_cycles),
+                _scoped_cycle_snapshot("source_val", source_eval_cycles),
+                _scoped_cycle_snapshot("target_train", target_train_cycles),
+                _scoped_cycle_snapshot("target_val", target_eval_cycles),
+            ],
+        )
+    )
 
     stats = {
         "source_train_cycles": src_train_cycle_count,
@@ -738,6 +788,7 @@ def load_battery_dataset(
         "source_val_cells": _unique_group_count(src_val_groups),
         "target_train_cells": _unique_group_count(tgt_train_groups),
         "target_val_cells": _unique_group_count(tgt_val_groups),
+        "cycles_per_cell_per_cathode": scoped_cycles,
     }
 
     for loader, seq_key, cyc_key, cell_key in [
