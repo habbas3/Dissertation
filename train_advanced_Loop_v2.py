@@ -123,7 +123,7 @@ def parse_args():
     parser.add_argument('--input_channels', type=int, default=7)
     parser.add_argument('--classification_label', type=str, default='eol_class')
     parser.add_argument('--sequence_length', type=int, default=32)
-    parser.add_argument('--cycles_per_file', type=int, default=50,
+    parser.add_argument('--cycles_per_file', type=int, default=20,
                         help='Number of contiguous cycles randomly sampled from each cell (default: 50)')
     parser.add_argument('--sample_random_state', type=int, default=42,
                         help='Random seed used when sampling cycles')
@@ -1300,7 +1300,7 @@ def run_battery_experiments(args):
         print(f"Average improvement across experiments: {mean_impr:+.4f}")
         print(f"Overall transfer vs baseline: {overall:+.4f}")
         
-        cycle_summary: dict[str, dict[str, dict[str, int]]] = {}
+        cycle_summary: dict[str, dict[str, dict[str, int | dict[str, int]]]] = {}
         for entry in cycle_details:
             scoped = entry.get("cycles") or {}
             for scope, per_cathode in scoped.items():
@@ -1314,8 +1314,20 @@ def run_battery_experiments(args):
                     for cell_info in cell_list:
                         name = cell_info.get("filename")
                         cycles = cell_info.get("cycles")
-                        if name and cycles is not None:
-                            cathode_bucket[name] = int(cycles)
+                        total_cycles = cell_info.get("total_cycles")
+                        if not name or cycles is None:
+                            continue
+                        existing = cathode_bucket.get(name)
+                        if isinstance(existing, dict):
+                            entry_dict = existing
+                        elif existing is not None:
+                            entry_dict = {"cycles": int(existing)}
+                        else:
+                            entry_dict = {}
+                        entry_dict["cycles"] = int(cycles)
+                        if total_cycles is not None:
+                            entry_dict["total_cycles"] = int(total_cycles)
+                        cathode_bucket[name] = entry_dict
 
         if cycle_summary:
             print("🧮 Cycles per cell per cathode used (by split):")
@@ -1324,8 +1336,23 @@ def run_battery_experiments(args):
                 for cathode in sorted(cycle_summary[scope]):
                     cells = dict(sorted(cycle_summary[scope][cathode].items()))
                     print(f"      - {cathode} ({len(cells)} cells)")
-                    for cell_name, cycle_count in cells.items():
-                        print(f"           {cell_name}: {cycle_count}")
+                    for cell_name, info in cells.items():
+                        if isinstance(info, dict):
+                            used = info.get("cycles")
+                            total = info.get("total_cycles")
+                        else:
+                            used = info
+                            total = None
+                        if used is None:
+                            continue
+                        if total is not None and total != used:
+                            print(
+                                f"           {cell_name}: {used} used / {total} total cycles"
+                            )
+                        elif total is not None:
+                            print(f"           {cell_name}: {used} cycles (full coverage)")
+                        else:
+                            print(f"           {cell_name}: {used} cycles")
         
         
 def run_cwru_experiments(args):

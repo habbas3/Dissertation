@@ -358,6 +358,9 @@ def load_battery_dataset(
     per_cathode_cycles = (
         df.groupby(["cathode", "filename"])["cycle_number"].nunique().rename("cycle_count").sort_values()
     )
+    total_cycle_lookup = (
+        per_cathode_cycles.reset_index().set_index("filename")["cycle_count"].astype(int).to_dict()
+    )
     if len(per_cathode_cycles) <= 40:
         print("🔁 Cycle counts by cathode/filename:\n", per_cathode_cycles)
     else:
@@ -368,6 +371,7 @@ def load_battery_dataset(
     def _cycles_by_cathode_df(
         df_subset: pd.DataFrame,
         cathode_filter: Optional[Sequence[str]] = None,
+        total_counts: Optional[dict[str, int]] = None,
     ) -> dict:
         nested: dict[str, list[dict[str, int]] | None] = {}
         if df_subset is None or df_subset.empty:
@@ -391,7 +395,15 @@ def load_battery_dataset(
         for cathode, group in counts.groupby("cathode"):
             ordered = group.sort_values("cycle_count", ascending=False)
             nested[cathode] = [
-                {"filename": row["filename"], "cycles": int(row["cycle_count"])}
+                {
+                    "filename": row["filename"],
+                    "cycles": int(row["cycle_count"]),
+                    **(
+                        {"total_cycles": int(total_counts[row["filename"]])}
+                        if total_counts and row["filename"] in total_counts
+                        else {}
+                    ),
+                }
                 for _, row in ordered.iterrows()
             ]
         return nested
@@ -759,7 +771,11 @@ def load_battery_dataset(
     )
 
     def _scoped_cycle_snapshot(label: str, df_subset: pd.DataFrame) -> tuple[str, dict]:
-        return label, _cycles_by_cathode_df(df_subset, cathode_filter=relevant_cathodes or None)
+        return label, _cycles_by_cathode_df(
+            df_subset,
+            cathode_filter=relevant_cathodes or None,
+            total_counts=total_cycle_lookup,
+        )
 
     scoped_cycles = dict(
         filter(
