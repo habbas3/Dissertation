@@ -289,6 +289,7 @@ def load_battery_dataset(
     cycles_per_file=50,
     # cycles_per_file=None,
     sample_random_state=42,
+    prevent_leakage=True,
 ):
     
     df = pd.read_csv(csv_path)
@@ -633,6 +634,20 @@ def load_battery_dataset(
     ]
 
     feature_cols = base_feature_cols + engineered_cols
+    leakage_sensitive_cols = []
+    if prevent_leakage and cycles_per_file not in (None, 0):
+        leakage_sensitive_cols.append('norm_cycle')
+
+    if leakage_sensitive_cols:
+        before = set(feature_cols)
+        feature_cols = [col for col in feature_cols if col not in leakage_sensitive_cols]
+        removed = before - set(feature_cols)
+        if removed:
+            print(
+                "🧯 Leak-prevention: removed features that expose full-lifetime labels ->",
+                sorted(removed),
+            )
+
     available_features = [col for col in feature_cols if col in df.columns]
     missing_features = sorted(set(feature_cols) - set(available_features))
     if missing_features:
@@ -805,6 +820,7 @@ def load_battery_dataset(
         "target_train_cells": _unique_group_count(tgt_train_groups),
         "target_val_cells": _unique_group_count(tgt_val_groups),
         "cycles_per_cell_per_cathode": scoped_cycles,
+        "feature_columns": tuple(feature_cols),
     }
 
     for loader, seq_key, cyc_key, cell_key in [
