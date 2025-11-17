@@ -156,7 +156,9 @@ def build_sequences(df, feature_cols, label_col, seq_len=32, group_col=None):
         return sequences, labels, np.array(groups)
     return sequences, labels
 
-def _engineer_battery_features(df: pd.DataFrame) -> tuple[pd.DataFrame, list[str]]:
+def _engineer_battery_features(
+    df: pd.DataFrame,
+) -> tuple[pd.DataFrame, list[str]]:
     """Engineer cycle-level statistics to better expose degradation trends."""
 
     engineered_cols = [
@@ -248,6 +250,41 @@ def _engineer_battery_features(df: pd.DataFrame) -> tuple[pd.DataFrame, list[str
         enriched[engineered_cols] = enriched[engineered_cols].replace([np.inf, -np.inf], np.nan).fillna(0.0)
 
     return enriched, engineered_cols
+
+def _remove_lifetime_leakage_features(
+    df: pd.DataFrame,
+    engineered_cols: list[str],
+    classification_label: str,
+    prevent_leakage: bool,
+) -> tuple[pd.DataFrame, list[str], list[str]]:
+    """Drop any columns that directly reveal total lifetime information.
+
+    In several experiments the model achieved unrealistically high accuracy
+    when trained on only a handful of early cycles.  The investigation showed
+    that engineered columns such as ``norm_cycle`` (cycle index divided by the
+    true end-of-life cycle) or auxiliary metadata like ``eol_cycle`` leak the
+    exact lifetime into the input space.  When ``prevent_leakage`` is enabled we
+    strip every column whose name indicates such privileged knowledge before the
+    feature list is assembled.
+    """
+
+    if not prevent_leakage:
+        return df, engineered_cols, []
+
+    protected = {classification_label, f"{classification_label}_encoded"}
+    leak_tokens = ("eol", "lifetime", "life", "norm_cycle")
+    leaky_cols = [
+        col
+        for col in df.columns
+        if col not in protected and any(tok in col.lower() for tok in leak_tokens)
+    ]
+
+    if not leaky_cols:
+        return df, engineered_cols, []
+
+    df = df.drop(columns=leaky_cols)
+    engineered_cols = [col for col in engineered_cols if col not in leaky_cols]
+    return df, engineered_cols, leaky_cols
 
 
 
@@ -352,6 +389,15 @@ def load_battery_dataset(
     df["eol_cycle"] = df["filename"].map(per_cell_cycles).astype(int)
     
     df, engineered_cols = _engineer_battery_features(df)
+    df, engineered_cols, removed_leakage_cols = _remove_lifetime_leakage_features(
+        df, engineered_cols, classification_label, prevent_leakage
+    )
+
+    if removed_leakage_cols:
+        print(
+            "🧯 Leak-prevention: stripped columns exposing lifetime labels ->",
+            sorted(removed_leakage_cols),
+        )
 
     cycle_counts = per_cell_cycles.sort_values()
     print("\U0001F501 Total cycles per cell (computed EOL):\n", cycle_counts)
@@ -634,19 +680,7 @@ def load_battery_dataset(
     ]
 
     feature_cols = base_feature_cols + engineered_cols
-    leakage_sensitive_cols = []
-    if prevent_leakage and cycles_per_file not in (None, 0):
-        leakage_sensitive_cols.append('norm_cycle')
-
-    if leakage_sensitive_cols:
-        before = set(feature_cols)
-        feature_cols = [col for col in feature_cols if col not in leakage_sensitive_cols]
-        removed = before - set(feature_cols)
-        if removed:
-            print(
-                "🧯 Leak-prevention: removed features that expose full-lifetime labels ->",
-                sorted(removed),
-            )
+    
 
     available_features = [col for col in feature_cols if col in df.columns]
     missing_features = sorted(set(feature_cols) - set(available_features))
