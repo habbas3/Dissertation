@@ -100,6 +100,7 @@ def parse_args():
     parser.add_argument('--checkpoint_dir', type=str, default='./checkpoint')
     parser.add_argument('--pretrained', type=bool, default=False)
     parser.add_argument('--batch_size', type=int, default=64)
+    parser.add_argument('--warmup_epochs', type=int, default=3, help='linear-probe epochs before full fine-tuning')
     parser.add_argument('--num_workers', type=int, default=0)
     parser.add_argument('--bottleneck', type=bool, default=True)
     parser.add_argument('--bottleneck_num', type=int, default=256) 

@@ -317,6 +317,15 @@ def _numeric_heuristic_adjust(cfg: dict, num_summary: Optional[dict]) -> Tuple[d
     tgt_cycles = cycle_stats.get("target_train_cycles", 0)
     src_cycles = cycle_stats.get("source_train_cycles", 0)
     total_target_examples = _split_total_examples(splits.get("target_train"))
+    metrics = num_summary.get("metrics") or {}
+    src_acc = metrics.get("source_acc") or metrics.get("source_val_acc")
+    tgt_acc = metrics.get("target_acc") or metrics.get("target_val_acc")
+    transfer_gap = None
+    if src_acc is not None and tgt_acc is not None:
+        try:
+            transfer_gap = float(src_acc) - float(tgt_acc)
+        except Exception:
+            transfer_gap = None
     notes = str(num_summary.get("notes", "")).lower()
 
     arch_scores: Dict[str, float] = {arch: 0.0 for arch in _ALLOWED_ARCH}
@@ -392,6 +401,20 @@ def _numeric_heuristic_adjust(cfg: dict, num_summary: Optional[dict]) -> Tuple[d
         cfg["use_unknown_head"] = True
     else:
         cfg["use_unknown_head"] = bool(cfg.get("openmax", False))
+        
+    if transfer_gap is not None:
+        if transfer_gap > 0.08:
+            cfg["warmup_epochs"] = max(cfg.get("warmup_epochs", 3), 3)
+            cfg["lambda_src"] = max(cfg.get("lambda_src", 1.0), 1.2)
+            cfg["sngp"] = True if cfg.get("sngp") is False else cfg.get("sngp")
+            heuristic_notes.append(
+                "Source accuracy notably higher than target → keep head-only warmup and calibrated SNGP for safer transfer."
+            )
+        elif transfer_gap < -0.05:
+            cfg["warmup_epochs"] = min(cfg.get("warmup_epochs", 3), 2)
+            heuristic_notes.append(
+                "Target already outperforms source → shorten warmup to accelerate full fine-tuning."
+            )
 
     # Hyperparameter tuning
     if tgt_cycles and tgt_cycles < 180:
@@ -433,6 +456,15 @@ def _autofill_rationale(cfg: dict, num_summary: dict, provider_reason: str = "",
     cycle_stats = _collect_cycle_stats(num_summary)
     tgt_cycles = cycle_stats.get("target_train_cycles")
     src_cycles = cycle_stats.get("source_train_cycles")
+    metrics = num_summary.get("metrics") or {}
+    src_acc = metrics.get("source_acc") or metrics.get("source_val_acc")
+    tgt_acc = metrics.get("target_acc") or metrics.get("target_val_acc")
+    transfer_gap = None
+    if src_acc is not None and tgt_acc is not None:
+        try:
+            transfer_gap = float(src_acc) - float(tgt_acc)
+        except Exception:
+            transfer_gap = None
     parts: list[str] = []
     dataset_variant = str(num_summary.get("dataset_variant") or "").lower()
 
@@ -450,6 +482,17 @@ def _autofill_rationale(cfg: dict, num_summary: dict, provider_reason: str = "",
             parts.append(
                 f"Observed ≈{tgt_cycles} target cycles and set lr={cfg['learning_rate']:.2e} with batch size {cfg['batch_size']} to stay stable."
             )
+            
+    if transfer_gap is not None:
+        direction = "lags" if transfer_gap > 0 else "exceeds"
+        parts.append(
+            f"Transfer gap detected: target {direction} source by {abs(transfer_gap):.2%}; warmup_epochs={cfg.get('warmup_epochs', 0)} keeps pretrained features steady."
+        )
+
+    if cfg.get("warmup_epochs", 0):
+        parts.append(
+            f"Backbone frozen for {cfg['warmup_epochs']} epoch(s) before full fine-tuning to stabilise feature reuse."
+        )
 
     if ("label_inconsistent" in notes or "open" in notes) and (cfg.get("sngp") or cfg.get("openmax")):
         parts.append("Label inconsistency flagged → calibrated heads (SNGP/OpenMax) stay enabled for open-set robustness.")
@@ -639,6 +682,7 @@ JSON_SCHEMA = {
         "learning_rate": {"type": "number", "minimum": 1e-5, "maximum": 1e-2},
         "batch_size": {"type": "integer", "minimum": 4, "maximum": 256},
         "lambda_src": {"type": "number", "minimum": 0.0, "maximum": 5.0},
+        "warmup_epochs": {"type": "integer", "minimum": 0, "maximum": 20},
         "rationale": {"type": "string"}
     },
     "required": ["model_name"],
@@ -667,6 +711,7 @@ Return STRICT JSON with these fields (no prose outside JSON):
 - learning_rate: float (1e-5..1e-2)
 - batch_size: integer (4..256)
 - lambda_src: float (0..5)
+- warmup_epochs: integer (0..20)
 - rationale: 2–4 sentences referencing channels, seq_len, label consistency/open-set, and trade-offs among SA/SNGP/OpenMax.
 
 Return VALID JSON ONLY (no extra text).
@@ -830,6 +875,7 @@ def _validate_or_default(payload, num_summary=None) -> dict:
     lr = _clamp(obj.get("learning_rate", 3e-4), 1e-5, 1e-2, 3e-4)
     bs = _clamp(obj.get("batch_size", 64), 4, 256, 64)
     lam_src = _clamp(obj.get("lambda_src", 1.0), 0.0, 5.0, 1.0)
+    warmup_epochs = _clamp(obj.get("warmup_epochs", 3), 0, 20, 3)
 
     # 7) rationale
     prov_rat = str(obj.get("rationale", "")).strip()
@@ -850,6 +896,7 @@ def _validate_or_default(payload, num_summary=None) -> dict:
         "learning_rate": lr,
         "batch_size": bs,
         "lambda_src": lam_src,
+        "warmup_epochs": warmup_epochs,
     }
     
     cfg, heuristic_notes = _numeric_heuristic_adjust(cfg, num_summary)

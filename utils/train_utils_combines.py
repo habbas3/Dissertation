@@ -20,6 +20,7 @@ class train_utils(object):
     def __init__(self, args, save_dir):
         self.args = args
         self.save_dir = save_dir
+        self._backbone_frozen = False
 
     def setup(self):
         """
@@ -149,6 +150,8 @@ class train_utils(object):
 
 
         self.start_epoch = 0
+        
+        self.warmup_epochs = max(0, int(getattr(self.args, "warmup_epochs", 0)))
 
 
         # Invert the model and define the loss
@@ -160,6 +163,17 @@ class train_utils(object):
         self.classifier_layer.to(self.device)
 
         self.criterion = nn.CrossEntropyLoss()
+        
+    def _set_backbone_trainable(self, trainable: bool):
+        """Toggle gradient updates on the feature extractor for transfer warmup."""
+        if self._backbone_frozen == (not trainable):
+            return
+        for p in self.model.parameters():
+            p.requires_grad = trainable
+        self._backbone_frozen = not trainable
+        logging.info("🔥 Unfroze backbone for full fine-tuning." if trainable else
+                     "🧊 Freezing backbone for linear-probe warmup.")
+    
 
 
     def train(self):
@@ -184,6 +198,12 @@ class train_utils(object):
                 logging.info('current lr: {}'.format(self.lr_scheduler.get_lr()))
             else:
                 logging.info('current lr: {}'.format(args.lr))
+                
+            if self.warmup_epochs and getattr(args, "pretrained", False):
+                if epoch == 0:
+                    self._set_backbone_trainable(False)
+                elif epoch == self.warmup_epochs:
+                    self._set_backbone_trainable(True)
 
             iter_target = iter(self.dataloaders['target_train'])
             len_target_loader = len(self.dataloaders['target_train'])
