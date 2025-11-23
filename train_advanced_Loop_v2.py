@@ -1121,6 +1121,25 @@ def run_battery_experiments(args):
             transfer_args.pretrained_model_path = os.path.join(pre_dir, "best_model.pth")
             transfer_args.source_cathode = source_cathodes
             transfer_args.target_cathode = target_cathodes
+            
+            # Cross-family transfers (e.g., nmc → spinel5v) have struggled; bias toward
+            # quicker target adaptation by tempering source supervision and extending
+            # the warmup/epoch budget.
+            cross_family = src_name != tgt_name
+            hard_spinel = cross_family and "nmc" in src_name.lower() and "spinel" in tgt_name.lower()
+            if cross_family:
+                transfer_args.lambda_src = min(getattr(transfer_args, "lambda_src", 1.0), 0.6)
+                transfer_args.lambda_src_decay_patience = max(
+                    1, getattr(transfer_args, "lambda_src_decay_patience", 5) // 2
+                )
+                transfer_args.lambda_src_warmup = max(
+                    getattr(transfer_args, "lambda_src_warmup", 0), getattr(transfer_args, "warmup_epochs", 3)
+                )
+                transfer_args.max_epoch = int(max(getattr(transfer_args, "max_epoch", 50), 60) * 1.1)
+                transfer_args.warmup_epochs = max(getattr(transfer_args, "warmup_epochs", 3), 5 if hard_spinel else 4)
+                transfer_args.droprate = max(getattr(transfer_args, "droprate", 0.3), 0.35 if hard_spinel else 0.3)
+                transfer_args.lr = min(getattr(transfer_args, "lr", args.lr), 5e-4)
+                
             ft_dir = os.path.join(
                 args.checkpoint_dir,
                 f"transfer_{model_name}_{src_name}_to_{tgt_name}_{datetime.now().strftime('%m%d')}",
@@ -1225,6 +1244,48 @@ def run_battery_experiments(args):
                 if transfer_score <= baseline_score:
                     print(f"⚠️ Transfer remains below Zhao CNN baseline for {src_name} → {tgt_name} even after retry.")
                     
+            if cross_family and improvement <= 0.02:
+                print(
+                    "🔧 Cross-family transfer still marginal — launching a target-heavy booster pass with minimal source loss."
+                )
+                boost_args = argparse.Namespace(**vars(transfer_args))
+                boost_args.lambda_src = 0.1
+                boost_args.lambda_src_decay_patience = 1
+                boost_args.lambda_src_warmup = 0
+                boost_args.max_epoch = int(max(boost_args.max_epoch, 60) * 1.15)
+                boost_args.lr = max(1e-5, boost_args.lr * 0.7)
+                boost_dir = os.path.join(ft_dir, "target_boost")
+                os.makedirs(boost_dir, exist_ok=True)
+                model_boost, _, _, _, boost_loader = run_experiment(
+                    boost_args,
+                    boost_dir,
+                    override_data=transfer_override,
+                )
+                boost_labels, boost_preds = evaluate_model(model_boost, boost_loader)
+                b_common_new, b_out_new, b_h_new = compute_common_outlier_metrics(
+                    boost_labels, boost_preds, num_known
+                )
+                boost_score = {
+                    "common": b_common_new,
+                    "hscore": b_h_new,
+                    "overall": (b_common_new + b_out_new) / 2.0,
+                }[metric_key]
+
+                if boost_score > transfer_score:
+                    print(
+                        f"✅ Target-heavy booster improved transfer ({boost_score:.4f} vs {transfer_score:.4f}); keeping boosted model."
+                    )
+                    model_ft = model_boost
+                    tr_labels, tr_preds = boost_labels, boost_preds
+                    t_common, t_out, t_h = b_common_new, b_out_new, b_h_new
+                    transfer_score = boost_score
+                    transfer_stats = getattr(boost_args, "dataset_cycle_stats", {}) or transfer_stats
+                    improvement = transfer_score - baseline_score
+                else:
+                    print(
+                        f"⚠️ Booster pass failed to clear previous transfer ({boost_score:.4f} ≤ {transfer_score:.4f}); keeping prior weights."
+                    )
+                    
             if transfer_score <= baseline_score:
                 final_model_label = 'baseline'
                 selection_note = 'baseline_kept'
@@ -1289,7 +1350,7 @@ def run_battery_experiments(args):
         summary_df = pd.DataFrame(results)
         summary_path = os.path.join(
             args.checkpoint_dir,
-            f"summary_{datetime.now().strftime('%m%d')}_{args.data_name}.csv",
+            f"summary_{datetime.now().strftime('%m%d_%H%M%S')}_{args.data_name}.csv",
         )
         summary_df.to_csv(summary_path, index=False)
         print(f"Saved summary to {summary_path}")
@@ -1698,7 +1759,7 @@ def run_cwru_experiments(args):
         summary_df = pd.DataFrame(results)
         summary_path = os.path.join(
             args.checkpoint_dir,
-            f"summary_{datetime.now().strftime('%m%d')}_{args.data_name}.csv",
+            f"summary_{datetime.now().strftime('%m%d_%H%M%S')}_{args.data_name}.csv",
         )
         summary_df.to_csv(summary_path, index=False)
         print(f"Saved summary to {summary_path}")
