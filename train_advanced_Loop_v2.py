@@ -124,8 +124,12 @@ def parse_args():
     parser.add_argument('--input_channels', type=int, default=7)
     parser.add_argument('--classification_label', type=str, default='eol_class')
     parser.add_argument('--sequence_length', type=int, default=32)
-    parser.add_argument('--cycles_per_file', type=int, default=5,
-                        help='Number of contiguous cycles randomly sampled from each cell (default: 50)')
+    parser.add_argument('--cycles_per_file', type=int, default=15,
+                        help='Number of early-life cycles to use for target-side baseline/transfer comparisons')
+    parser.add_argument('--source_cycles_per_file', type=int, default=None,
+                        help='Optional limit for source cathodes (defaults to all cycles when omitted)')
+    parser.add_argument('--target_cycles_per_file', type=int, default=None,
+                        help='Optional target limit; falls back to --cycles_per_file when omitted')
     parser.add_argument('--sample_random_state', type=int, default=42,
                         help='Random seed used when sampling cycles')
     parser.add_argument('--transfer_task', type=str, default='[[0],[1]]',
@@ -839,6 +843,8 @@ def run_experiment(args, save_dir, trial=None, baseline=False, override_data=Non
             sequence_length=args.sequence_length,
             num_classes=args.num_classes,
             cycles_per_file=args.cycles_per_file,
+            source_cycles_per_file=args.source_cycles_per_file,
+            target_cycles_per_file=args.target_cycles_per_file,
             sample_random_state=args.sample_random_state,
         )
         # keep dataset references for later use
@@ -1017,6 +1023,8 @@ def run_battery_experiments(args):
             sequence_length=args.sequence_length,
             num_classes=args.num_classes,
             cycles_per_file=args.cycles_per_file,
+            source_cycles_per_file=args.source_cycles_per_file,
+            target_cycles_per_file=args.target_cycles_per_file,
             sample_random_state=args.sample_random_state,
         )
         (
@@ -1747,6 +1755,9 @@ def main():
                     classification_label=args.classification_label,
                     batch_size=min(args.batch_size, 32),
                     sequence_length=args.sequence_length,
+                    cycles_per_file=args.cycles_per_file,
+                    source_cycles_per_file=args.source_cycles_per_file,
+                    target_cycles_per_file=args.target_cycles_per_file,
                 )
                 dls_for_peek = {'source_train': src_tr, 'source_val': src_val, 'target_train': tgt_tr, 'target_val': tgt_val}
             else:

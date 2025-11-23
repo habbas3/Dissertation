@@ -324,6 +324,8 @@ def load_battery_dataset(
     sequence_length=32,
     num_classes=None,
     cycles_per_file=50,
+    source_cycles_per_file=None,
+    target_cycles_per_file=None,
     # cycles_per_file=None,
     sample_random_state=42,
     prevent_leakage=True,
@@ -630,8 +632,16 @@ def load_battery_dataset(
         if target_df.empty:
             print(f"⚠️ No rows found for target cathodes: {target_cathodes}")
 
-    source_limited = _limit_cycles_per_cell(source_df, cycles_per_file)
-    target_limited = _limit_cycles_per_cell(target_df, cycles_per_file) if not target_df.empty else target_df.copy()
+    source_limit = source_cycles_per_file if source_cycles_per_file is not None else cycles_per_file
+    target_limit = target_cycles_per_file if target_cycles_per_file is not None else cycles_per_file
+
+    if source_limit is None:
+        print("🔍 Source cycles: using full lifetime horizon (no truncation).")
+    if target_limit is None:
+        print("🔍 Target cycles: using full lifetime horizon (no truncation).")
+
+    source_limited = _limit_cycles_per_cell(source_df, source_limit)
+    target_limited = _limit_cycles_per_cell(target_df, target_limit) if not target_df.empty else target_df.copy()
 
     src_group_col = "cell_id" if "cell_id" in source_limited.columns else "filename"
     tgt_group_col = "cell_id" if (not target_limited.empty and "cell_id" in target_limited.columns) else "filename"
@@ -842,9 +852,11 @@ def load_battery_dataset(
         "source_train_cycles": src_train_cycle_count,
         "source_val_cycles": src_val_cycle_effective,
         "source_val_has_holdout": bool(src_eval_cycle_count > 0),
+        "source_cycle_limit": None if source_limit is None else int(source_limit),
         "target_train_cycles": tgt_train_cycle_count,
         "target_val_cycles": tgt_val_cycle_effective,
         "target_val_has_holdout": bool(tgt_eval_cycle_count > 0),
+        "target_cycle_limit": None if target_limit is None else int(target_limit),
         "source_train_sequences": len(source_train_dataset),
         "source_val_sequences": len(source_val_dataset),
         "target_train_sequences": len(target_train_dataset) if target_train_dataset is not None else 0,

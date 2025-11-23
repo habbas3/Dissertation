@@ -634,6 +634,8 @@ class train_utils_open_univ(object):
                     batch_size=self.args.batch_size,
                     sequence_length=self.args.sequence_length,
                     cycles_per_file=getattr(self.args, 'cycles_per_file', 50),
+                    source_cycles_per_file=getattr(self.args, 'source_cycles_per_file', None),
+                    target_cycles_per_file=getattr(self.args, 'target_cycles_per_file', None),
                     sample_random_state=getattr(self.args, 'sample_random_state', 42),
                 )
         
