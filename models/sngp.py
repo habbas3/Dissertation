@@ -132,20 +132,26 @@ class SNGP(nn.Module):
         cls_output = self.last_pooled_layer(first_token_tensors)
         return cls_output
     
-    def forward_classifier(self, features):
-        """
-        Bypass backbone entirely and return ONLY the GP head logits tensor.
+    def forward_classifier(self, features, update_cov=True, apply_mean_field=True):
+        """Return logits from the GP head with optional covariance updates.
+
+        Args:
+            features: Backbone features (already flattened/pooled).
+            update_cov: Whether to update the running precision matrix (training only).
+            apply_mean_field: Apply mean-field logit scaling using the predictive
+                covariance (recommended for evaluation to improve calibration).
         """
         if features is None:
             raise ValueError("Features input to forward_classifier is None. Check your model forward pass.")
 
-        out = self.gp_layer(features)
-        # gp_layer often returns (gp_features, gp_logits)
-        if isinstance(out, tuple) and len(out) == 2:
-            gp_feat, gp_logits = out
-            return gp_logits
-        # otherwise it's already just the logits
-        return out
+        gp_feature, gp_logits = self.gp_layer(features, update_cov=update_cov)
+
+        if apply_mean_field:
+            cov = self.compute_predictive_covariance(gp_feature)
+            cov_diag = torch.diagonal(cov, dim1=-2, dim2=-1)
+            gp_logits = mean_field_logits(gp_logits, cov_diag, ridge_penalty=self.gp_cov_ridge_penalty)
+
+        return gp_logits
 
 
 
@@ -255,7 +261,9 @@ class Deterministic(nn.Module):
         logits = self.fc(features)
         return logits
     
-    def forward_classifier(self, features):
+    def forward_classifier(self, features, update_cov=True, apply_mean_field=True):
+        # ``update_cov`` and ``apply_mean_field`` are accepted for API parity with
+        # the SNGP head but are not used in the deterministic classifier.
         if self.normalize_input:
             features = self.input_normalize_layer(features)
         return self.fc(features)

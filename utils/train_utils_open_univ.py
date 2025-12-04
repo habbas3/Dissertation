@@ -1378,7 +1378,10 @@ class train_utils_open_univ(object):
                     )
                 
                     
-                self.model.train() if phase.endswith('train') else self.model.eval()
+                is_training_phase = phase.endswith('train')
+                self.model.train() if is_training_phase else self.model.eval()
+                if hasattr(self, 'sngp_model'):
+                    self.sngp_model.train() if is_training_phase else self.sngp_model.eval()
     
                 running_loss = 0.0
                 running_corrects = 0
@@ -1406,7 +1409,15 @@ class train_utils_open_univ(object):
                         if features is not None and self.args.bottleneck:
                             features = self.bottleneck_layer(features)
 
-                        logits = self.sngp_model.forward_classifier(features) if features is not None else model_logits
+                        logits = (
+                            self.sngp_model.forward_classifier(
+                                features,
+                                update_cov=is_training_phase,
+                                apply_mean_field=not is_training_phase,
+                            )
+                            if features is not None
+                            else model_logits
+                        )
 
                         known_mask_batch = labels < self.num_classes
 
@@ -1806,7 +1817,11 @@ class train_utils_open_univ(object):
                     feats = self.bottleneck(feats)
 
                     if self.head is not None and hasattr(self.head, 'forward_classifier'):
-                        return self.head.forward_classifier(feats)
+                        return self.head.forward_classifier(
+                            feats,
+                            update_cov=False,
+                            apply_mean_field=True,
+                        )
 
                     if self.classifier is not None:
                         return self.classifier(feats)
