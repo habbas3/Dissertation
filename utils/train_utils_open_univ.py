@@ -1005,9 +1005,10 @@ class train_utils_open_univ(object):
             last_fc = _find_last_linear(self.model)
             if last_fc is not None and getattr(last_fc, 'out_features', None) == self.num_classes:
                 _kaiming_reset_linear(last_fc)
-                print("\ud83d\udd01 Reinitialized final classifier layer for target task.")
+                print("Reinitialized final classifier layer for target task.")
             else:
-                print("\u2139\ufe0f Skipped head reinit (no Linear head found with matching out_features).")
+                print("Skipped head reinit (no Linear head found with matching out_features).")
+
 
         # --- Capture L2-SP reference (pretrained weights copy) ---
         self._l2sp_ref = None
@@ -1016,7 +1017,7 @@ class train_utils_open_univ(object):
             self._l2sp_ref = {n: p.detach().clone().to(self.device)
                               for n, p in self.model.named_parameters() if p.requires_grad}
             self.lambda_l2sp = lambda_l2sp
-            print(f"\ud83e\uddf2 L2-SP active with \u03bb={self.lambda_l2sp}")
+            print(f"L2-SP active with lambda={self.lambda_l2sp}")
         else:
             self.lambda_l2sp = 0.0
         

@@ -65,6 +65,22 @@ torch.backends.cudnn.deterministic = True
 torch.backends.cudnn.benchmark = False
 
 
+BASELINE_CWRU_TRANSFER_TASKS = [
+    [[0], [1]],
+    [[0], [2]],
+    [[0], [3]],
+    [[1], [0]],
+    [[1], [2]],
+    [[1], [3]],
+    [[2], [0]],
+    [[2], [1]],
+    [[2], [3]],
+    [[3], [0]],
+    [[3], [1]],
+    [[3], [2]],
+]
+
+
 def reset_seed(seed=SEED):
     torch.manual_seed(seed)
     np.random.seed(seed)
@@ -132,8 +148,8 @@ def parse_args():
                         help='Optional target limit; falls back to --cycles_per_file when omitted')
     parser.add_argument('--sample_random_state', type=int, default=42,
                         help='Random seed used when sampling cycles')
-    parser.add_argument('--transfer_task', type=str, default='[[0],[1]]',
-                        help='CWRU transfer task as [[source],[target]]')
+    parser.add_argument('--transfer_task', type=str, default=json.dumps(BASELINE_CWRU_TRANSFER_TASKS),
+                        help='CWRU transfer task as [[source],[target]] or list of such pairs (default: all 12 baseline combinations)')
     parser.add_argument('--source_cathode', nargs='+', default=[])
     parser.add_argument('--target_cathode', nargs='+', default=[])
     parser.add_argument('--num_classes', type=int, default=None,
@@ -154,6 +170,8 @@ def parse_args():
                         help='Number of epochs to wait before counting plateau epochs for lambda_src decay')
     parser.add_argument('--improvement_metric', choices=['common', 'hscore', 'overall'], default='common',
                         help='Metric used to compare transfer vs baseline on target_val')
+    parser.add_argument('--skip_retry', action='store_true',
+                        help='Skip retry fine-tunes when transfer underperforms the Zhao CNN baseline')
     # --- LLM meta-selection flags (enabled by default; add --no-* to disable) ---
     parser.add_argument('--auto_select', dest='auto_select', action='store_true', default=True,
                         help='Use an LLM to choose model/config from data context (default: on)')
@@ -1194,7 +1212,8 @@ def run_battery_experiments(args):
             final_model_label = 'transfer'
             selection_note = ''
             
-            if transfer_score <= baseline_score:
+            skip_retry = getattr(args, "skip_retry", False)
+            if transfer_score <= baseline_score and not skip_retry:
                 print(f"♻️ Transfer lagged Zhao CNN baseline for {src_name} → {tgt_name}; launching target-focused fine-tune retry.")
                 
                 retry_args = argparse.Namespace(**vars(transfer_args))
@@ -1243,6 +1262,8 @@ def run_battery_experiments(args):
                 )
                 if transfer_score <= baseline_score:
                     print(f"⚠️ Transfer remains below Zhao CNN baseline for {src_name} → {tgt_name} even after retry.")
+            elif transfer_score <= baseline_score and skip_retry:
+                print(f"⚠️ Transfer below Zhao CNN baseline for {src_name} → {tgt_name}; retry skipped (--skip_retry).")
                     
             if cross_family and improvement <= 0.02:
                 print(
@@ -1436,14 +1457,10 @@ def run_cwru_experiments(args):
     else:
         normalized = raw_task
 
-    if (
-        isinstance(normalized, list)
-        and normalized
-        and isinstance(normalized[0], list)
-        and normalized
-        and isinstance(normalized[0][0], list)
-    ):
-        transfer_tasks = normalized
+    if isinstance(normalized, list) and normalized:
+        first = normalized[0]
+        is_pair = isinstance(first, (list, tuple)) and first and isinstance(first[0], (list, tuple))
+        transfer_tasks = normalized if is_pair else [normalized]
     else:
         transfer_tasks = [normalized]
 
@@ -1641,7 +1658,8 @@ def run_cwru_experiments(args):
             final_model_label = 'transfer'
             selection_note = ''
             
-            if transfer_score <= baseline_score:
+            skip_retry = getattr(args, "skip_retry", False)
+            if transfer_score <= baseline_score and not skip_retry:
                 print(
                     f"♻️ Transfer lagged Zhao CNN baseline for {src_str} → {tgt_str}; retrying with stronger target emphasis."
                 )
@@ -1694,6 +1712,9 @@ def run_cwru_experiments(args):
                 )
                 if transfer_score <= baseline_score:
                     print(f"⚠️ Transfer remains below Zhao CNN baseline for {src_str} → {tgt_str} even after retry.")
+                    
+            elif transfer_score <= baseline_score and skip_retry:
+                print(f"⚠️ Transfer below Zhao CNN baseline for {src_str} → {tgt_str}; retry skipped (--skip_retry).")
             
             if transfer_score <= baseline_score:
                 final_model_label = 'baseline'
