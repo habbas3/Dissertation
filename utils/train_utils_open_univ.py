@@ -212,18 +212,26 @@ def _save_confusion_outputs(model: nn.Module,
     np.savetxt(os.path.join(out_dir, f"confmat_{split_name}.csv"), cm, delimiter=",", fmt="%d")
 
     # PNG
-    fig = plt.figure(figsize=(4 + 0.3*len(labels), 4 + 0.3*len(labels)), dpi=150)
+    accuracy = float(np.trace(cm) / cm.sum()) if cm.size and cm.sum() else 0.0
+
+    fig = plt.figure(figsize=(4 + 0.45*len(labels), 4 + 0.45*len(labels)), dpi=320)
     ax = fig.add_subplot(111)
-    im = ax.imshow(cm, interpolation='nearest')
-    ax.figure.colorbar(im, ax=ax)
-    ax.set(title=f"Confusion Matrix - {split_name}", xlabel="Predicted", ylabel="True")
+    im = ax.imshow(cm, interpolation='nearest', cmap=plt.cm.Blues)
+    ax.figure.colorbar(im, ax=ax, fraction=0.046, pad=0.04)
+    ax.set(title=f"Confusion Matrix - {split_name} (acc={accuracy*100:.2f}%)", xlabel="Predicted", ylabel="True")
     ax.set_xticks(range(len(labels))); ax.set_yticks(range(len(labels)))
     ax.set_xticklabels(labels); ax.set_yticklabels(labels)
+    row_sums = cm.sum(axis=1, keepdims=True)
+    with np.errstate(divide='ignore', invalid='ignore'):
+        cm_norm = np.divide(cm.astype(float), row_sums, where=row_sums != 0)
     thresh = cm.max()/2 if cm.size else 0
     for i in range(len(labels)):
         for j in range(len(labels)):
             val = int(cm[i, j]) if cm.size else 0
-            ax.text(j, i, val, ha="center", va="center",
+            pct = (cm_norm[i, j] * 100) if row_sums[i] > 0 else 0
+            text = f"{pct:.1f}%\n({val})" if row_sums[i] > 0 else "0"
+            ax.text(j, i, text, ha="center", va="center",
+                    fontsize=8,
                     color="white" if val > thresh else "black")
     fig.tight_layout()
     png_path = os.path.join(out_dir, f"confmat_{split_name}.png")

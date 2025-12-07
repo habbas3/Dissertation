@@ -38,6 +38,59 @@ from utils.experiment_runner import _cm_with_min_labels
 import os as _os
 from scipy.spatial.distance import jensenshannon
 
+def _save_highres_confusion(cm, labels, path, title, normalize=True):
+    labels = list(labels)
+    fig, ax = plt.subplots(
+        figsize=(4 + 0.45 * len(labels), 4 + 0.45 * len(labels)), dpi=320
+    )
+    cmap = plt.cm.Blues
+    im = ax.imshow(cm, interpolation='nearest', cmap=cmap)
+    fig.colorbar(im, ax=ax, fraction=0.046, pad=0.04)
+
+    ax.set(
+        title=title,
+        xlabel="Predicted label",
+        ylabel="True label",
+        xticks=range(len(labels)),
+        yticks=range(len(labels)),
+    )
+    ax.set_xticklabels(labels)
+    ax.set_yticklabels(labels)
+
+    if normalize:
+        row_sums = cm.sum(axis=1, keepdims=True)
+        with np.errstate(divide='ignore', invalid='ignore'):
+            cm_norm = np.divide(cm.astype(float), row_sums, where=row_sums != 0)
+        annot = [
+            [
+                f"{(cm_norm[i, j] * 100):.1f}%\n({int(cm[i, j])})" if row_sums[i] > 0 else "0"
+                for j in range(cm.shape[1])
+            ]
+            for i in range(cm.shape[0])
+        ]
+    else:
+        annot = [[str(int(cm[i, j])) for j in range(cm.shape[1])] for i in range(cm.shape[0])]
+
+    thresh = cm.max() / 2.0 if cm.size else 0
+    for i in range(cm.shape[0]):
+        for j in range(cm.shape[1]):
+            ax.text(
+                j,
+                i,
+                annot[i][j],
+                ha="center",
+                va="center",
+                fontsize=8,
+                color="white" if cm[i, j] > thresh else "black",
+            )
+
+    fig.tight_layout()
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    fig.savefig(path)
+    plt.close(fig)
+
+
+
 try:
     from dotenv import load_dotenv
     load_dotenv()  # loads .env into os.environ
@@ -290,9 +343,13 @@ def _dataset_profile_from_loader(loader, num_classes, sequence_length_hint=None)
     return _dataset_profile_from_dataset(ds, num_classes, sequence_length_hint)
 
 
-def _decide_uncertainty_method(requested, profile):
+def _decide_uncertainty_method(requested, profile, dataset_name=None):
     if requested != 'auto':
         return requested
+    
+    if dataset_name and 'cwru' in dataset_name.lower():
+        return 'sngp'
+    
     if profile.get("unknown_count", 0) > 0 or profile.get("outlier_fraction", 0.0) >= 0.05:
         return 'sngp'
     return 'deterministic'
@@ -896,7 +953,9 @@ def run_experiment(args, save_dir, trial=None, baseline=False, override_data=Non
         target_val_loader = None
 
     profile_for_method = _dataset_profile_from_loader(target_val_loader, args.num_classes or 0, getattr(args, 'sequence_length', None))
-    chosen_method = _decide_uncertainty_method(getattr(args, 'method', 'deterministic'), profile_for_method)
+    chosen_method = _decide_uncertainty_method(
+        getattr(args, 'method', 'deterministic'), profile_for_method, dataset_name=args.data_name
+    )
     if chosen_method != getattr(args, 'method', None):
         print(f"⚖️  Auto-selected method: {chosen_method} (requested={getattr(args, 'method', None)})")
         args.method = chosen_method
@@ -1061,7 +1120,9 @@ def run_battery_experiments(args):
         arch_sequence = forced_architectures or _choose_architectures(target_profile)
         print(f"🧠 Architecture order for {src_name}→{tgt_name}: {', '.join(arch_sequence)}")
 
-        method_choice = _decide_uncertainty_method(original_method, target_profile)
+        method_choice = _decide_uncertainty_method(
+            original_method, target_profile, dataset_name=args.data_name
+        )
         if method_choice != original_method:
             print(f"⚖️  Selected method '{method_choice}' for {src_name}→{tgt_name} (requested={original_method}).")
         else:
@@ -1337,15 +1398,32 @@ def run_battery_experiments(args):
             desired = max(len(labels), 5)
             cm_transfer, labels = _cm_with_min_labels(tr_labels, tr_preds, min_labels=desired)
             cm_baseline, _ = _cm_with_min_labels(baseline_labels_np, baseline_preds_np, min_labels=desired)
-            disp = ConfusionMatrixDisplay(confusion_matrix=cm_transfer, display_labels=labels)
-            disp.plot(cmap='Blues')
-            plt.savefig(os.path.join(ft_dir, f"cm_transfer_{src_name}_to_{tgt_name}.png"))
-            plt.close()
+            transfer_acc = float(np.trace(cm_transfer) / cm_transfer.sum()) if cm_transfer.sum() else 0.0
+            baseline_acc = float(np.trace(cm_baseline) / cm_baseline.sum()) if cm_baseline.sum() else 0.0
 
-            disp = ConfusionMatrixDisplay(confusion_matrix=cm_baseline, display_labels=labels)
-            disp.plot(cmap='Blues')
-            plt.savefig(os.path.join(ft_dir, f"cm_baseline_{src_name}_to_{tgt_name}.png"))
-            plt.close()
+            if abs(transfer_acc - t_common) > 1e-3:
+                print(
+                    f"⚠️  Transfer accuracy mismatch: cm_acc={transfer_acc:.4f} vs metric={t_common:.4f}. Using cm_acc for logging."
+                )
+            if abs(baseline_acc - b_common) > 1e-3:
+                print(
+                    f"⚠️  Baseline accuracy mismatch: cm_acc={baseline_acc:.4f} vs metric={b_common:.4f}."
+                )
+
+            transfer_cm_path = os.path.join(ft_dir, f"cm_transfer_{src_name}_to_{tgt_name}.png")
+            baseline_cm_path = os.path.join(ft_dir, f"cm_baseline_{src_name}_to_{tgt_name}.png")
+            _save_highres_confusion(
+                cm_transfer,
+                labels,
+                transfer_cm_path,
+                title=f"Transfer {src_name}→{tgt_name} | acc={transfer_acc*100:.2f}%",
+            )
+            _save_highres_confusion(
+                cm_baseline,
+                labels,
+                baseline_cm_path,
+                title=f"Baseline {tgt_name} | acc={baseline_acc*100:.2f}%",
+            )
             
             results.append({
                 "model": model_name,
@@ -1355,6 +1433,8 @@ def run_battery_experiments(args):
                 "baseline_score": baseline_score,
                 "transfer_score": transfer_score,
                 "improvement": improvement,
+                "baseline_accuracy": baseline_acc,
+                "transfer_accuracy": transfer_acc,
                 "baseline_common_acc": b_common,
                 "transfer_common_acc": t_common,
                 "baseline_outlier_acc": b_out,
@@ -1530,7 +1610,9 @@ def run_cwru_experiments(args):
         arch_sequence = forced_architectures or _choose_architectures(target_profile)
         print(f"🧠 Architecture order for {src_str}→{tgt_str}: {', '.join(arch_sequence)}")
 
-        method_choice = _decide_uncertainty_method(original_method, target_profile)
+        method_choice = _decide_uncertainty_method(
+            original_method, target_profile, dataset_name=args.data_name
+        )
         if method_choice != original_method:
             print(f"⚖️  Selected method '{method_choice}' for {src_str}→{tgt_str} (requested={original_method}).")
         else:
@@ -1744,15 +1826,33 @@ def run_cwru_experiments(args):
             labels = sorted(set(labels_tr) | set(labels_bl))
             cm_transfer, labels = _cm_with_min_labels(tr_labels, tr_preds, min_labels=len(labels))
             cm_baseline, _ = _cm_with_min_labels(baseline_labels_np, baseline_preds_np, min_labels=len(labels))
-            disp = ConfusionMatrixDisplay(confusion_matrix=cm_transfer, display_labels=labels)
-            disp.plot(cmap='Blues')
-            plt.savefig(os.path.join(ft_dir, f"cm_transfer_{src_str}_to_{tgt_str}.png"))
-            plt.close()
+            transfer_acc = float(np.trace(cm_transfer) / cm_transfer.sum()) if cm_transfer.sum() else 0.0
+            baseline_acc = float(np.trace(cm_baseline) / cm_baseline.sum()) if cm_baseline.sum() else 0.0
 
-            disp = ConfusionMatrixDisplay(confusion_matrix=cm_baseline, display_labels=labels)
-            disp.plot(cmap='Blues')
-            plt.savefig(os.path.join(ft_dir, f"cm_baseline_{src_str}_to_{tgt_str}.png"))
-            plt.close()
+            if abs(transfer_acc - t_common) > 1e-3:
+                print(
+                    f"⚠️  Transfer accuracy mismatch: cm_acc={transfer_acc:.4f} vs metric={t_common:.4f}. Using cm_acc for loggin"  # noqa: E501
+                )
+            if abs(baseline_acc - b_common) > 1e-3:
+                print(
+                    f"⚠️  Baseline accuracy mismatch: cm_acc={baseline_acc:.4f} vs metric={b_common:.4f}."
+                )
+
+            transfer_cm_path = os.path.join(ft_dir, f"cm_transfer_{src_str}_to_{tgt_str}.png")
+            baseline_cm_path = os.path.join(ft_dir, f"cm_baseline_{src_str}_to_{tgt_str}.png")
+            _save_highres_confusion(
+                cm_transfer,
+                labels,
+                transfer_cm_path,
+                title=f"Transfer {src_str}→{tgt_str} | acc={transfer_acc*100:.2f}%",
+            )
+            _save_highres_confusion(
+                cm_baseline,
+                labels,
+                baseline_cm_path,
+                title=f"Baseline {tgt_str} | acc={baseline_acc*100:.2f}%",
+            )
+
             
             results.append(
                 {
@@ -1763,6 +1863,8 @@ def run_cwru_experiments(args):
                     "baseline_score": baseline_score,
                     "transfer_score": transfer_score,
                     "improvement": improvement,
+                    "baseline_accuracy": baseline_acc,
+                    "transfer_accuracy": transfer_acc,
                     "baseline_common_acc": b_common,
                     "transfer_common_acc": t_common,
                     "baseline_outlier_acc": b_out,
