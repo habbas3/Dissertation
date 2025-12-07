@@ -60,18 +60,14 @@ def _save_highres_confusion(cm, labels, path, title, normalize=True):
     if normalize:
         row_sums = cm.sum(axis=1, keepdims=True)
         with np.errstate(divide='ignore', invalid='ignore'):
-            cm_norm = np.divide(cm.astype(float), row_sums, where=row_sums != 0)
-        annot = [
-            [
-                f"{(cm_norm[i, j] * 100):.1f}%\n({int(cm[i, j])})" if row_sums[i] > 0 else "0"
-                for j in range(cm.shape[1])
-            ]
-            for i in range(cm.shape[0])
-        ]
-    else:
-        annot = [[str(int(cm[i, j])) for j in range(cm.shape[1])] for i in range(cm.shape[0])]
+            _ = np.divide(cm.astype(float), row_sums, where=row_sums != 0)
+
+    annot = [[str(int(cm[i, j])) for j in range(cm.shape[1])] for i in range(cm.shape[0])]
 
     thresh = cm.max() / 2.0 if cm.size else 0
+    ax.grid(False)
+    for spine in ax.spines.values():
+        spine.set_visible(False)
     for i in range(cm.shape[0]):
         for j in range(cm.shape[1]):
             ax.text(
@@ -221,8 +217,15 @@ def parse_args():
                         help='Lower bound for lambda_src when decay scheduling is active')
     parser.add_argument('--lambda_src_warmup', type=int, default=0,
                         help='Number of epochs to wait before counting plateau epochs for lambda_src decay')
-    parser.add_argument('--improvement_metric', choices=['common', 'hscore', 'overall'], default='common',
-                        help='Metric used to compare transfer vs baseline on target_val')
+    parser.add_argument(
+        '--improvement_metric',
+        choices=['accuracy', 'common', 'hscore', 'overall'],
+        default='accuracy',
+        help=(
+            "Metric used to compare transfer vs baseline on target_val. "
+            "Accuracy is the default to keep transfer scores aligned with the observed confusion-matrix accuracy."
+        ),
+    )
     parser.add_argument('--skip_retry', action='store_true',
                         help='Skip retry fine-tunes when transfer underperforms the Zhao CNN baseline')
     # --- LLM meta-selection flags (enabled by default; add --no-* to disable) ---
@@ -1029,6 +1032,28 @@ def compute_common_outlier_metrics(labels, preds, num_known):
     return common_acc, outlier_acc, h
 
 
+def _safe_accuracy(labels, preds):
+    if labels is None or preds is None:
+        return 0.0
+    labels_arr = np.asarray(labels)
+    preds_arr = np.asarray(preds)
+    if labels_arr.size == 0:
+        return 0.0
+    return float(accuracy_score(labels_arr, preds_arr))
+
+
+def _load_sngp_uncertainty_mean(save_dir: str):
+    summary_path = os.path.join(save_dir, "sngp_uncertainty_target_val_summary.json")
+    if not os.path.exists(summary_path):
+        return None
+    try:
+        with open(summary_path, "r") as fh:
+            summary = json.load(fh)
+        return float(summary.get("mean_entropy"))
+    except Exception as err:
+        print(f"⚠️  Unable to read SNGP uncertainty summary at {summary_path}: {err}")
+        return None
+
 def compute_open_set_metrics(labels, preds, num_known):
     """Compute common-class accuracy, outlier accuracy and the harmonic score.
 
@@ -1252,10 +1277,13 @@ def run_battery_experiments(args):
             
             t_common, t_out, t_h = compute_common_outlier_metrics(tr_labels, tr_preds, num_known)
             b_common, b_out, b_h = compute_common_outlier_metrics(baseline_labels_np, baseline_preds_np, num_known)
+            transfer_acc_metric = _safe_accuracy(tr_labels, tr_preds)
+            baseline_acc_metric = _safe_accuracy(baseline_labels_np, baseline_preds_np)
 
             metric_key = args.improvement_metric
             
             metric_lookup = {
+                "accuracy": (transfer_acc_metric, baseline_acc_metric),
                 "common": (t_common, b_common),
                 "hscore": (t_h, b_h),
                 "overall": ((t_common + t_out) / 2.0, (b_common + b_out) / 2.0),
@@ -1305,12 +1333,14 @@ def run_battery_experiments(args):
                     model_ft = model_retry
                     tr_labels, tr_preds = retry_labels, retry_preds
                     t_common, t_out, t_h = r_common, r_out, r_h
+                    transfer_acc_metric = _safe_accuracy(tr_labels, tr_preds)
                     transfer_score = retry_score
                     transfer_stats = retry_stats or transfer_stats
                 else:
                     print(f"⚠️ Retry fine-tune did not exceed initial transfer ({retry_score:.4f} ≤ {transfer_score:.4f}).")
 
                 metric_lookup = {
+                    "accuracy": (transfer_acc_metric, baseline_acc_metric),
                     "common": (t_common, b_common),
                     "hscore": (t_h, b_h),
                     "overall": ((t_common + t_out) / 2.0, (b_common + b_out) / 2.0),
@@ -1376,6 +1406,7 @@ def run_battery_experiments(args):
                 )
                 tr_labels, tr_preds = baseline_labels_np, baseline_preds_np
                 t_common, t_out, t_h = b_common, b_out, b_h
+                transfer_acc_metric = baseline_acc_metric
                 transfer_score = baseline_score
                 improvement = 0.0
                 transfer_stats = baseline_stats or transfer_stats
@@ -1391,6 +1422,12 @@ def run_battery_experiments(args):
             print(
                 f"🎯 Final selection for {src_name} → {tgt_name}: {final_model_label} (score={transfer_score:.4f})."
             )
+            
+            transfer_uncertainty = None
+            if getattr(transfer_args, "method", "") == "sngp":
+                transfer_uncertainty = _load_sngp_uncertainty_mean(ft_dir)
+                if transfer_uncertainty is not None:
+                    print(f"🤔 SNGP mean entropy (target_val): {transfer_uncertainty:.4f}")
 
             cm_transfer, labels_tr = _cm_with_min_labels(tr_labels, tr_preds, min_labels=5)
             cm_baseline, labels_bl = _cm_with_min_labels(baseline_labels_np, baseline_preds_np, min_labels=5)
@@ -1398,16 +1435,19 @@ def run_battery_experiments(args):
             desired = max(len(labels), 5)
             cm_transfer, labels = _cm_with_min_labels(tr_labels, tr_preds, min_labels=desired)
             cm_baseline, _ = _cm_with_min_labels(baseline_labels_np, baseline_preds_np, min_labels=desired)
-            transfer_acc = float(np.trace(cm_transfer) / cm_transfer.sum()) if cm_transfer.sum() else 0.0
-            baseline_acc = float(np.trace(cm_baseline) / cm_baseline.sum()) if cm_baseline.sum() else 0.0
+            transfer_acc_cm = float(np.trace(cm_transfer) / cm_transfer.sum()) if cm_transfer.sum() else 0.0
+            baseline_acc_cm = float(np.trace(cm_baseline) / cm_baseline.sum()) if cm_baseline.sum() else 0.0
 
-            if abs(transfer_acc - t_common) > 1e-3:
+            transfer_acc = transfer_acc_metric
+            baseline_acc = baseline_acc_metric
+
+            if abs(transfer_acc_cm - transfer_acc_metric) > 1e-3:
                 print(
-                    f"⚠️  Transfer accuracy mismatch: cm_acc={transfer_acc:.4f} vs metric={t_common:.4f}. Using cm_acc for logging."
+                    f"⚠️  Transfer accuracy mismatch: cm_acc={transfer_acc_cm:.4f} vs metric={transfer_acc_metric:.4f}. Using metric-based accuracy."
                 )
-            if abs(baseline_acc - b_common) > 1e-3:
+            if abs(baseline_acc_cm - baseline_acc_metric) > 1e-3:
                 print(
-                    f"⚠️  Baseline accuracy mismatch: cm_acc={baseline_acc:.4f} vs metric={b_common:.4f}."
+                    f"⚠️  Baseline accuracy mismatch: cm_acc={baseline_acc_cm:.4f} vs metric={baseline_acc_metric:.4f}."
                 )
 
             transfer_cm_path = os.path.join(ft_dir, f"cm_transfer_{src_name}_to_{tgt_name}.png")
@@ -1441,6 +1481,7 @@ def run_battery_experiments(args):
                 "transfer_outlier_acc": t_out,
                 "baseline_hscore": b_h,
                 "transfer_hscore": t_h,
+                "transfer_uncertainty_mean_entropy": transfer_uncertainty,
                 "final_model": final_model_label,
                 "note": selection_note,
             })
@@ -1716,8 +1757,12 @@ def run_cwru_experiments(args):
             t_common, t_out, t_h = compute_common_outlier_metrics(tr_labels, tr_preds, num_known)
             b_common, b_out, b_h = compute_common_outlier_metrics(baseline_labels_np, baseline_preds_np, num_known)
             
+            transfer_acc_metric = _safe_accuracy(tr_labels, tr_preds)
+            baseline_acc_metric = _safe_accuracy(baseline_labels_np, baseline_preds_np)
+            
             metric_key = args.improvement_metric
             metric_lookup = {
+                "accuracy": (transfer_acc_metric, baseline_acc_metric),
                 "common": (t_common, b_common),
                 "hscore": (t_h, b_h),
                 "overall": ((t_common + t_out) / 2.0, (b_common + b_out) / 2.0),
@@ -1774,6 +1819,7 @@ def run_cwru_experiments(args):
                     model_ft = model_retry
                     tr_labels, tr_preds = retry_labels, retry_preds
                     t_common, t_out, t_h = r_common, r_out, r_h
+                    transfer_acc_metric = _safe_accuracy(tr_labels, tr_preds)
                     transfer_score = retry_metric
                 else:
                     print(
@@ -1781,6 +1827,7 @@ def run_cwru_experiments(args):
                     )
                     
                 metric_lookup = {
+                    "accuracy": (transfer_acc_metric, baseline_acc_metric),
                     "common": (t_common, b_common),
                     "hscore": (t_h, b_h),
                     "overall": ((t_common + t_out) / 2.0, (b_common + b_out) / 2.0),
@@ -1806,6 +1853,7 @@ def run_cwru_experiments(args):
                 )
                 tr_labels, tr_preds = baseline_labels_np, baseline_preds_np
                 t_common, t_out, t_h = b_common, b_out, b_h
+                transfer_acc_metric = baseline_acc_metric
                 transfer_score = baseline_score
                 improvement = 0.0
                 model_ft = model_bl
@@ -1820,22 +1868,31 @@ def run_cwru_experiments(args):
             print(
                 f"🎯 Final selection for {src_str} → {tgt_str}: {final_model_label} (score={transfer_score:.4f})."
             )
+            
+            transfer_uncertainty = None
+            if getattr(transfer_args, "method", "") == "sngp":
+                transfer_uncertainty = _load_sngp_uncertainty_mean(ft_dir)
+                if transfer_uncertainty is not None:
+                    print(f"🤔 SNGP mean entropy (target_val): {transfer_uncertainty:.4f}")
 
             cm_transfer, labels_tr = _cm_with_min_labels(tr_labels, tr_preds, min_labels=10)
             cm_baseline, labels_bl = _cm_with_min_labels(baseline_labels_np, baseline_preds_np, min_labels=10)
             labels = sorted(set(labels_tr) | set(labels_bl))
             cm_transfer, labels = _cm_with_min_labels(tr_labels, tr_preds, min_labels=len(labels))
             cm_baseline, _ = _cm_with_min_labels(baseline_labels_np, baseline_preds_np, min_labels=len(labels))
-            transfer_acc = float(np.trace(cm_transfer) / cm_transfer.sum()) if cm_transfer.sum() else 0.0
-            baseline_acc = float(np.trace(cm_baseline) / cm_baseline.sum()) if cm_baseline.sum() else 0.0
+            transfer_acc_cm = float(np.trace(cm_transfer) / cm_transfer.sum()) if cm_transfer.sum() else 0.0
+            baseline_acc_cm = float(np.trace(cm_baseline) / cm_baseline.sum()) if cm_baseline.sum() else 0.0
 
-            if abs(transfer_acc - t_common) > 1e-3:
+            transfer_acc = transfer_acc_metric
+            baseline_acc = baseline_acc_metric
+
+            if abs(transfer_acc_cm - transfer_acc_metric) > 1e-3:
                 print(
-                    f"⚠️  Transfer accuracy mismatch: cm_acc={transfer_acc:.4f} vs metric={t_common:.4f}. Using cm_acc for loggin"  # noqa: E501
+                    f"⚠️  Transfer accuracy mismatch: cm_acc={transfer_acc_cm:.4f} vs metric={transfer_acc_metric:.4f}. Using metric-based accuracy."  # noqa: E501
                 )
-            if abs(baseline_acc - b_common) > 1e-3:
+            if abs(baseline_acc_cm - baseline_acc_metric) > 1e-3:
                 print(
-                    f"⚠️  Baseline accuracy mismatch: cm_acc={baseline_acc:.4f} vs metric={b_common:.4f}."
+                    f"⚠️  Baseline accuracy mismatch: cm_acc={baseline_acc_cm:.4f} vs metric={baseline_acc_metric:.4f}."
                 )
 
             transfer_cm_path = os.path.join(ft_dir, f"cm_transfer_{src_str}_to_{tgt_str}.png")
@@ -1871,6 +1928,7 @@ def run_cwru_experiments(args):
                     "transfer_outlier_acc": t_out,
                     "baseline_hscore": b_h,
                     "transfer_hscore": t_h,
+                    "transfer_uncertainty_mean_entropy": transfer_uncertainty,
                     "final_model": final_model_label,
                     "note": selection_note,
                 }

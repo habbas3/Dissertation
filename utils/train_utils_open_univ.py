@@ -221,15 +221,15 @@ def _save_confusion_outputs(model: nn.Module,
     ax.set(title=f"Confusion Matrix - {split_name} (acc={accuracy*100:.2f}%)", xlabel="Predicted", ylabel="True")
     ax.set_xticks(range(len(labels))); ax.set_yticks(range(len(labels)))
     ax.set_xticklabels(labels); ax.set_yticklabels(labels)
-    row_sums = cm.sum(axis=1, keepdims=True)
-    with np.errstate(divide='ignore', invalid='ignore'):
-        cm_norm = np.divide(cm.astype(float), row_sums, where=row_sums != 0)
+    
     thresh = cm.max()/2 if cm.size else 0
+    ax.grid(False)
+    for spine in ax.spines.values():
+        spine.set_visible(False)
     for i in range(len(labels)):
         for j in range(len(labels)):
             val = int(cm[i, j]) if cm.size else 0
-            pct = (cm_norm[i, j] * 100) if row_sums[i] > 0 else 0
-            text = f"{pct:.1f}%\n({val})" if row_sums[i] > 0 else "0"
+            text = f"{val}"
             ax.text(j, i, text, ha="center", va="center",
                     fontsize=8,
                     color="white" if val > thresh else "black")
