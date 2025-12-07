@@ -1321,8 +1321,10 @@ def run_battery_experiments(args):
                 )
                 retry_labels, retry_preds = evaluate_model(model_retry, tr_loader_retry)
                 r_common, r_out, r_h = compute_common_outlier_metrics(retry_labels, retry_preds, num_known)
+                r_acc = _safe_accuracy(retry_labels, retry_preds)
                 retry_stats = getattr(retry_args, "dataset_cycle_stats", {})
                 retry_score = {
+                    "accuracy": r_acc,
                     "common": r_common,
                     "hscore": r_h,
                     "overall": (r_common + r_out) / 2.0,
@@ -1377,7 +1379,9 @@ def run_battery_experiments(args):
                 b_common_new, b_out_new, b_h_new = compute_common_outlier_metrics(
                     boost_labels, boost_preds, num_known
                 )
+                b_acc_new = _safe_accuracy(boost_labels, boost_preds)
                 boost_score = {
+                    "accuracy": b_acc_new,
                     "common": b_common_new,
                     "hscore": b_h_new,
                     "overall": (b_common_new + b_out_new) / 2.0,
@@ -1390,6 +1394,7 @@ def run_battery_experiments(args):
                     model_ft = model_boost
                     tr_labels, tr_preds = boost_labels, boost_preds
                     t_common, t_out, t_h = b_common_new, b_out_new, b_h_new
+                    transfer_acc_metric = baseline_acc_metric
                     transfer_score = boost_score
                     transfer_stats = getattr(boost_args, "dataset_cycle_stats", {}) or transfer_stats
                     improvement = transfer_score - baseline_score
@@ -1427,7 +1432,7 @@ def run_battery_experiments(args):
             if getattr(transfer_args, "method", "") == "sngp":
                 transfer_uncertainty = _load_sngp_uncertainty_mean(ft_dir)
                 if transfer_uncertainty is not None:
-                    print(f"🤔 SNGP mean entropy (target_val): {transfer_uncertainty:.4f}")
+                    print(f"SNGP mean entropy (target_val): {transfer_uncertainty:.4f}")
 
             cm_transfer, labels_tr = _cm_with_min_labels(tr_labels, tr_preds, min_labels=5)
             cm_baseline, labels_bl = _cm_with_min_labels(baseline_labels_np, baseline_preds_np, min_labels=5)
@@ -1806,7 +1811,9 @@ def run_cwru_experiments(args):
                 )
                 retry_labels, retry_preds = evaluate_model(model_retry, retry_loader)
                 r_common, r_out, r_h = compute_common_outlier_metrics(retry_labels, retry_preds, num_known)
+                r_acc = _safe_accuracy(retry_labels, retry_preds)
                 retry_metric = {
+                    "accuracy": r_acc,
                     "common": r_common,
                     "hscore": r_h,
                     "overall": (r_common + r_out) / 2.0,
@@ -1873,7 +1880,7 @@ def run_cwru_experiments(args):
             if getattr(transfer_args, "method", "") == "sngp":
                 transfer_uncertainty = _load_sngp_uncertainty_mean(ft_dir)
                 if transfer_uncertainty is not None:
-                    print(f"🤔 SNGP mean entropy (target_val): {transfer_uncertainty:.4f}")
+                    print(f"SNGP mean entropy (target_val): {transfer_uncertainty:.4f}")
 
             cm_transfer, labels_tr = _cm_with_min_labels(tr_labels, tr_preds, min_labels=10)
             cm_baseline, labels_bl = _cm_with_min_labels(baseline_labels_np, baseline_preds_np, min_labels=10)
@@ -1980,7 +1987,7 @@ def main():
             print(f"⚠️ {args.csv} not found – building from {processed}")
             build_cycle_csv(processed, labels_csv, args.csv, num_classes=5)
         except Exception as exc:  # pragma: no cover - best effort
-            print(f"❌ Failed to build cycle CSV: {exc}")
+            print(f"Failed to build cycle CSV: {exc}")
 
     
     if args.auto_select:
