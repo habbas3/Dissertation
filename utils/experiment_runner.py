@@ -26,6 +26,7 @@ from my_datasets.Battery_label_inconsistent import load_battery_dataset
 from torch.utils.data import DataLoader
 from sklearn.metrics import confusion_matrix
 import json
+import copy
 
 
 def _read_timing_json(run_dir):
@@ -52,7 +53,7 @@ def _cm_with_min_labels(y_true, y_pred, min_labels=3):
     return cm, labels
 
 
-def run_experiment(args, save_dir, trial=None):
+def _run_single_cycle_setting(args, save_dir, trial=None):
     args.early_stop_patience = getattr(args, 'early_stop_patience', 5)
     setlogger(os.path.join(save_dir, 'train.log'))
     for k, v in vars(args).items():
@@ -120,6 +121,78 @@ def run_experiment(args, save_dir, trial=None):
 
     trainer.setup()
     return trainer.train()
+
+def _run_cycle_ablation(args, save_dir, trial=None):
+    """Iteratively train on increasing early-cycle horizons until accuracy stops improving."""
+
+    start = getattr(args, "cycle_ablation_start", 5)
+    step = getattr(args, "cycle_ablation_step", 10)
+    max_cycles = getattr(args, "cycle_ablation_max", None)
+
+    best_model = None
+    best_acc = float("-inf")
+    best_cycle_count = None
+
+    current_cycles = start
+    while True:
+        scoped_args = copy.deepcopy(args)
+        scoped_args.cycles_per_file = current_cycles
+        # Mirror the limit onto source/target when callers did not explicitly override them.
+        if getattr(scoped_args, "source_cycles_per_file", None) is None:
+            scoped_args.source_cycles_per_file = current_cycles
+        if getattr(scoped_args, "target_cycles_per_file", None) is None:
+            scoped_args.target_cycles_per_file = current_cycles
+
+        scoped_dir = os.path.join(save_dir, f"cycles_{current_cycles}")
+        os.makedirs(scoped_dir, exist_ok=True)
+        logging.info(
+            "🚀 Cycle ablation run with first %s cycles (step=%s, max=%s)",
+            current_cycles,
+            step,
+            max_cycles,
+        )
+        model, acc = _run_single_cycle_setting(scoped_args, scoped_dir, trial)
+
+        if acc > best_acc:
+            best_acc = acc
+            best_model = model
+            best_cycle_count = current_cycles
+            logging.info(
+                "✅ Improvement detected at %s cycles (acc=%.4f). Continuing sweep...",
+                current_cycles,
+                acc,
+            )
+        else:
+            logging.info(
+                "⏹️  Stopping cycle ablation: %s cycles gave acc=%.4f (no improvement over %.4f at %s cycles)",
+                current_cycles,
+                acc,
+                best_acc,
+                best_cycle_count,
+            )
+            break
+
+        if max_cycles is not None and current_cycles >= max_cycles:
+            logging.info(
+                "📏 Reached configured maximum cycle horizon (%s). Ending ablation.",
+                max_cycles,
+            )
+            break
+
+        current_cycles += step
+
+    logging.info(
+        "🏁 Best cycle horizon: %s cycles with acc=%.4f",
+        best_cycle_count,
+        best_acc,
+    )
+    return best_model, best_acc
+
+
+def run_experiment(args, save_dir, trial=None):
+    if getattr(args, "cycle_ablation", False):
+        return _run_cycle_ablation(args, save_dir, trial)
+    return _run_single_cycle_setting(args, save_dir, trial)
 
 def add_timing_to_row(row, base_dir, ft_dir):
     """Merge timing information into a summary row if available."""

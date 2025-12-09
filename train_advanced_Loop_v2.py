@@ -195,6 +195,15 @@ def parse_args():
                         help='Optional limit for source cathodes (defaults to all cycles when omitted)')
     parser.add_argument('--target_cycles_per_file', type=int, default=None,
                         help='Optional target limit; falls back to --cycles_per_file when omitted')
+    parser.add_argument('--cycle_ablation', action='store_true',
+                        help='Sweep cycle limits starting at cycle_ablation_start and increasing by cycle_ablation_step until'
+                             ' validation accuracy no longer improves')
+    parser.add_argument('--cycle_ablation_start', type=int, default=5,
+                        help='Initial number of early cycles to use when --cycle_ablation is enabled')
+    parser.add_argument('--cycle_ablation_step', type=int, default=10,
+                        help='Increment to apply to the cycle horizon between ablation trials')
+    parser.add_argument('--cycle_ablation_max', type=int, default=None,
+                        help='Optional maximum cycle horizon to consider during ablation sweeps')
     parser.add_argument('--sample_random_state', type=int, default=42,
                         help='Random seed used when sampling cycles')
     parser.add_argument('--transfer_task', type=str, default=json.dumps(BASELINE_CWRU_TRANSFER_TASKS),
