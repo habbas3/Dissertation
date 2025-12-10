@@ -54,6 +54,27 @@ _ALLOWED_ARCH = [
     "wideresnet", "wideresnet_sa", "wideresnet_edited"
 ]
 
+# Transfer-aware metadata so both the heuristic layer and the LLM prompt can
+# reason about per-pair difficulty instead of assuming all transfers look the
+# same.
+_CWRU_LOADS = {
+    0: {"hp": 0, "rpm": 1797},
+    1: {"hp": 1, "rpm": 1772},
+    2: {"hp": 2, "rpm": 1750},
+    3: {"hp": 3, "rpm": 1730},
+}
+
+_BATTERY_CHEMISTRY_HINTS = {
+    "NMC111": "low-Ni NMC (stable, slower fade)",
+    "NMC532": "mid-Ni NMC (balanced energy vs. stability)",
+    "NMC622": "higher-Ni NMC (stronger energy, more fragile)",
+    "NMC811": "high-Ni NMC (highest energy, OOD vs low-Ni)",
+    "HE5050": "high-energy experimental blend",
+    "LFP": "LFP (flat curve, safe but lower energy)",
+    "FCG": "graphite focused",
+    "5Vspinel": "high-voltage spinel (manganese rich)",
+}
+
 def _normalize_arch(s: str) -> str:
     if not s:
         return ""
@@ -152,6 +173,88 @@ def _collect_cycle_stats(num_summary: Optional[dict]) -> Dict[str, int]:
     if "source_train_cycles" not in stats:
         stats["source_train_cycles"] = _split_total_examples(splits.get("source_train"))
     return stats
+
+
+def _describe_cwru_pair(source: Optional[int], target: Optional[int]) -> str:
+    if source is None or target is None:
+        return ""
+    src_meta = _CWRU_LOADS.get(int(source), {})
+    tgt_meta = _CWRU_LOADS.get(int(target), {})
+    def _fmt(idx: int, meta: dict) -> str:
+        hp = meta.get("hp")
+        rpm = meta.get("rpm")
+        if hp is None and rpm is None:
+            return f"load {idx}"
+        parts = [f"load {idx}"]
+        if hp is not None:
+            parts.append(f"{hp} HP")
+        if rpm is not None:
+            parts.append(f"{rpm} rpm")
+        return " (" + ", ".join(parts) + ")"
+    return f"Transfer {source}→{target}: {_fmt(int(source), src_meta)} to {_fmt(int(target), tgt_meta)}."
+
+
+def _describe_battery_transfer(num_summary: dict) -> str:
+    source_cathodes = list(num_summary.get("source_cathodes") or [])
+    target_cathodes = list(num_summary.get("target_cathodes") or [])
+    target = target_cathodes[0] if target_cathodes else ""
+
+    if not source_cathodes and not target:
+        return ""
+
+    def _chem_hint(name: str) -> str:
+        if not name:
+            return ""
+        name = str(name)
+        return _BATTERY_CHEMISTRY_HINTS.get(name, "")
+
+    parts = []
+    if target:
+        hint = _chem_hint(target)
+        suffix = f" ({hint})" if hint else ""
+        parts.append(f"Target cathode: {target}{suffix}.")
+
+    if source_cathodes:
+        annotated = []
+        for src in source_cathodes:
+            hint = _chem_hint(src)
+            annotated.append(f"{src} ({hint})" if hint else str(src))
+        parts.append(f"Source cathodes: {', '.join(annotated)}.")
+
+    if target and source_cathodes:
+        cross_family = any(_chem_hint(src) != _chem_hint(target) for src in source_cathodes)
+        if cross_family:
+            parts.append("Source/target chemistries differ → expect domain shift.")
+        else:
+            parts.append("Source and target chemistries align → lighter head may suffice.")
+
+    return " ".join(parts)
+
+
+def _describe_transfer_context(num_summary: dict) -> str:
+    dataset = str(num_summary.get("dataset") or num_summary.get("dataset_variant") or "").lower()
+    transfer_task = num_summary.get("transfer_task") or num_summary.get("transfer_pair")
+    src_idx = None
+    tgt_idx = None
+    if isinstance(transfer_task, (list, tuple)) and len(transfer_task) >= 2:
+        src_idx, tgt_idx = transfer_task[0], transfer_task[1]
+    else:
+        src_idx = num_summary.get("source")
+        tgt_idx = num_summary.get("target")
+
+    lines: list[str] = []
+    if "cwru" in dataset or "bearing" in dataset:
+        desc = _describe_cwru_pair(src_idx, tgt_idx)
+        if desc:
+            lines.append(desc)
+
+    if "battery" in dataset:
+        desc = _describe_battery_transfer(num_summary)
+        if desc:
+            lines.append(desc)
+
+    return "\n".join(lines)
+
 
 
 def _csv_column_stats(path: Path, column: str) -> Optional[dict[str, float]]:
@@ -336,9 +439,20 @@ def _numeric_heuristic_adjust(
             transfer_gap = float(src_acc) - float(tgt_acc)
         except Exception:
             transfer_gap = None
+    
+    transfer_task = num_summary.get("transfer_task") or num_summary.get("transfer_pair")
+    src_idx = None
+    tgt_idx = None
+    if isinstance(transfer_task, (list, tuple)) and len(transfer_task) >= 2:
+        src_idx, tgt_idx = transfer_task[0], transfer_task[1]
+    else:
+        src_idx = num_summary.get("source")
+        tgt_idx = num_summary.get("target")
+        
     notes = str(num_summary.get("notes", "")).lower()
 
     arch_scores: Dict[str, float] = {arch: 0.0 for arch in _ALLOWED_ARCH}
+    heuristic_notes: list[str] = []
     complexity = seq_len * max(channels, 1)
     
     cwru_bias_note = None
@@ -365,14 +479,53 @@ def _numeric_heuristic_adjust(
         cwru_bias_note = (
             "CWRU bearings rewarded wideresnet capacity and SNGP calibration over the Zhao CNN baseline."
         )
+        
+    if src_idx is not None and tgt_idx is not None and (
+        "cwru" in dataset_name or "cwru" in dataset_variant or "bearing" in dataset_variant
+    ):
+        try:
+            delta_load = abs(int(tgt_idx) - int(src_idx))
+        except Exception:
+            delta_load = 0
+        if delta_load >= 2:
+            arch_scores["wideresnet_sa"] += 0.55
+            arch_scores["wideresnet"] += 0.35
+            cfg["sngp"] = True if cfg.get("sngp") is False else cfg.get("sngp", True)
+            heuristic_notes.append(
+                "Large CWRU load shift → prefer WideResNet(+SA)+SNGP for safer transfer across operating regimes."
+            )
+        else:
+            arch_scores["cnn_openmax"] += 0.15
+            heuristic_notes.append(
+                "Mild CWRU load shift → keep light CNN head with OpenMax for unknown fault rejection."
+            )
+
+    source_cathodes = list(num_summary.get("source_cathodes") or [])
+    target_cathodes = list(num_summary.get("target_cathodes") or [])
+    if ("battery" in dataset_name or "battery" in dataset_variant) and target_cathodes:
+        tgt_cath = str(target_cathodes[0])
+        cross_family = any(
+            _BATTERY_CHEMISTRY_HINTS.get(str(src), "") != _BATTERY_CHEMISTRY_HINTS.get(tgt_cath, "")
+            for src in source_cathodes
+        )
+        if cross_family:
+            arch_scores["wideresnet_sa"] += 0.4
+            cfg["sngp"] = True if cfg.get("sngp") is False else cfg.get("sngp", True)
+            heuristic_notes.append(
+                "Cross-chemistry battery transfer detected → using WRN+SA with SNGP to handle chemistry shift."
+            )
+        else:
+            arch_scores["cnn_1d_sa"] += 0.2
+            heuristic_notes.append(
+                "Source/target cathodes share chemistry → lighter CNN+SA retained for efficiency."
+            )
+
 
     current_arch = cfg.get("architecture") or ""
     if current_arch in arch_scores:
         arch_scores[current_arch] += 0.25  # retain some prior weight
 
     best_arch = max(arch_scores.items(), key=lambda kv: kv[1])[0]
-
-    heuristic_notes: list[str] = []
 
     if best_arch != current_arch:
         cfg["architecture"] = best_arch
@@ -477,9 +630,12 @@ def _autofill_rationale(cfg: dict, num_summary: dict, provider_reason: str = "",
             transfer_gap = None
     parts: list[str] = []
     dataset_variant = str(num_summary.get("dataset_variant") or "").lower()
+    transfer_context = _describe_transfer_context(num_summary)
 
     if provider_reason:
         parts.append(provider_reason.strip().rstrip(".") + ".")
+    if transfer_context:
+        parts.append(transfer_context.replace("\n", " "))
     if ch is not None and sl is not None:
         parts.append(f"Evaluated {ch} channels × {sl}-step windows and matched them with {cfg.get('architecture')} capacity.")
 
@@ -889,7 +1045,12 @@ def _build_user_prompt(text_context: str, num_summary: Dict[str, Any]) -> str:
     arch_reference = textwrap.shorten(
         _format_architecture_reference(), width=2400, placeholder="..."
     )
+    transfer_context = _describe_transfer_context(num_summary)
+    transfer_block = ""
+    if transfer_context:
+        transfer_block = f"TRANSFER CONTEXT\n----------------\n{transfer_context}\n\n"
     return f"""\
+{transfer_block}
 DATASET CONTEXT
 ---------------
 {textwrap.shorten(text_context.strip(), width=2000, placeholder='...')}
