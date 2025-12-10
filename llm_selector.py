@@ -219,7 +219,13 @@ _HISTORICAL_TAG_OVERRIDES: dict[str, dict[str, Any]] = {
 }
 
 
-def _maybe_apply_historical_winner(cfg: dict, num_summary: Optional[dict]) -> Tuple[dict, Optional[str]]:
+def _maybe_apply_historical_winner(
+    cfg: dict,
+    num_summary: Optional[dict],
+    allow_history: bool = True,
+) -> Tuple[dict, Optional[str]]:
+    if not allow_history:
+        return cfg, None
     dataset = ""
     if num_summary:
         dataset = str(num_summary.get("dataset") or num_summary.get("dataset_variant") or "").strip()
@@ -302,7 +308,11 @@ def _maybe_apply_historical_winner(cfg: dict, num_summary: Optional[dict]) -> Tu
 
 
 
-def _numeric_heuristic_adjust(cfg: dict, num_summary: Optional[dict]) -> Tuple[dict, list[str]]:
+def _numeric_heuristic_adjust(
+    cfg: dict,
+    num_summary: Optional[dict],
+    allow_history: bool = True,
+) -> Tuple[dict, list[str]]:
     """Refine the config using numeric signals so the selection is data-aware."""
 
     if not num_summary:
@@ -443,7 +453,7 @@ def _numeric_heuristic_adjust(cfg: dict, num_summary: Optional[dict]) -> Tuple[d
             cfg["lambda_src"] = min(cfg.get("lambda_src", 1.0), 0.6)
             heuristic_notes.append("Target richer than source → down-weighting source loss for quicker domain fit.")
             
-    cfg, hist_note = _maybe_apply_historical_winner(cfg, num_summary)
+    cfg, hist_note = _maybe_apply_historical_winner(cfg, num_summary, allow_history=allow_history)
     if hist_note:
         heuristic_notes.append(hist_note)
     return cfg, heuristic_notes
@@ -775,6 +785,104 @@ def _format_architecture_reference() -> str:
     return "\n".join(lines).strip()
 
 
+def _limit_summary_cycles(num_summary: Dict[str, Any], limit: int) -> Dict[str, Any]:
+    """Deep copy a numeric summary and clamp cycle hints to an early horizon."""
+
+    import copy as _copy
+
+    scoped = _copy.deepcopy(num_summary)
+    scoped["cycle_limit_hint"] = int(limit)
+    cycle_stats = scoped.get("cycle_stats") or {}
+    for key in [
+        "target_train_cycles",
+        "source_train_cycles",
+        "target_val_cycles",
+        "source_val_cycles",
+    ]:
+        if key in cycle_stats:
+            try:
+                cycle_stats[key] = min(int(cycle_stats[key]), int(limit))
+            except Exception:
+                cycle_stats[key] = int(limit)
+    scoped["cycle_stats"] = cycle_stats
+
+    for split in (scoped.get("splits") or {}).values():
+        shape = split.get("batch_shape") or []
+        if isinstance(shape, list) and shape:
+            try:
+                shape[0] = min(int(shape[0]), int(limit))
+            except Exception:
+                shape[0] = int(limit)
+        if "preview" in split:
+            split["preview"]["cycle_limit_hint"] = int(limit)
+    return scoped
+
+
+def run_ablation_suite(
+    text_context: str,
+    num_summary: Dict[str, Any],
+    backend: str = "auto",
+    model: Optional[str] = None,
+    debug_dir: Optional[str] = None,
+    cycle_horizons: Optional[list[int]] = None,
+) -> list[dict[str, Any]]:
+    """
+    Generate configs for a small ablation grid:
+    - history_on: full context (default behaviour)
+    - history_off: cold-start without checkpoint leaderboard hints
+    - cycle-limited variants: truncated early-cycle exposure
+    """
+
+    records: list[dict[str, Any]] = []
+
+    primary = select_config(
+        text_context,
+        num_summary,
+        backend=backend,
+        model=model,
+        debug_dir=debug_dir,
+        allow_history=True,
+    )
+    records.append({
+        "tag": "history_on",
+        "config": primary,
+        "cycle_limit": None,
+    })
+
+    cold = select_config(
+        text_context,
+        num_summary,
+        backend=backend,
+        model=model,
+        debug_dir=debug_dir,
+        allow_history=False,
+    )
+    records.append({
+        "tag": "history_off",
+        "config": cold,
+        "cycle_limit": None,
+    })
+
+    for horizon in cycle_horizons or []:
+        scoped_summary = _limit_summary_cycles(num_summary, horizon)
+        cfg = select_config(
+            text_context,
+            scoped_summary,
+            backend=backend,
+            model=model,
+            debug_dir=debug_dir,
+            allow_history=True,
+        )
+        records.append({
+            "tag": f"cycles_{horizon}",
+            "config": cfg,
+            "cycle_limit": int(horizon),
+            "num_summary": scoped_summary,
+        })
+
+    return records
+
+
 def _build_user_prompt(text_context: str, num_summary: Dict[str, Any]) -> str:
     summary = _summarize_numeric(num_summary)
     schema_str = json.dumps(JSON_SCHEMA, indent=2)
@@ -802,7 +910,7 @@ REQUIRED JSON SCHEMA
 Return ONLY a JSON object that matches the schema.
 """
 
-def _validate_or_default(payload, num_summary=None) -> dict:
+def _validate_or_default(payload, num_summary=None, allow_history: bool = True) -> dict:
     """
     Tolerant validator: parse provider JSON (or text), normalize fields,
     honor 'architecture' if provided, and compose a specific rationale.
@@ -899,7 +1007,7 @@ def _validate_or_default(payload, num_summary=None) -> dict:
         "warmup_epochs": warmup_epochs,
     }
     
-    cfg, heuristic_notes = _numeric_heuristic_adjust(cfg, num_summary)
+    cfg, heuristic_notes = _numeric_heuristic_adjust(cfg, num_summary, allow_history=allow_history)
 
     cfg["rationale"] = _autofill_rationale(
         cfg,
@@ -916,7 +1024,8 @@ def _validate_or_default(payload, num_summary=None) -> dict:
 def call_openai(text_context: str,
                 num_summary: Dict[str, Any],
                 model: str = "gpt-4o-mini",
-                debug_dir: Optional[str] = None) -> Dict[str, Any]:
+                debug_dir: Optional[str] = None,
+                allow_history: bool = True) -> Dict[str, Any]:
     """OpenAI backend using Chat Completions (v1 SDK)."""
     import os, json
     from openai import OpenAI
@@ -966,7 +1075,11 @@ def call_openai(text_context: str,
         except Exception:
             obj = None
 
-    cfg = _validate_or_default(obj if obj is not None else content, num_summary=num_summary)
+    cfg = _validate_or_default(
+        obj if obj is not None else content,
+        num_summary=num_summary,
+        allow_history=allow_history,
+    )
     cfg["_provider"] = "openai"
     cfg["_raw"] = content
     return cfg
@@ -992,7 +1105,8 @@ def _safe_write(path: str, data) -> None:
 def call_ollama(text_context: str,
                 num_summary: Dict[str, Any],
                 model: str = "llama3.1:8b",
-                debug_dir: Optional[str] = None) -> Dict[str, Any]:
+                debug_dir: Optional[str] = None,
+                allow_history: bool = True) -> Dict[str, Any]:
     """
     Use local Ollama with JSON-only mode. Saves raw request/response if debug_dir is given.
     """
@@ -1041,7 +1155,11 @@ def call_ollama(text_context: str,
         except Exception:
             obj = None
 
-    parsed = _validate_or_default(json.dumps(obj) if obj is not None else content)
+    parsed = _validate_or_default(
+        json.dumps(obj) if obj is not None else content,
+        num_summary=num_summary,
+        allow_history=allow_history,
+    )
     parsed["_provider"] = "ollama"
     parsed["_raw"] = content
     return parsed
@@ -1054,9 +1172,22 @@ def select_config(text_context: str,
                   num_summary: Dict[str, Any],
                   backend: str = "auto",
                   model: Optional[str] = None,
-                  debug_dir: Optional[str] = None) -> Dict[str, Any]:
+                  debug_dir: Optional[str] = None,
+                  allow_history: bool = True) -> Dict[str, Any]:
     if backend == "openai" or (backend == "auto" and os.getenv("OPENAI_API_KEY")):
-        return call_openai(text_context, num_summary, model or "gpt-4.1-mini", debug_dir=debug_dir)
+        return call_openai(
+            text_context,
+            num_summary,
+            model or "gpt-4.1-mini",
+            debug_dir=debug_dir,
+            allow_history=allow_history,
+        )
     if backend == "ollama" or backend == "auto":
-        return call_ollama(text_context, num_summary, model or "llama3.1:8b", debug_dir=debug_dir)
+        return call_ollama(
+            text_context,
+            num_summary,
+            model or "llama3.1:8b",
+            debug_dir=debug_dir,
+            allow_history=allow_history,
+        )
     raise RuntimeError("No LLM backend available. Set OPENAI_API_KEY or run Ollama locally.")

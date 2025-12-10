@@ -33,7 +33,7 @@ from torch.utils.data import Dataset, DataLoader
 from torch.utils.data.sampler import RandomSampler, SequentialSampler, WeightedRandomSampler
 import time
 from itertools import combinations
-from llm_selector import select_config
+from llm_selector import select_config, run_ablation_suite
 from utils.experiment_runner import _cm_with_min_labels
 import os as _os
 from scipy.spatial.distance import jensenshannon
@@ -142,7 +142,7 @@ def reset_seed(seed=SEED):
 
 def parse_args():
     parser = argparse.ArgumentParser(description='Train')
-    parser.add_argument('--data_name', type=str, default='CWRU_inconsistent',
+    parser.add_argument('--data_name', type=str, default='Battery_inconsistent',
                         choices=['Battery_inconsistent', 'CWRU_inconsistent'])
     parser.add_argument('--data_dir', type=str, default='./my_datasets/Battery',
                         help='Root directory for datasets')
@@ -204,6 +204,10 @@ def parse_args():
                         help='Increment to apply to the cycle horizon between ablation trials')
     parser.add_argument('--cycle_ablation_max', type=int, default=None,
                         help='Optional maximum cycle horizon to consider during ablation sweeps')
+    parser.add_argument('--literature_context_file', type=str,
+                        default='./references/joule_s2542-4351-22-00409-3.md',
+                        help='Optional markdown/text snippet (e.g., Joule S2542-4351(22)00409-3) to provide chemistry-specific '
+                             'guidance to the LLM prompt when using the Battery dataset')
     parser.add_argument('--sample_random_state', type=int, default=42,
                         help='Random seed used when sampling cycles')
     parser.add_argument('--transfer_task', type=str, default=json.dumps(BASELINE_CWRU_TRANSFER_TASKS),
@@ -254,6 +258,10 @@ def parse_args():
                         help='Provider model id (e.g., gpt-4.1-mini or llama3.1)')
     parser.add_argument('--llm_context', type=str, default='',
                         help='Short text describing dataset (e.g., Argonne cycles; channels=7; seq_len=256; label-inconsistent)')
+    parser.add_argument('--llm_ablation', action='store_true', default=False,
+                        help='Collect ablation configs (history on/off, limited-cycle prompts) for closed-loop evidence')
+    parser.add_argument('--ablation_cycle_limits', type=str, default='',
+                        help='Comma-separated early-cycle horizons (e.g., "5,15,30") to probe EOL prediction sensitivity')
     
         
     args = parser.parse_args()
@@ -721,6 +729,9 @@ def _build_numeric_summary(dataloaders, args):
             }
         except Exception:
             summary["cycle_stats"] = cycle_stats
+        chem_ctx = cycle_stats.get("chemistry_context")
+        if chem_ctx:
+            summary["chemistry_context"] = chem_ctx
 
     if args.data_name == 'Battery_inconsistent':
         summary["dataset_variant"] = "argonne_battery"
@@ -758,6 +769,23 @@ def _build_numeric_summary(dataloaders, args):
     return summary
 
 
+def _load_literature_context(path: str | None, limit: int = 1200) -> str:
+    """Best-effort read of a local literature note to enrich the LLM prompt."""
+
+    if not path:
+        return ""
+    try:
+        if os.path.exists(path):
+            with open(path, "r", encoding="utf-8", errors="ignore") as handle:
+                text = handle.read().strip()
+                if len(text) > limit:
+                    text = text[:limit] + "…"
+                return text
+    except Exception:
+        return ""
+    return ""
+
+
 def _build_text_context(args, num_summary):
     import json
 
@@ -767,6 +795,7 @@ def _build_text_context(args, num_summary):
     if dataset_name == 'Battery_inconsistent':
         feature_names = num_summary.get('feature_names', [])
         lines.append("Dataset: Argonne National Laboratory battery aging time-series with partial cycle windows.")
+        chem_ctx = num_summary.get('chemistry_context', {})
         lines.append(
             f"Source cathodes: {', '.join(num_summary.get('source_cathodes', []) or ['(all available)'])}; "
             f"target cathodes: {', '.join(num_summary.get('target_cathodes', []) or ['(none specified)'])}."
@@ -780,6 +809,25 @@ def _build_text_context(args, num_summary):
             f"Label column '{label_col}' with ~{num_summary.get('num_classes_hint', 'unknown')} classes; "
             f"sequence length {seq_len}; {channel_desc} channels covering {feature_desc}."
         )
+        if chem_ctx:
+            src_chem = chem_ctx.get('source') or {}
+            tgt_chem = chem_ctx.get('target') or {}
+            def _fmt_chem(bucket):
+                parts = []
+                for name, info in bucket.items():
+                    an = info.get('anode') or '?'
+                    cat = info.get('cathode') or name
+                    ele = info.get('electrolyte') or 'electrolyte ?'
+                    parts.append(f"{cat} (anode {an}, {ele})")
+                return '; '.join(parts) if parts else '(unspecified chemistry)'
+            lines.append(f"Source chemistry: {_fmt_chem(src_chem)}")
+            lines.append(f"Target chemistry: {_fmt_chem(tgt_chem)}")
+        lit_ctx = _load_literature_context(getattr(args, 'literature_context_file', None))
+        if lit_ctx:
+            lines.append("Literature cues (Joule S2542-4351(22)00409-3, chemistry-sensitive ablations):")
+            lines.append(lit_ctx)
+        if num_summary.get('cycle_limit_hint'):
+            lines.append(f"Ablation: only first {num_summary['cycle_limit_hint']} cycles exposed to the model.")
     else:
         transfer = num_summary.get('transfer_task') or getattr(args, 'transfer_task', None)
 
@@ -2077,6 +2125,49 @@ def main():
         args.llm_cfg_inputs = {"text_context": text_ctx, "numeric_summary": num_summary}
         args.llm_cfg = llm_cfg
         args.llm_cfg_stamp = _llm_stamp
+        ablation_records = []
+        cycle_ablation_cfgs = []
+        coldstart_cfg = None
+        if args.llm_ablation:
+            raw_limits = (getattr(args, "ablation_cycle_limits", "") or "")
+            cycle_limits: list[int] = []
+            for token in raw_limits.split(","):
+                token = token.strip()
+                if not token:
+                    continue
+                try:
+                    val = int(token)
+                    if val > 0:
+                        cycle_limits.append(val)
+                except Exception:
+                    continue
+
+            if not cycle_limits:
+                cycle_hint = (num_summary.get("cycle_stats") or {}).get("target_train_cycles") or 0
+                defaults = {5, 15, 30, int(args.cycles_per_file)}
+                if cycle_hint:
+                    defaults.add(min(int(cycle_hint), max(defaults)))
+                cycle_limits = sorted([v for v in defaults if v > 0])
+
+            ablation_records = run_ablation_suite(
+                text_ctx,
+                num_summary,
+                backend=args.llm_backend,
+                model=args.llm_model,
+                debug_dir=_llm_root,
+                cycle_horizons=cycle_limits,
+            )
+
+            for record in ablation_records:
+                if record.get("tag") == "history_off":
+                    coldstart_cfg = record.get("config")
+                if record.get("cycle_limit"):
+                    cycle_ablation_cfgs.append(record)
+
+            ablation_path = _os.path.join(_llm_root, "llm_ablation.json")
+            with open(ablation_path, "w") as _f:
+                _json.dump(ablation_records, _f, indent=2)
+            print(f"🔎 Ablation prompts saved to {ablation_path}")
 
         
 
@@ -2085,9 +2176,58 @@ def main():
 
         base_args = copy.deepcopy(args)
         candidates = []
+        
+        def _apply_llm_cfg_to_args(cfg_obj, target_args):
+            target_args.model_name = cfg_obj.get("model_name", target_args.model_name)
+            target_args.method = 'sngp' if cfg_obj.get("sngp", False) else 'deterministic'
+            target_args.droprate = cfg_obj.get("dropout", getattr(target_args, "droprate", 0.3))
+            target_args.lr = cfg_obj.get("learning_rate", getattr(target_args, "lr", 1e-3))
+            target_args.batch_size = int(cfg_obj.get("batch_size", getattr(target_args, "batch_size", 64)))
+            target_args.lambda_src = float(cfg_obj.get("lambda_src", getattr(target_args, "lambda_src", 1.0)))
+            if hasattr(target_args, "bottleneck_num"):
+                target_args.bottleneck_num = int(cfg_obj.get("bottleneck", getattr(target_args, "bottleneck_num", 256)))
+            return target_args
 
         # 1) The LLM pick (already applied to args)
         candidates.append(("llm_pick", copy.deepcopy(args)))
+        
+        if coldstart_cfg:
+            cold_args = _apply_llm_cfg_to_args(coldstart_cfg, copy.deepcopy(base_args))
+            cold_args.tag = (getattr(cold_args, "tag", "") + "_history_off_" + args.llm_cfg_stamp).strip("_")
+            candidates.append(("history_off", cold_args))
+
+        for record in cycle_ablation_cfgs:
+            cyc_limit = int(record.get("cycle_limit", 0) or 0)
+            if cyc_limit <= 0:
+                continue
+            cyc_args = _apply_llm_cfg_to_args(record.get("config", {}), copy.deepcopy(base_args))
+            cyc_args.cycles_per_file = cyc_limit
+            cyc_args.source_cycles_per_file = cyc_limit
+            cyc_args.target_cycles_per_file = cyc_limit
+            cyc_args.tag = (getattr(cyc_args, "tag", "") + f"_cycles{cyc_limit}_" + args.llm_cfg_stamp).strip("_")
+            candidates.append((f"cycles_{cyc_limit}", cyc_args))
+
+        if args.llm_cfg.get("openmax"):
+            no_open = _apply_llm_cfg_to_args(args.llm_cfg, copy.deepcopy(base_args))
+            no_open.model_name = "cnn_features_1d_sa" if args.llm_cfg.get("self_attention") else "cnn_features_1d"
+            no_open.method = 'sngp' if args.llm_cfg.get("sngp") else base_args.method
+            no_open.tag = (getattr(no_open, "tag", "") + "_no_openmax_" + args.llm_cfg_stamp).strip("_")
+            candidates.append(("ablate_openmax_off", no_open))
+
+        if args.llm_cfg.get("self_attention"):
+            sa_off = _apply_llm_cfg_to_args(args.llm_cfg, copy.deepcopy(base_args))
+            if sa_off.model_name.endswith("_sa"):
+                sa_off.model_name = sa_off.model_name.replace("_sa", "")
+            elif sa_off.model_name.lower() == "wideresnet_sa":
+                sa_off.model_name = "WideResNet"
+            sa_off.tag = (getattr(sa_off, "tag", "") + "_no_sa_" + args.llm_cfg_stamp).strip("_")
+            candidates.append(("ablate_sa_off", sa_off))
+
+        if args.llm_cfg.get("sngp"):
+            no_sngp = _apply_llm_cfg_to_args(args.llm_cfg, copy.deepcopy(base_args))
+            no_sngp.method = "deterministic"
+            no_sngp.tag = (getattr(no_sngp, "tag", "") + "_no_sngp_" + args.llm_cfg_stamp).strip("_")
+            candidates.append(("ablate_sngp_off", no_sngp))
 
         # 2) Deterministic CNN baseline (no SA/OpenMax/SNGP)
         det = copy.deepcopy(base_args)
@@ -2141,6 +2281,12 @@ def main():
             time.sleep(0.5)
 
             copied_path, avg_imp = _collect_latest_summary(copy_prefix=tag)
+            cyc_lim = None
+            if tag.startswith("cycles_"):
+                try:
+                    cyc_lim = int(tag.split("_", 1)[1])
+                except Exception:
+                    cyc_lim = None
             leaderboard_rows.append({
                 "tag": tag,
                 "model_name": cfg.model_name,
@@ -2151,6 +2297,7 @@ def main():
                 "lambda_src": getattr(cfg, "lambda_src", None),
                 "summary_csv": copied_path,
                 "avg_improvement": avg_imp,
+                "cycle_limit": cyc_lim,
             })
 
         _llm_root = _os.path.join("checkpoint", f"llm_run_{args.llm_cfg_stamp}")

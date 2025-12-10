@@ -847,6 +847,28 @@ def load_battery_dataset(
             ],
         )
     )
+    
+    chemistry_lookup: dict[str, dict[str, str]] = {}
+    if {"cathode", "anode", "electrolyte"}.issubset(df.columns):
+        for cath, group in df.groupby("cathode"):
+            if group.empty:
+                continue
+            first = group.iloc[0]
+            chemistry_lookup[cath] = {
+                "cathode": str(first.get("cathode", cath)),
+                "anode": str(first.get("anode", "?")).strip(),
+                "electrolyte": str(first.get("electrolyte", "?")).strip(),
+                "dataset": str(first.get("dataset_name", "")).strip(),
+            }
+
+    def _subset_chemistry(names: Sequence[str] | None):
+        subset = {}
+        if names:
+            for name in names:
+                if name in chemistry_lookup:
+                    subset[name] = chemistry_lookup[name]
+        return subset
+
 
     stats = {
         "source_train_cycles": src_train_cycle_count,
@@ -867,6 +889,12 @@ def load_battery_dataset(
         "target_val_cells": _unique_group_count(tgt_val_groups),
         "cycles_per_cell_per_cathode": scoped_cycles,
         "feature_columns": tuple(feature_cols),
+        "chemistry_by_cathode": chemistry_lookup,
+        "chemistry_context": {
+            "source": _subset_chemistry(source_cathodes),
+            "target": _subset_chemistry(target_cathodes),
+            "dataset_names": sorted(df.get("dataset_name", []).unique().tolist()) if "dataset_name" in df.columns else [],
+        },
     }
 
     for loader, seq_key, cyc_key, cell_key in [
