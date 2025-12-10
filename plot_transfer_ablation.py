@@ -1,12 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""
-Created on Wed Dec 10 10:58:26 2025
 
-@author: habbas
-"""
-
-#!/usr/bin/env python3
 """Plot transfer-pair ablations for CWRU and Battery datasets.
 
 This script compares a *baseline* strategy against an improved

@@ -1,12 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""
-Created on Wed Dec 10 10:22:38 2025
 
-@author: habbas
-"""
-
-#!/usr/bin/env python3
 """Visualise LLM ablation comparisons (history, cycle limits, head toggles)."""
 
 from __future__ import annotations
