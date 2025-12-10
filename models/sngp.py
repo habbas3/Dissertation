@@ -18,6 +18,9 @@ from models.spectral_normalization import spectral_norm
 def mean_field_logits(logits, covariance_matrix_diag, ridge_penalty=1e-3):
     """Applies mean field approximation to logits given uncertainty estimates."""
     variance = covariance_matrix_diag
+    # Ensure variance shape is broadcastable to logits [B, num_classes].
+    if variance.dim() == 1:
+        variance = variance.unsqueeze(-1)
     scaled_logits = logits / torch.sqrt(1 + variance + ridge_penalty)
     return scaled_logits
 
