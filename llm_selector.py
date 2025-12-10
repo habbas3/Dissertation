@@ -176,10 +176,25 @@ def _collect_cycle_stats(num_summary: Optional[dict]) -> Dict[str, int]:
 
 
 def _describe_cwru_pair(source: Optional[int], target: Optional[int]) -> str:
-    if source is None or target is None:
+    def _normalize_idx(idx: Any) -> Optional[int]:
+        """Flatten list/tuple indices like [[0], [1]] to scalars."""
+        while isinstance(idx, (list, tuple)):
+            if not idx:
+                return None
+            idx = idx[0]
+        try:
+            return int(idx)
+        except Exception:
+            return None
+
+    src_idx = _normalize_idx(source)
+    tgt_idx = _normalize_idx(target)
+    if src_idx is None or tgt_idx is None:
         return ""
-    src_meta = _CWRU_LOADS.get(int(source), {})
-    tgt_meta = _CWRU_LOADS.get(int(target), {})
+    src_meta = _CWRU_LOADS.get(src_idx, {})
+    tgt_meta = _CWRU_LOADS.get(tgt_idx, {})
+    
+    
     def _fmt(idx: int, meta: dict) -> str:
         hp = meta.get("hp")
         rpm = meta.get("rpm")
@@ -191,7 +206,7 @@ def _describe_cwru_pair(source: Optional[int], target: Optional[int]) -> str:
         if rpm is not None:
             parts.append(f"{rpm} rpm")
         return " (" + ", ".join(parts) + ")"
-    return f"Transfer {source}→{target}: {_fmt(int(source), src_meta)} to {_fmt(int(target), tgt_meta)}."
+    return f"Transfer {src_idx}→{tgt_idx}: {_fmt(src_idx, src_meta)} to {_fmt(tgt_idx, tgt_meta)}."
 
 
 def _describe_battery_transfer(num_summary: dict) -> str:

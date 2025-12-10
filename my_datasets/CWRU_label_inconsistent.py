@@ -17,6 +17,36 @@ dataname= {0:["97.mat","105.mat", "118.mat", "130.mat", "169.mat", "185.mat", "1
            3:["100.mat","108.mat", "121.mat","133.mat", "172.mat", "188.mat", "200.mat", "212.mat", "225.mat","237.mat"]}  # 1730rpm
 label = [i for i in range(0, 10)]
 
+# Human-friendly class codes for reporting/plotting.
+#
+# The CWRU naming convention in this loader is:
+#   0 = Normal operating condition
+#   1–9 = Fault classes ordered by increasing damage size
+#   9 is also reused as a mask/outlier label in the label-inconsistent
+#       tasks (UAN/OSBP), so plots should avoid implying chronological order.
+#
+# The alphabetical prefixes (A–J) mirror the CWRU tables while explicitly
+# separating the normal class (0) from the masked/outlier bucket (9).
+CWRU_FAULT_CODES = {
+    0: "A (Normal)",
+    1: "B (IF, 7 mil)",
+    2: "C (BF, 7 mil)",
+    3: "D (OF, 7 mil)",
+    4: "E (IF, 14 mil)",
+    5: "F (BF, 14 mil)",
+    6: "G (OF, 14 mil)",
+    7: "H (IF, 21 mil)",
+    8: "I (BF, 21 mil)",
+    9: "J (OF, 21 mil / Masked-outlier placeholder)",
+}
+
+
+def get_fault_code(label_id: int) -> str:
+    """Return the alphabetical fault code used for plots/reports."""
+
+    return CWRU_FAULT_CODES.get(label_id, f"Class {label_id}")
+
+
 def dataset_information(source_N, target_N, label_inconsistent):
     default_names = list(range(len(dataname[0])))
     default_labels = list(range(len(dataname[0])))

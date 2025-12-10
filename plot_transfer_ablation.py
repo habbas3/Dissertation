@@ -10,12 +10,17 @@ per-transfer strategy (e.g., LLM-guided or chemistry-aware). It produces:
 * A delta plot that highlights the per-pair gain/loss.
 * A CSV summary with the merged scores for reproducible ablation tables.
 
-Example usage:
+Typical usage with real experiment outputs::
 
     python plot_transfer_ablation.py \
         --dataset cwru \
         --baseline checkpoint/.../deterministic_cnn_summary.csv \
         --improved checkpoint/.../llm_pick_summary.csv
+        
+For quick experimentation (e.g., when running this file directly from an IDE),
+you can also run a synthetic demo without passing any arguments::
+
+    python plot_transfer_ablation.py --demo
 """
 
 from __future__ import annotations
@@ -26,6 +31,13 @@ from typing import Iterable
 
 import matplotlib.pyplot as plt
 import pandas as pd
+
+_CWRU_LOADS = {
+    0: {"hp": 0, "rpm": 1797},
+    1: {"hp": 1, "rpm": 1772},
+    2: {"hp": 2, "rpm": 1750},
+    3: {"hp": 3, "rpm": 1730},
+}
 
 
 def _detect_improvement_column(df: pd.DataFrame) -> str:
@@ -54,9 +66,51 @@ def _merge_pairs(baseline: pd.DataFrame, improved: pd.DataFrame) -> pd.DataFrame
     return merged
 
 
-def _make_pair_label(series: Iterable) -> list[str]:
-    return [f"{s}→{t}" for s, t in series]
+def _format_cwru_load(idx: int) -> str:
+    meta = _CWRU_LOADS.get(int(idx), {})
+    hp = meta.get("hp")
+    rpm = meta.get("rpm")
+    parts = [f"Load {idx}"]
+    if hp is not None:
+        parts.append(f"{hp} HP")
+    if rpm is not None:
+        parts.append(f"{rpm} rpm")
+    if len(parts) == 1:
+        return parts[0]
+    return f"{parts[0]} ({', '.join(parts[1:])})"
 
+
+def _make_pair_label(series: Iterable, dataset: str) -> list[str]:
+    labels = []
+    for s, t in series:
+        if dataset == "cwru":
+            labels.append(f"{_format_cwru_load(s)}→{_format_cwru_load(t)}")
+        else:
+            labels.append(f"{s}→{t}")
+    return labels
+
+def _demo_transfer_frames(dataset: str) -> tuple[pd.DataFrame, pd.DataFrame]:
+    """Build small synthetic transfer tables for quick, argument-free demos."""
+
+    pairs = [
+        ("A", "B", 0.05, 0.08),
+        ("A", "C", 0.01, 0.03),
+        ("B", "C", -0.02, 0.00),
+        ("C", "D", 0.04, 0.09),
+    ]
+    baseline = pd.DataFrame(pairs, columns=["source", "target", "improvement", "_improved"])[
+        ["source", "target", "improvement"]
+    ]
+    improved = pd.DataFrame(pairs, columns=["source", "target", "_base", "improvement"])[
+        ["source", "target", "improvement"]
+    ]
+
+    # Slightly tweak the numbers based on dataset for variety.
+    if dataset == "battery":
+        improved["improvement"] += 0.01
+        baseline["improvement"] -= 0.005
+
+    return baseline, improved
 
 def plot_transfer_comparison(df: pd.DataFrame, dataset: str, out_dir: Path) -> None:
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -65,7 +119,7 @@ def plot_transfer_comparison(df: pd.DataFrame, dataset: str, out_dir: Path) -> N
     imp_col_base_full = imp_col_base + "_base"
 
     df = df.copy()
-    df["pair"] = _make_pair_label(zip(df["source"], df["target"]))
+    df["pair"] = _make_pair_label(zip(df["source"], df["target"]), dataset)
     df["delta"] = df[imp_col_improved] - df[imp_col_base_full]
 
     # --- paired bar plot ---
@@ -108,14 +162,30 @@ def plot_transfer_comparison(df: pd.DataFrame, dataset: str, out_dir: Path) -> N
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--dataset", choices=["cwru", "battery"], help="Dataset name for labelling outputs.")
-    parser.add_argument("--baseline", type=Path, required=True, help="CSV with baseline transfer results.")
-    parser.add_argument("--improved", type=Path, required=True, help="CSV with improved/LLM transfer results.")
+    parser.add_argument(
+        "--dataset",
+        choices=["cwru", "battery"],
+        default="cwru",
+        help="Dataset name for labelling outputs.",
+    )
+    parser.add_argument("--baseline", type=Path, help="CSV with baseline transfer results.")
+    parser.add_argument("--improved", type=Path, help="CSV with improved/LLM transfer results.")
+    parser.add_argument("--demo", action="store_true", help="Run with synthetic data instead of CSV inputs.")
     parser.add_argument("--out_dir", type=Path, default=Path("figures"), help="Directory to save plots and CSV.")
     args = parser.parse_args()
 
-    base_df = pd.read_csv(args.baseline)
-    imp_df = pd.read_csv(args.improved)
+    # If no files are provided and demo wasn't requested explicitly, fall back to demo mode.
+    if not args.demo and args.baseline is None and args.improved is None:
+        print("No CSVs supplied; running built-in demo (pass --help for options).")
+        args.demo = True
+
+    if args.demo:
+        base_df, imp_df = _demo_transfer_frames(args.dataset)
+    elif args.baseline is None or args.improved is None:
+        parser.error("Provide both --baseline and --improved, or use --demo.")
+    else:
+        base_df = pd.read_csv(args.baseline)
+        imp_df = pd.read_csv(args.improved)
     merged = _merge_pairs(base_df, imp_df)
     plot_transfer_comparison(merged, args.dataset, args.out_dir)
 
