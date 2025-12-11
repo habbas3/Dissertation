@@ -9,6 +9,7 @@ import matplotlib.pyplot as plt
 import pickle
 import shutil
 import os
+from typing import Optional
 from datetime import datetime
 from utils.logger import setlogger
 import logging
@@ -260,6 +261,8 @@ def parse_args():
                         help='Short text describing dataset (e.g., Argonne cycles; channels=7; seq_len=256; label-inconsistent)')
     parser.add_argument('--llm_ablation', action='store_true', default=False,
                         help='Collect ablation configs (history on/off, limited-cycle prompts) for closed-loop evidence')
+    parser.add_argument('--llm_per_transfer', action='store_true', default=False,
+                        help='Request an LLM pick for every transfer task/cathode pair instead of one global config')
     parser.add_argument('--ablation_cycle_limits', type=str, default='',
                         help='Comma-separated early-cycle horizons (e.g., "5,15,30") to probe EOL prediction sensitivity')
     
@@ -272,6 +275,9 @@ def parse_args():
             args.transfer_task = eval(args.transfer_task)
         except Exception:
             pass
+    if args.auto_select:
+        # Auto-selection implies we want per-transfer reasoning unless explicitly disabled.
+        args.llm_per_transfer = args.llm_per_transfer or True
     return args
 
 ARCHITECTURE_ORDER = [
@@ -877,7 +883,70 @@ def _build_text_context(args, num_summary):
 
     return "\n".join(lines)
 
+def _parse_cycle_limits(raw: str, num_summary: dict, cycles_per_file: int) -> list[int]:
+    """Parse user-provided cycle limits or fall back to a rich default battery sweep."""
 
+    cycle_limits: list[int] = []
+    for token in (raw or "").split(","):
+        token = token.strip()
+        if not token:
+            continue
+        try:
+            val = int(token)
+            if val > 0:
+                cycle_limits.append(val)
+        except Exception:
+            continue
+
+    if cycle_limits:
+        return sorted(set(cycle_limits))
+
+    cycle_hint = (num_summary.get("cycle_stats") or {}).get("target_train_cycles") or 0
+    defaults = {5, 15, 25, 35, 50, 100, int(cycles_per_file)}
+    if cycle_hint:
+        defaults.add(int(min(cycle_hint, max(defaults))))
+    return sorted([v for v in defaults if v > 0])
+
+
+def _llm_pick_for_transfer(args, dls_for_peek: dict, debug_root: Optional[str] = None):
+    """Build a per-transfer prompt and fetch configs + ablations."""
+
+    stamp = getattr(args, "llm_cfg_stamp", datetime.now().strftime("%Y%m%d_%H%M%S"))
+    setattr(args, "llm_cfg_stamp", stamp)
+    debug_dir = None
+    if debug_root:
+        os.makedirs(debug_root, exist_ok=True)
+        debug_dir = os.path.join(debug_root, f"transfer_{stamp}_{len(os.listdir(debug_root))}")
+        os.makedirs(debug_dir, exist_ok=True)
+
+    num_summary = _build_numeric_summary(dls_for_peek, args)
+    text_ctx = _build_text_context(args, num_summary)
+
+    llm_cfg = select_config(
+        text_context=text_ctx,
+        num_summary=num_summary,
+        backend=args.llm_backend,
+        model=args.llm_model,
+        debug_dir=debug_dir,
+    )
+
+    cycle_limits = _parse_cycle_limits(
+        getattr(args, "ablation_cycle_limits", ""),
+        num_summary,
+        getattr(args, "cycles_per_file", 0) or 0,
+    )
+    ablation_records: list[dict] = []
+    if args.llm_ablation:
+        ablation_records = run_ablation_suite(
+            text_ctx,
+            num_summary,
+            backend=args.llm_backend,
+            model=args.llm_model,
+            debug_dir=debug_dir,
+            cycle_horizons=cycle_limits,
+        )
+
+    return llm_cfg, num_summary, text_ctx, ablation_records
 
 def run_experiment(args, save_dir, trial=None, baseline=False, override_data=None):
     reset_seed()
@@ -1172,6 +1241,7 @@ def run_battery_experiments(args):
 
     results = []
     cycle_details = []
+    llm_transfer_records = []
     for src_name, tgt_name, source_cathodes, target_cathodes in experiment_configs:
         shared_tuple = load_battery_dataset(
             csv_path=args.csv,
@@ -1195,6 +1265,44 @@ def run_battery_experiments(args):
             _shared_df,
             shared_stats,
         ) = shared_tuple
+        
+        if args.llm_per_transfer:
+            dls_for_peek = {
+                'source_train': shared_src_train_loader,
+                'source_val': shared_src_val_loader,
+                'target_train': shared_tgt_train_loader,
+                'target_val': shared_tgt_val_loader,
+            }
+            args.source_cathode = source_cathodes
+            args.target_cathode = target_cathodes
+            llm_cfg, num_summary, text_ctx, ablations = _llm_pick_for_transfer(
+                args,
+                dls_for_peek,
+                debug_root=os.path.join(
+                    args.checkpoint_dir,
+                    f"llm_run_{getattr(args, 'llm_cfg_stamp', datetime.now().strftime('%Y%m%d_%H%M%S'))}",
+                ),
+            )
+            llm_transfer_records.append({
+                "dataset": args.data_name,
+                "source_cathodes": list(source_cathodes),
+                "target_cathodes": list(target_cathodes),
+                "llm_cfg": llm_cfg,
+                "numeric_summary": num_summary,
+                "text_context": text_ctx,
+                "ablation": ablations,
+            })
+            args.llm_cfg_inputs = {"text_context": text_ctx, "numeric_summary": num_summary}
+            args.llm_cfg = llm_cfg
+            forced_architectures = [llm_cfg["model_name"]]
+            original_method = 'sngp' if llm_cfg.get("sngp", False) else 'deterministic'
+            args.droprate = llm_cfg.get("dropout", getattr(args, "droprate", 0.3))
+            args.lr = llm_cfg.get("learning_rate", getattr(args, "lr", 1e-3))
+            args.batch_size = int(llm_cfg.get("batch_size", getattr(args, "batch_size", 64)))
+            args.lambda_src = float(llm_cfg.get("lambda_src", getattr(args, "lambda_src", 1.0)))
+            if hasattr(args, "bottleneck_num"):
+                args.bottleneck_num = int(llm_cfg.get("bottleneck", getattr(args, "bottleneck_num", 256)))
+
 
         target_profile = _dataset_profile_from_loader(shared_tgt_val_loader, len(label_names), args.sequence_length)
         _log_profile(f"Battery target {src_name}→{tgt_name}", target_profile)
@@ -1574,6 +1682,16 @@ def run_battery_experiments(args):
         print(f"Average improvement across experiments: {mean_impr:+.4f}")
         print(f"Overall transfer vs baseline: {overall:+.4f}")
         
+        if llm_transfer_records:
+            stamp = getattr(args, "llm_cfg_stamp", datetime.now().strftime("%Y%m%d_%H%M%S"))
+            llm_path = os.path.join(
+                args.checkpoint_dir,
+                f"llm_transfer_choices_{args.data_name}_{stamp}.json",
+            )
+            with open(llm_path, "w") as fh:
+                json.dump(llm_transfer_records, fh, indent=2)
+            print(f"🧾 Saved per-transfer LLM picks to {llm_path}")
+        
         cycle_summary: dict[str, dict[str, dict[str, int | dict[str, int]]]] = {}
         for entry in cycle_details:
             scoped = entry.get("cycles") or {}
@@ -1650,6 +1768,7 @@ def run_cwru_experiments(args):
     forced_architectures = [args.model_name] if args.model_name else None
     original_method = args.method
     results = []
+    llm_transfer_records = []
     for transfer_task in transfer_tasks:
         if not transfer_task:
             continue
@@ -1701,6 +1820,43 @@ def run_cwru_experiments(args):
             shared_tgt_train_dataset,
             shared_tgt_val_dataset,
         )
+        
+        if args.llm_per_transfer:
+            dls_for_peek = {
+                'source_train': shared_src_train_loader,
+                'source_val': shared_src_val_loader,
+                'target_train': shared_tgt_train_loader,
+                'target_val': shared_tgt_val_loader,
+            }
+            args.transfer_task = transfer_task
+            llm_cfg, num_summary, text_ctx, ablations = _llm_pick_for_transfer(
+                args,
+                dls_for_peek,
+                debug_root=os.path.join(
+                    args.checkpoint_dir,
+                    f"llm_run_{getattr(args, 'llm_cfg_stamp', datetime.now().strftime('%Y%m%d_%H%M%S'))}",
+                ),
+            )
+            llm_transfer_records.append({
+                "dataset": args.data_name,
+                "source_ids": list(src_ids),
+                "target_ids": list(tgt_ids),
+                "llm_cfg": llm_cfg,
+                "numeric_summary": num_summary,
+                "text_context": text_ctx,
+                "ablation": ablations,
+            })
+            args.llm_cfg_inputs = {"text_context": text_ctx, "numeric_summary": num_summary}
+            args.llm_cfg = llm_cfg
+            forced_architectures = [llm_cfg["model_name"]]
+            original_method = 'sngp' if llm_cfg.get("sngp", False) else 'deterministic'
+            args.droprate = llm_cfg.get("dropout", getattr(args, "droprate", 0.3))
+            args.lr = llm_cfg.get("learning_rate", getattr(args, "lr", 1e-3))
+            args.batch_size = int(llm_cfg.get("batch_size", getattr(args, "batch_size", 64)))
+            args.lambda_src = float(llm_cfg.get("lambda_src", getattr(args, "lambda_src", 1.0)))
+            if hasattr(args, "bottleneck_num"):
+                args.bottleneck_num = int(llm_cfg.get("bottleneck", getattr(args, "bottleneck_num", 256)))
+
 
         label_names = list(range(num_classes))
         target_profile = _dataset_profile_from_loader(

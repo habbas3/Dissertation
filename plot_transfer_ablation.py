@@ -67,10 +67,18 @@ def _merge_pairs(baseline: pd.DataFrame, improved: pd.DataFrame) -> pd.DataFrame
 
 
 def _format_cwru_load(idx: int) -> str:
-    meta = _CWRU_LOADS.get(int(idx), {})
+    """Format a CWRU load label, tolerating non-numeric identifiers."""
+
+    try:
+        idx_int = int(idx)
+    except (TypeError, ValueError):
+        # Fall back to the raw identifier (useful for synthetic/demo inputs).
+        return str(idx)
+
+    meta = _CWRU_LOADS.get(idx_int, {})
     hp = meta.get("hp")
     rpm = meta.get("rpm")
-    parts = [f"Load {idx}"]
+    parts = [f"Load {idx_int}"]
     if hp is not None:
         parts.append(f"{hp} HP")
     if rpm is not None:
