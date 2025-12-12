@@ -176,21 +176,19 @@ def main() -> None:
         default="cwru",
         help="Dataset name for labelling outputs.",
     )
-    parser.add_argument("--baseline", type=Path, help="CSV with baseline transfer results.")
-    parser.add_argument("--improved", type=Path, help="CSV with improved/LLM transfer results.")
+    parser.add_argument("--baseline checkpoint/llm_run_20251210_125835/compare/deterministic_cnn_summary_1210_222659_CWRU_inconsistent.csv", type=Path, help="CSV with baseline transfer results.")
+    parser.add_argument("--improved checkpoint/llm_run_20251210_125835/compare/llm_pick_summary_1210_161139_CWRU_inconsistent.csv", type=Path, help="CSV with improved/LLM transfer results.")
     parser.add_argument("--demo", action="store_true", help="Run with synthetic data instead of CSV inputs.")
     parser.add_argument("--out_dir", type=Path, default=Path("figures"), help="Directory to save plots and CSV.")
     args = parser.parse_args()
 
-    # If no files are provided and demo wasn't requested explicitly, fall back to demo mode.
-    if not args.demo and args.baseline is None and args.improved is None:
-        print("No CSVs supplied; running built-in demo (pass --help for options).")
-        args.demo = True
+    # Require an explicit choice between real CSVs and the synthetic demo. This prevents
+    # accidental demo plots when users run the script without arguments from an IDE.
 
     if args.demo:
         base_df, imp_df = _demo_transfer_frames(args.dataset)
     elif args.baseline is None or args.improved is None:
-        parser.error("Provide both --baseline and --improved, or use --demo.")
+        parser.error("Provide both --baseline and --improved, or pass --demo for synthetic data.")
     else:
         base_df = pd.read_csv(args.baseline)
         imp_df = pd.read_csv(args.improved)
