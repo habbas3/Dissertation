@@ -259,12 +259,12 @@ def parse_args():
                         help='Provider model id (e.g., gpt-4.1-mini or llama3.1)')
     parser.add_argument('--llm_context', type=str, default='',
                         help='Short text describing dataset (e.g., Argonne cycles; channels=7; seq_len=256; label-inconsistent)')
-    parser.add_argument('--llm_ablation', action='store_true', default=False,
+    parser.add_argument('--llm_ablation', action='store_true', default=True,
                         help='Collect ablation configs (history on/off, limited-cycle prompts) for closed-loop evidence')
-    parser.add_argument('--llm_per_transfer', action='store_true', default=False,
+    parser.add_argument('--llm_per_transfer', action='store_true', default=True,
                         help='Request an LLM pick for every transfer task/cathode pair instead of one global config')
-    parser.add_argument('--ablation_cycle_limits', type=str, default='',
-                        help='Comma-separated early-cycle horizons (e.g., "5,15,30") to probe EOL prediction sensitivity')
+    parser.add_argument('--ablation_cycle_limits', type=str, default='5,15,30,50,100',
+                        help='Comma-separated early-cycle horizons (e.g., "5,15,30,50,100") to probe EOL prediction sensitivity')
     
         
     args = parser.parse_args()
@@ -902,7 +902,7 @@ def _parse_cycle_limits(raw: str, num_summary: dict, cycles_per_file: int) -> li
         return sorted(set(cycle_limits))
 
     cycle_hint = (num_summary.get("cycle_stats") or {}).get("target_train_cycles") or 0
-    defaults = {5, 15, 25, 35, 50, 100, int(cycles_per_file)}
+    defaults = {5, 15, 30, 50, 100, int(cycles_per_file)}
     if cycle_hint:
         defaults.add(int(min(cycle_hint, max(defaults))))
     return sorted([v for v in defaults if v > 0])
@@ -2300,7 +2300,7 @@ def main():
 
             if not cycle_limits:
                 cycle_hint = (num_summary.get("cycle_stats") or {}).get("target_train_cycles") or 0
-                defaults = {5, 15, 30, int(args.cycles_per_file)}
+                defaults = {5, 15, 30, 50, 100, int(args.cycles_per_file)}
                 if cycle_hint:
                     defaults.add(min(int(cycle_hint), max(defaults)))
                 cycle_limits = sorted([v for v in defaults if v > 0])
