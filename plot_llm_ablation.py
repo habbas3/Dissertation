@@ -61,6 +61,38 @@ def plot_cycle_limits(df: pd.DataFrame, out_path: Path) -> None:
     plt.close()
 
 
+def _write_summary(df: pd.DataFrame, out_path: Path) -> None:
+    """Persist a short markdown summary of the ablation sweep."""
+
+    ordered = df.sort_values("avg_improvement", ascending=False)
+    winner = ordered.iloc[0]
+
+    cycle_df = ordered.dropna(subset=["cycle_limit"]).sort_values("cycle_limit")
+    plateau_cycle: int | None = None
+    if not cycle_df.empty:
+        prev = None
+        for _, row in cycle_df.iterrows():
+            cur = float(row["avg_improvement"])
+            if prev is not None and cur <= prev + 1e-3:
+                plateau_cycle = int(row["cycle_limit"])
+                break
+            prev = cur
+
+    lines = [
+        "# LLM ablation summary",
+        "",
+        f"Top candidate: **{winner['tag']}** (Δ={winner['avg_improvement']:+.4f})",
+    ]
+    if not cycle_df.empty:
+        best_cycle = cycle_df.loc[cycle_df["avg_improvement"].idxmax(), "cycle_limit"]
+        lines.append(f"Best cycle-limited prompt: **{int(best_cycle)} cycles**")
+        if plateau_cycle:
+            lines.append(f"Improvement plateau begins by **{plateau_cycle} cycles** (≤1e-3 gain vs. prior).")
+
+    out_path.write_text("\n".join(lines))
+    print(f"Saved ablation summary to {out_path}")
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
@@ -68,6 +100,11 @@ def main():
         type=Path,
         default=Path("checkpoint"),
         help="Path to an llm_run_* folder or the checkpoint root (auto-picks latest run).",
+    )
+    parser.add_argument(
+        "--no_summary",
+        action="store_true",
+        help="Skip writing ablation_summary.md next to the plots.",
     )
     args = parser.parse_args()
 
@@ -97,6 +134,9 @@ def main():
     plot_cycle_limits(df, cycle_plot)
     if cycle_plot.exists():
         print(f"Saved cycle-ablation plot to {cycle_plot}")
+        
+    if not args.no_summary:
+        _write_summary(df, run_dir / "ablation_summary.md")
 
 
 if __name__ == "__main__":

@@ -261,6 +261,8 @@ def parse_args():
                         help='Short text describing dataset (e.g., Argonne cycles; channels=7; seq_len=256; label-inconsistent)')
     parser.add_argument('--llm_ablation', action='store_true', default=True,
                         help='Collect ablation configs (history on/off, limited-cycle prompts) for closed-loop evidence')
+    parser.add_argument('--no-llm_ablation', dest='llm_ablation', action='store_false',
+                        help='Disable ablation prompt collection and comparison candidates')
     parser.add_argument('--llm_per_transfer', action='store_true', default=True,
                         help='Request an LLM pick for every transfer task/cathode pair instead of one global config')
     parser.add_argument('--ablation_cycle_limits', type=str, default='5,15,30,50,100',
