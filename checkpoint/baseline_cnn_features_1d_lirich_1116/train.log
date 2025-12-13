@@ -1,0 +1,408 @@
+11-16 15:04:19 data_name: Battery_inconsistent
+11-16 15:04:19 data_dir: ./my_datasets/Battery
+11-16 15:04:19 csv: ./my_datasets/Battery/battery_cycles_labeled.csv
+11-16 15:04:19 normlizetype: mean-std
+11-16 15:04:19 method: deterministic
+11-16 15:04:19 gp_hidden_dim: 2048
+11-16 15:04:19 spectral_norm_bound: 0.95
+11-16 15:04:19 n_power_iterations: 1
+11-16 15:04:19 nesterov: True
+11-16 15:04:19 print_freq: 10
+11-16 15:04:19 layers: 16
+11-16 15:04:19 widen_factor: 1
+11-16 15:04:19 droprate: 0.3
+11-16 15:04:19 cuda_device: 0
+11-16 15:04:19 checkpoint_dir: ./checkpoint
+11-16 15:04:19 pretrained: False
+11-16 15:04:19 batch_size: 64
+11-16 15:04:19 num_workers: 0
+11-16 15:04:19 bottleneck: True
+11-16 15:04:19 bottleneck_num: 128
+11-16 15:04:19 last_batch: False
+11-16 15:04:19 hidden_size: 1024
+11-16 15:04:19 trade_off_adversarial: Step
+11-16 15:04:19 lam_adversarial: 1
+11-16 15:04:19 opt: adam
+11-16 15:04:19 lr: 0.0003
+11-16 15:04:19 momentum: 0.9
+11-16 15:04:19 weight_decay: 1e-05
+11-16 15:04:19 lr_scheduler: step
+11-16 15:04:19 gamma: 0.1
+11-16 15:04:19 steps: 150, 250
+11-16 15:04:19 middle_epoch: 15
+11-16 15:04:19 max_epoch: 50
+11-16 15:04:19 print_step: 25
+11-16 15:04:19 inconsistent: UAN
+11-16 15:04:19 model_name: cnn_features_1d
+11-16 15:04:19 th: 0.5
+11-16 15:04:19 input_channels: 7
+11-16 15:04:19 classification_label: eol_class
+11-16 15:04:19 sequence_length: 32
+11-16 15:04:19 cycles_per_file: 50
+11-16 15:04:19 sample_random_state: 42
+11-16 15:04:19 transfer_task: [[0], [1]]
+11-16 15:04:19 source_cathode: ['Li1.2Ni0.3Mn0.6O2', 'Li1.35Ni0.33Mn0.67O2.35']
+11-16 15:04:19 target_cathode: []
+11-16 15:04:19 num_classes: None
+11-16 15:04:19 domain_temperature: 1.0
+11-16 15:04:19 class_temperature: 10.0
+11-16 15:04:19 lambda_src: 0.0
+11-16 15:04:19 lambda_src_decay_patience: 5
+11-16 15:04:19 lambda_src_decay_factor: 0.5
+11-16 15:04:19 lambda_src_min: 0.0
+11-16 15:04:19 lambda_src_warmup: 0
+11-16 15:04:19 improvement_metric: common
+11-16 15:04:19 auto_select: True
+11-16 15:04:19 llm_compare: True
+11-16 15:04:19 llm_backend: openai
+11-16 15:04:19 llm_model: None
+11-16 15:04:19 llm_context: 
+11-16 15:04:19 llm_cfg_inputs: {'text_context': "Dataset: Argonne National Laboratory battery aging time-series with partial cycle windows.\nSource cathodes: (all available); target cathodes: (none specified).\nLabel column 'eol_class' with ~None classes; sequence length 32; 7 channels covering cycle_number, energy_charge, capacity_charge, energy_discharge, capacity_discharge, cycle_start, cycle_duration.", 'numeric_summary': {'dataset': 'Battery_inconsistent', 'sequence_length_requested': 32, 'notes': 'label_inconsistent', 'lr_hint': 0.001, 'dropout_hint': 0.3, 'num_classes_hint': None, 'splits': {}, 'dataset_variant': 'argonne_battery', 'feature_names': ['cycle_number', 'energy_charge', 'capacity_charge', 'energy_discharge', 'capacity_discharge', 'cycle_start', 'cycle_duration'], 'source_cathodes': [], 'target_cathodes': [], 'label_column': 'eol_class'}}
+11-16 15:04:19 llm_cfg: {'architecture': 'cnn_1d_sa', 'model_name': 'cnn_features_1d_sa', 'self_attention': True, 'sngp': True, 'openmax': False, 'use_unknown_head': False, 'bottleneck': 128, 'dropout': 0.3, 'learning_rate': 0.001, 'batch_size': 64, 'lambda_src': 0.0, 'rationale': 'The dataset has short sequences (32 steps) and 7 channels, making a 1-D CNN with self-attention ideal to capture local and some longer-range dependencies without excessive memory use. Label inconsistency suggests avoiding openmax or unknown heads to reduce tuning complexity. Moderate dropout (0.3) helps prevent overfitting given small data and attention. Batch size 64 balances GPU efficiency and stable training. Label inconsistency flagged → calibrated heads (SNGP/OpenMax) stay enabled for open-set robustness. Enabled SNGP to stabilise open-set transfer risk detected in metadata.', '_provider': 'openai', '_raw': '{\n  "model_name": "cnn_features_1d_sa",\n  "self_attention": true,\n  "sngp": false,\n  "openmax": false,\n  "use_unknown_head": false,\n  "bottleneck": 128,\n  "dropout": 0.3,\n  "learning_rate": 0.001,\n  "batch_size": 64,\n  "lambda_src": 0.0,\n  "rationale": "The dataset has short sequences (32 steps) and 7 channels, making a 1-D CNN with self-attention ideal to capture local and some longer-range dependencies without excessive memory use. Label inconsistency suggests avoiding openmax or unknown heads to reduce tuning complexity. Moderate dropout (0.3) helps prevent overfitting given small data and attention. Batch size 64 balances GPU efficiency and stable training."\n}'}
+11-16 15:04:19 llm_cfg_stamp: 20251116_144741
+11-16 15:04:19 tag: detcnn_20251116_144741
+11-16 15:04:19 sngp: False
+11-16 15:04:19 openmax: False
+11-16 15:04:19 use_unknown_head: False
+11-16 15:04:19 pretrained_model_path: None
+11-16 15:04:19 using 1 cpu
+11-16 19:30:55 data_name: Battery_inconsistent
+11-16 19:30:55 data_dir: ./my_datasets/Battery
+11-16 19:30:55 csv: ./my_datasets/Battery/battery_cycles_labeled.csv
+11-16 19:30:55 normlizetype: mean-std
+11-16 19:30:55 method: deterministic
+11-16 19:30:55 gp_hidden_dim: 2048
+11-16 19:30:55 spectral_norm_bound: 0.95
+11-16 19:30:55 n_power_iterations: 1
+11-16 19:30:55 nesterov: True
+11-16 19:30:55 print_freq: 10
+11-16 19:30:55 layers: 16
+11-16 19:30:55 widen_factor: 1
+11-16 19:30:55 droprate: 0.3
+11-16 19:30:55 cuda_device: 0
+11-16 19:30:55 checkpoint_dir: ./checkpoint
+11-16 19:30:55 pretrained: False
+11-16 19:30:55 batch_size: 64
+11-16 19:30:55 num_workers: 0
+11-16 19:30:55 bottleneck: True
+11-16 19:30:55 bottleneck_num: 128
+11-16 19:30:55 last_batch: False
+11-16 19:30:55 hidden_size: 1024
+11-16 19:30:55 trade_off_adversarial: Step
+11-16 19:30:55 lam_adversarial: 1
+11-16 19:30:55 opt: adam
+11-16 19:30:55 lr: 0.0003
+11-16 19:30:55 momentum: 0.9
+11-16 19:30:55 weight_decay: 1e-05
+11-16 19:30:55 lr_scheduler: step
+11-16 19:30:55 gamma: 0.1
+11-16 19:30:55 steps: 150, 250
+11-16 19:30:55 middle_epoch: 15
+11-16 19:30:55 max_epoch: 50
+11-16 19:30:55 print_step: 25
+11-16 19:30:55 inconsistent: UAN
+11-16 19:30:55 model_name: cnn_features_1d
+11-16 19:30:55 th: 0.5
+11-16 19:30:55 input_channels: 7
+11-16 19:30:55 classification_label: eol_class
+11-16 19:30:55 sequence_length: 32
+11-16 19:30:55 cycles_per_file: 20
+11-16 19:30:55 sample_random_state: 42
+11-16 19:30:55 transfer_task: [[0], [1]]
+11-16 19:30:55 source_cathode: ['Li1.2Ni0.3Mn0.6O2', 'Li1.35Ni0.33Mn0.67O2.35']
+11-16 19:30:55 target_cathode: []
+11-16 19:30:55 num_classes: None
+11-16 19:30:55 domain_temperature: 1.0
+11-16 19:30:55 class_temperature: 10.0
+11-16 19:30:55 lambda_src: 0.0
+11-16 19:30:55 lambda_src_decay_patience: 5
+11-16 19:30:55 lambda_src_decay_factor: 0.5
+11-16 19:30:55 lambda_src_min: 0.0
+11-16 19:30:55 lambda_src_warmup: 0
+11-16 19:30:55 improvement_metric: common
+11-16 19:30:55 auto_select: True
+11-16 19:30:55 llm_compare: True
+11-16 19:30:55 llm_backend: openai
+11-16 19:30:55 llm_model: None
+11-16 19:30:55 llm_context: 
+11-16 19:30:55 llm_cfg_inputs: {'text_context': "Dataset: Argonne National Laboratory battery aging time-series with partial cycle windows.\nSource cathodes: (all available); target cathodes: (none specified).\nLabel column 'eol_class' with ~None classes; sequence length 32; 7 channels covering cycle_number, energy_charge, capacity_charge, energy_discharge, capacity_discharge, cycle_start, cycle_duration.", 'numeric_summary': {'dataset': 'Battery_inconsistent', 'sequence_length_requested': 32, 'notes': 'label_inconsistent', 'lr_hint': 0.001, 'dropout_hint': 0.3, 'num_classes_hint': None, 'splits': {}, 'dataset_variant': 'argonne_battery', 'feature_names': ['cycle_number', 'energy_charge', 'capacity_charge', 'energy_discharge', 'capacity_discharge', 'cycle_start', 'cycle_duration'], 'source_cathodes': [], 'target_cathodes': [], 'label_column': 'eol_class'}}
+11-16 19:30:55 llm_cfg: {'architecture': 'cnn_1d_sa', 'model_name': 'cnn_features_1d_sa', 'self_attention': True, 'sngp': True, 'openmax': False, 'use_unknown_head': False, 'bottleneck': 128, 'dropout': 0.3, 'learning_rate': 0.001, 'batch_size': 64, 'lambda_src': 0.0, 'rationale': 'The dataset has short sequences (32 steps) and 7 channels, making a lightweight CNN with self-attention ideal to capture local features and some long-range dependencies. Label inconsistency suggests avoiding openmax or unknown heads to reduce complexity. Dropout at 0.3 balances overfitting risk from attention layers on a small dataset. Batch size 64 and learning rate 0.001 align with hints and ensure stable training. Label inconsistency flagged → calibrated heads (SNGP/OpenMax) stay enabled for open-set robustness. Enabled SNGP to stabilise open-set transfer risk detected in metadata.', '_provider': 'openai', '_raw': '{\n  "model_name": "cnn_features_1d_sa",\n  "self_attention": true,\n  "sngp": false,\n  "openmax": false,\n  "use_unknown_head": false,\n  "bottleneck": 128,\n  "dropout": 0.3,\n  "learning_rate": 0.001,\n  "batch_size": 64,\n  "lambda_src": 0.0,\n  "rationale": "The dataset has short sequences (32 steps) and 7 channels, making a lightweight CNN with self-attention ideal to capture local features and some long-range dependencies. Label inconsistency suggests avoiding openmax or unknown heads to reduce complexity. Dropout at 0.3 balances overfitting risk from attention layers on a small dataset. Batch size 64 and learning rate 0.001 align with hints and ensure stable training."\n}'}
+11-16 19:30:55 llm_cfg_stamp: 20251116_192719
+11-16 19:30:55 tag: detcnn_20251116_192719
+11-16 19:30:55 sngp: False
+11-16 19:30:55 openmax: False
+11-16 19:30:55 use_unknown_head: False
+11-16 19:30:55 pretrained_model_path: None
+11-16 19:30:55 using 1 cpu
+11-16 20:25:58 data_name: Battery_inconsistent
+11-16 20:25:58 data_dir: ./my_datasets/Battery
+11-16 20:25:58 csv: ./my_datasets/Battery/battery_cycles_labeled.csv
+11-16 20:25:58 normlizetype: mean-std
+11-16 20:25:58 method: deterministic
+11-16 20:25:58 gp_hidden_dim: 2048
+11-16 20:25:58 spectral_norm_bound: 0.95
+11-16 20:25:58 n_power_iterations: 1
+11-16 20:25:58 nesterov: True
+11-16 20:25:58 print_freq: 10
+11-16 20:25:58 layers: 16
+11-16 20:25:58 widen_factor: 1
+11-16 20:25:58 droprate: 0.3
+11-16 20:25:58 cuda_device: 0
+11-16 20:25:58 checkpoint_dir: ./checkpoint
+11-16 20:25:58 pretrained: False
+11-16 20:25:58 batch_size: 64
+11-16 20:25:58 num_workers: 0
+11-16 20:25:58 bottleneck: True
+11-16 20:25:58 bottleneck_num: 128
+11-16 20:25:58 last_batch: False
+11-16 20:25:58 hidden_size: 1024
+11-16 20:25:58 trade_off_adversarial: Step
+11-16 20:25:58 lam_adversarial: 1
+11-16 20:25:58 opt: adam
+11-16 20:25:58 lr: 0.0003
+11-16 20:25:58 momentum: 0.9
+11-16 20:25:58 weight_decay: 1e-05
+11-16 20:25:58 lr_scheduler: step
+11-16 20:25:58 gamma: 0.1
+11-16 20:25:58 steps: 150, 250
+11-16 20:25:58 middle_epoch: 15
+11-16 20:25:58 max_epoch: 50
+11-16 20:25:58 print_step: 25
+11-16 20:25:58 inconsistent: UAN
+11-16 20:25:58 model_name: cnn_features_1d
+11-16 20:25:58 th: 0.5
+11-16 20:25:58 input_channels: 7
+11-16 20:25:58 classification_label: eol_class
+11-16 20:25:58 sequence_length: 32
+11-16 20:25:58 cycles_per_file: 5
+11-16 20:25:58 sample_random_state: 42
+11-16 20:25:58 transfer_task: [[0], [1]]
+11-16 20:25:58 source_cathode: ['Li1.2Ni0.3Mn0.6O2', 'Li1.35Ni0.33Mn0.67O2.35']
+11-16 20:25:58 target_cathode: []
+11-16 20:25:58 num_classes: None
+11-16 20:25:58 domain_temperature: 1.0
+11-16 20:25:58 class_temperature: 10.0
+11-16 20:25:58 lambda_src: 0.0
+11-16 20:25:58 lambda_src_decay_patience: 5
+11-16 20:25:58 lambda_src_decay_factor: 0.5
+11-16 20:25:58 lambda_src_min: 0.0
+11-16 20:25:58 lambda_src_warmup: 0
+11-16 20:25:58 improvement_metric: common
+11-16 20:25:58 auto_select: True
+11-16 20:25:58 llm_compare: True
+11-16 20:25:58 llm_backend: openai
+11-16 20:25:58 llm_model: None
+11-16 20:25:58 llm_context: 
+11-16 20:25:58 llm_cfg_inputs: {'text_context': "Dataset: Argonne National Laboratory battery aging time-series with partial cycle windows.\nSource cathodes: (all available); target cathodes: (none specified).\nLabel column 'eol_class' with ~None classes; sequence length 32; 7 channels covering cycle_number, energy_charge, capacity_charge, energy_discharge, capacity_discharge, cycle_start, cycle_duration.", 'numeric_summary': {'dataset': 'Battery_inconsistent', 'sequence_length_requested': 32, 'notes': 'label_inconsistent', 'lr_hint': 0.001, 'dropout_hint': 0.3, 'num_classes_hint': None, 'splits': {}, 'dataset_variant': 'argonne_battery', 'feature_names': ['cycle_number', 'energy_charge', 'capacity_charge', 'energy_discharge', 'capacity_discharge', 'cycle_start', 'cycle_duration'], 'source_cathodes': [], 'target_cathodes': [], 'label_column': 'eol_class'}}
+11-16 20:25:58 llm_cfg: {'architecture': 'cnn_1d_sa', 'model_name': 'cnn_features_1d_sa', 'self_attention': True, 'sngp': True, 'openmax': False, 'use_unknown_head': False, 'bottleneck': 128, 'dropout': 0.3, 'learning_rate': 0.001, 'batch_size': 64, 'lambda_src': 0.0, 'rationale': 'The dataset has short sequences (32 steps) and 7 channels, making a 1-D CNN with self-attention ideal to capture local features and some long-range dependencies. Label inconsistency suggests avoiding openmax or unknown heads to reduce complexity and overfitting risk. Moderate bottleneck and dropout balance capacity and regularization. The learning rate and batch size align with hints for stable training on this battery dataset. Label inconsistency flagged → calibrated heads (SNGP/OpenMax) stay enabled for open-set robustness. Enabled SNGP to stabilise open-set transfer risk detected in metadata.', '_provider': 'openai', '_raw': '{\n  "model_name": "cnn_features_1d_sa",\n  "self_attention": true,\n  "sngp": false,\n  "openmax": false,\n  "use_unknown_head": false,\n  "bottleneck": 128,\n  "dropout": 0.3,\n  "learning_rate": 0.001,\n  "batch_size": 64,\n  "lambda_src": 0.0,\n  "rationale": "The dataset has short sequences (32 steps) and 7 channels, making a 1-D CNN with self-attention ideal to capture local features and some long-range dependencies. Label inconsistency suggests avoiding openmax or unknown heads to reduce complexity and overfitting risk. Moderate bottleneck and dropout balance capacity and regularization. The learning rate and batch size align with hints for stable training on this battery dataset."\n}'}
+11-16 20:25:58 llm_cfg_stamp: 20251116_202238
+11-16 20:25:58 tag: detcnn_20251116_202238
+11-16 20:25:58 sngp: False
+11-16 20:25:58 openmax: False
+11-16 20:25:58 use_unknown_head: False
+11-16 20:25:58 pretrained_model_path: None
+11-16 20:25:58 using 1 cpu
+11-16 21:36:18 data_name: Battery_inconsistent
+11-16 21:36:18 data_dir: ./my_datasets/Battery
+11-16 21:36:18 csv: ./my_datasets/Battery/battery_cycles_labeled.csv
+11-16 21:36:18 normlizetype: mean-std
+11-16 21:36:18 method: deterministic
+11-16 21:36:18 gp_hidden_dim: 2048
+11-16 21:36:18 spectral_norm_bound: 0.95
+11-16 21:36:18 n_power_iterations: 1
+11-16 21:36:18 nesterov: True
+11-16 21:36:18 print_freq: 10
+11-16 21:36:18 layers: 16
+11-16 21:36:18 widen_factor: 1
+11-16 21:36:18 droprate: 0.3
+11-16 21:36:18 cuda_device: 0
+11-16 21:36:18 checkpoint_dir: ./checkpoint
+11-16 21:36:18 pretrained: False
+11-16 21:36:18 batch_size: 64
+11-16 21:36:18 num_workers: 0
+11-16 21:36:18 bottleneck: True
+11-16 21:36:18 bottleneck_num: 128
+11-16 21:36:18 last_batch: False
+11-16 21:36:18 hidden_size: 1024
+11-16 21:36:18 trade_off_adversarial: Step
+11-16 21:36:18 lam_adversarial: 1
+11-16 21:36:18 opt: adam
+11-16 21:36:18 lr: 0.0003
+11-16 21:36:18 momentum: 0.9
+11-16 21:36:18 weight_decay: 1e-05
+11-16 21:36:18 lr_scheduler: step
+11-16 21:36:18 gamma: 0.1
+11-16 21:36:18 steps: 150, 250
+11-16 21:36:18 middle_epoch: 15
+11-16 21:36:18 max_epoch: 50
+11-16 21:36:18 print_step: 25
+11-16 21:36:18 inconsistent: UAN
+11-16 21:36:18 model_name: cnn_features_1d
+11-16 21:36:18 th: 0.5
+11-16 21:36:18 input_channels: 7
+11-16 21:36:18 classification_label: eol_class
+11-16 21:36:18 sequence_length: 32
+11-16 21:36:18 cycles_per_file: 5
+11-16 21:36:18 sample_random_state: 42
+11-16 21:36:18 transfer_task: [[0], [1]]
+11-16 21:36:18 source_cathode: ['Li1.2Ni0.3Mn0.6O2', 'Li1.35Ni0.33Mn0.67O2.35']
+11-16 21:36:18 target_cathode: []
+11-16 21:36:18 num_classes: None
+11-16 21:36:18 domain_temperature: 1.0
+11-16 21:36:18 class_temperature: 10.0
+11-16 21:36:18 lambda_src: 0.0
+11-16 21:36:18 lambda_src_decay_patience: 5
+11-16 21:36:18 lambda_src_decay_factor: 0.5
+11-16 21:36:18 lambda_src_min: 0.0
+11-16 21:36:18 lambda_src_warmup: 0
+11-16 21:36:18 improvement_metric: common
+11-16 21:36:18 auto_select: True
+11-16 21:36:18 llm_compare: True
+11-16 21:36:18 llm_backend: openai
+11-16 21:36:18 llm_model: None
+11-16 21:36:18 llm_context: 
+11-16 21:36:18 llm_cfg_inputs: {'text_context': "Dataset: Argonne National Laboratory battery aging time-series with partial cycle windows.\nSource cathodes: (all available); target cathodes: (none specified).\nLabel column 'eol_class' with ~None classes; sequence length 32; 7 channels covering cycle_number, energy_charge, capacity_charge, energy_discharge, capacity_discharge, cycle_start, cycle_duration.", 'numeric_summary': {'dataset': 'Battery_inconsistent', 'sequence_length_requested': 32, 'notes': 'label_inconsistent', 'lr_hint': 0.001, 'dropout_hint': 0.3, 'num_classes_hint': None, 'splits': {}, 'dataset_variant': 'argonne_battery', 'feature_names': ['cycle_number', 'energy_charge', 'capacity_charge', 'energy_discharge', 'capacity_discharge', 'cycle_start', 'cycle_duration'], 'source_cathodes': [], 'target_cathodes': [], 'label_column': 'eol_class'}}
+11-16 21:36:18 llm_cfg: {'architecture': 'cnn_1d_sa', 'model_name': 'cnn_features_1d_sa', 'self_attention': True, 'sngp': True, 'openmax': False, 'use_unknown_head': False, 'bottleneck': 128, 'dropout': 0.3, 'learning_rate': 0.001, 'batch_size': 64, 'lambda_src': 0.0, 'rationale': 'The dataset has short sequences (32 steps) and 7 channels, suitable for a 1-D CNN with self-attention to capture local and some longer-range dependencies. Label inconsistency suggests avoiding openmax or unknown heads to reduce complexity and tuning overhead. Dropout at 0.3 balances overfitting risk given the small sequence length and label noise. Batch size 64 and learning rate 0.001 align with typical stable training for this domain. Label inconsistency flagged → calibrated heads (SNGP/OpenMax) stay enabled for open-set robustness. Enabled SNGP to stabilise open-set transfer risk detected in metadata.', '_provider': 'openai', '_raw': '{\n  "model_name": "cnn_features_1d_sa",\n  "self_attention": true,\n  "sngp": false,\n  "openmax": false,\n  "use_unknown_head": false,\n  "bottleneck": 128,\n  "dropout": 0.3,\n  "learning_rate": 0.001,\n  "batch_size": 64,\n  "lambda_src": 0.0,\n  "rationale": "The dataset has short sequences (32 steps) and 7 channels, suitable for a 1-D CNN with self-attention to capture local and some longer-range dependencies. Label inconsistency suggests avoiding openmax or unknown heads to reduce complexity and tuning overhead. Dropout at 0.3 balances overfitting risk given the small sequence length and label noise. Batch size 64 and learning rate 0.001 align with typical stable training for this domain."\n}'}
+11-16 21:36:18 llm_cfg_stamp: 20251116_213306
+11-16 21:36:18 tag: detcnn_20251116_213306
+11-16 21:36:18 sngp: False
+11-16 21:36:18 openmax: False
+11-16 21:36:18 use_unknown_head: False
+11-16 21:36:18 pretrained_model_path: None
+11-16 21:36:18 using 1 cpu
+11-16 22:23:54 data_name: Battery_inconsistent
+11-16 22:23:54 data_dir: ./my_datasets/Battery
+11-16 22:23:54 csv: ./my_datasets/Battery/battery_cycles_labeled.csv
+11-16 22:23:54 normlizetype: mean-std
+11-16 22:23:54 method: deterministic
+11-16 22:23:54 gp_hidden_dim: 2048
+11-16 22:23:54 spectral_norm_bound: 0.95
+11-16 22:23:54 n_power_iterations: 1
+11-16 22:23:54 nesterov: True
+11-16 22:23:54 print_freq: 10
+11-16 22:23:54 layers: 16
+11-16 22:23:54 widen_factor: 1
+11-16 22:23:54 droprate: 0.3
+11-16 22:23:54 cuda_device: 0
+11-16 22:23:54 checkpoint_dir: ./checkpoint
+11-16 22:23:54 pretrained: False
+11-16 22:23:54 batch_size: 64
+11-16 22:23:54 num_workers: 0
+11-16 22:23:54 bottleneck: True
+11-16 22:23:54 bottleneck_num: 128
+11-16 22:23:54 last_batch: False
+11-16 22:23:54 hidden_size: 1024
+11-16 22:23:54 trade_off_adversarial: Step
+11-16 22:23:54 lam_adversarial: 1
+11-16 22:23:54 opt: adam
+11-16 22:23:54 lr: 0.0003
+11-16 22:23:54 momentum: 0.9
+11-16 22:23:54 weight_decay: 1e-05
+11-16 22:23:54 lr_scheduler: step
+11-16 22:23:54 gamma: 0.1
+11-16 22:23:54 steps: 150, 250
+11-16 22:23:54 middle_epoch: 15
+11-16 22:23:54 max_epoch: 50
+11-16 22:23:54 print_step: 25
+11-16 22:23:54 inconsistent: UAN
+11-16 22:23:54 model_name: cnn_features_1d
+11-16 22:23:54 th: 0.5
+11-16 22:23:54 input_channels: 7
+11-16 22:23:54 classification_label: eol_class
+11-16 22:23:54 sequence_length: 32
+11-16 22:23:54 cycles_per_file: 5
+11-16 22:23:54 sample_random_state: 42
+11-16 22:23:54 transfer_task: [[0], [1]]
+11-16 22:23:54 source_cathode: ['Li1.2Ni0.3Mn0.6O2', 'Li1.35Ni0.33Mn0.67O2.35']
+11-16 22:23:54 target_cathode: []
+11-16 22:23:55 num_classes: None
+11-16 22:23:55 domain_temperature: 1.0
+11-16 22:23:55 class_temperature: 10.0
+11-16 22:23:55 lambda_src: 0.0
+11-16 22:23:55 lambda_src_decay_patience: 5
+11-16 22:23:55 lambda_src_decay_factor: 0.5
+11-16 22:23:55 lambda_src_min: 0.0
+11-16 22:23:55 lambda_src_warmup: 0
+11-16 22:23:55 improvement_metric: common
+11-16 22:23:55 auto_select: True
+11-16 22:23:55 llm_compare: True
+11-16 22:23:55 llm_backend: openai
+11-16 22:23:55 llm_model: None
+11-16 22:23:55 llm_context: 
+11-16 22:23:55 llm_cfg_inputs: {'text_context': "Dataset: Argonne National Laboratory battery aging time-series with partial cycle windows.\nSource cathodes: (all available); target cathodes: (none specified).\nLabel column 'eol_class' with ~None classes; sequence length 32; 7 channels covering cycle_number, energy_charge, capacity_charge, energy_discharge, capacity_discharge, cycle_start, cycle_duration.", 'numeric_summary': {'dataset': 'Battery_inconsistent', 'sequence_length_requested': 32, 'notes': 'label_inconsistent', 'lr_hint': 0.001, 'dropout_hint': 0.3, 'num_classes_hint': None, 'splits': {}, 'dataset_variant': 'argonne_battery', 'feature_names': ['cycle_number', 'energy_charge', 'capacity_charge', 'energy_discharge', 'capacity_discharge', 'cycle_start', 'cycle_duration'], 'source_cathodes': [], 'target_cathodes': [], 'label_column': 'eol_class'}}
+11-16 22:23:55 llm_cfg: {'architecture': 'cnn_1d_sa', 'model_name': 'cnn_features_1d_sa', 'self_attention': True, 'sngp': True, 'openmax': False, 'use_unknown_head': False, 'bottleneck': 128, 'dropout': 0.3, 'learning_rate': 0.001, 'batch_size': 64, 'lambda_src': 0.0, 'rationale': 'The dataset has short sequences (32 steps) and 7 channels, making a 1-D CNN with self-attention suitable to capture local and some longer-range dependencies without excessive compute. Label inconsistency suggests avoiding openmax or unknown heads to reduce tuning complexity. Dropout at 0.3 balances overfitting risk due to label noise. Batch size 64 and learning rate 0.001 align with hints and stable training. Label inconsistency flagged → calibrated heads (SNGP/OpenMax) stay enabled for open-set robustness. Enabled SNGP to stabilise open-set transfer risk detected in metadata.', '_provider': 'openai', '_raw': '{\n  "model_name": "cnn_features_1d_sa",\n  "self_attention": true,\n  "sngp": false,\n  "openmax": false,\n  "use_unknown_head": false,\n  "bottleneck": 128,\n  "dropout": 0.3,\n  "learning_rate": 0.001,\n  "batch_size": 64,\n  "lambda_src": 0.0,\n  "rationale": "The dataset has short sequences (32 steps) and 7 channels, making a 1-D CNN with self-attention suitable to capture local and some longer-range dependencies without excessive compute. Label inconsistency suggests avoiding openmax or unknown heads to reduce tuning complexity. Dropout at 0.3 balances overfitting risk due to label noise. Batch size 64 and learning rate 0.001 align with hints and stable training."\n}'}
+11-16 22:23:55 llm_cfg_stamp: 20251116_222040
+11-16 22:23:55 tag: detcnn_20251116_222040
+11-16 22:23:55 sngp: False
+11-16 22:23:55 openmax: False
+11-16 22:23:55 use_unknown_head: False
+11-16 22:23:55 pretrained_model_path: None
+11-16 22:23:55 using 1 cpu
+11-16 22:58:14 data_name: Battery_inconsistent
+11-16 22:58:14 data_dir: ./my_datasets/Battery
+11-16 22:58:14 csv: ./my_datasets/Battery/battery_cycles_labeled.csv
+11-16 22:58:14 normlizetype: mean-std
+11-16 22:58:14 method: deterministic
+11-16 22:58:14 gp_hidden_dim: 2048
+11-16 22:58:14 spectral_norm_bound: 0.95
+11-16 22:58:14 n_power_iterations: 1
+11-16 22:58:14 nesterov: True
+11-16 22:58:14 print_freq: 10
+11-16 22:58:14 layers: 16
+11-16 22:58:14 widen_factor: 1
+11-16 22:58:14 droprate: 0.3
+11-16 22:58:14 cuda_device: 0
+11-16 22:58:14 checkpoint_dir: ./checkpoint
+11-16 22:58:14 pretrained: False
+11-16 22:58:14 batch_size: 64
+11-16 22:58:14 num_workers: 0
+11-16 22:58:14 bottleneck: True
+11-16 22:58:14 bottleneck_num: 128
+11-16 22:58:14 last_batch: False
+11-16 22:58:14 hidden_size: 1024
+11-16 22:58:14 trade_off_adversarial: Step
+11-16 22:58:14 lam_adversarial: 1
+11-16 22:58:14 opt: adam
+11-16 22:58:14 lr: 0.0003
+11-16 22:58:14 momentum: 0.9
+11-16 22:58:14 weight_decay: 1e-05
+11-16 22:58:14 lr_scheduler: step
+11-16 22:58:14 gamma: 0.1
+11-16 22:58:14 steps: 150, 250
+11-16 22:58:14 middle_epoch: 15
+11-16 22:58:14 max_epoch: 50
+11-16 22:58:14 print_step: 25
+11-16 22:58:14 inconsistent: UAN
+11-16 22:58:14 model_name: cnn_features_1d
+11-16 22:58:14 th: 0.5
+11-16 22:58:14 input_channels: 7
+11-16 22:58:14 classification_label: eol_class
+11-16 22:58:14 sequence_length: 32
+11-16 22:58:14 cycles_per_file: 30
+11-16 22:58:14 sample_random_state: 42
+11-16 22:58:14 transfer_task: [[0], [1]]
+11-16 22:58:14 source_cathode: ['Li1.2Ni0.3Mn0.6O2', 'Li1.35Ni0.33Mn0.67O2.35']
+11-16 22:58:14 target_cathode: []
+11-16 22:58:14 num_classes: None
+11-16 22:58:14 domain_temperature: 1.0
+11-16 22:58:14 class_temperature: 10.0
+11-16 22:58:14 lambda_src: 0.0
+11-16 22:58:14 lambda_src_decay_patience: 5
+11-16 22:58:14 lambda_src_decay_factor: 0.5
+11-16 22:58:14 lambda_src_min: 0.0
+11-16 22:58:14 lambda_src_warmup: 0
+11-16 22:58:14 improvement_metric: common
+11-16 22:58:14 auto_select: True
+11-16 22:58:14 llm_compare: True
+11-16 22:58:14 llm_backend: openai
+11-16 22:58:14 llm_model: None
+11-16 22:58:14 llm_context: 
+11-16 22:58:14 llm_cfg_inputs: {'text_context': "Dataset: Argonne National Laboratory battery aging time-series with partial cycle windows.\nSource cathodes: (all available); target cathodes: (none specified).\nLabel column 'eol_class' with ~None classes; sequence length 32; 7 channels covering cycle_number, energy_charge, capacity_charge, energy_discharge, capacity_discharge, cycle_start, cycle_duration.", 'numeric_summary': {'dataset': 'Battery_inconsistent', 'sequence_length_requested': 32, 'notes': 'label_inconsistent', 'lr_hint': 0.001, 'dropout_hint': 0.3, 'num_classes_hint': None, 'splits': {}, 'dataset_variant': 'argonne_battery', 'feature_names': ['cycle_number', 'energy_charge', 'capacity_charge', 'energy_discharge', 'capacity_discharge', 'cycle_start', 'cycle_duration'], 'source_cathodes': [], 'target_cathodes': [], 'label_column': 'eol_class'}}
+11-16 22:58:14 llm_cfg: {'architecture': 'cnn_1d_sa', 'model_name': 'cnn_features_1d_sa', 'self_attention': True, 'sngp': True, 'openmax': False, 'use_unknown_head': False, 'bottleneck': 128, 'dropout': 0.3, 'learning_rate': 0.001, 'batch_size': 64, 'lambda_src': 0.0, 'rationale': 'The dataset has short sequences (32) and 7 channels, making a lightweight CNN with self-attention ideal to capture local features and some longer-range dependencies. The label inconsistency suggests avoiding openmax or unknown heads to reduce complexity and tuning overhead. Dropout at 0.3 balances overfitting risk due to label noise. Batch size 64 fits memory and training stability. This config should outperform the baseline deterministic CNN by leveraging attention without excessive capacity or open-set complexity. Label inconsistency flagged → calibrated heads (SNGP/OpenMax) stay enabled for open-set robustness. Enabled SNGP to stabilise open-set transfer risk detected in metadata.', '_provider': 'openai', '_raw': '{\n  "model_name": "cnn_features_1d_sa",\n  "self_attention": true,\n  "sngp": false,\n  "openmax": false,\n  "use_unknown_head": false,\n  "bottleneck": 128,\n  "dropout": 0.3,\n  "learning_rate": 0.001,\n  "batch_size": 64,\n  "lambda_src": 0.0,\n  "rationale": "The dataset has short sequences (32) and 7 channels, making a lightweight CNN with self-attention ideal to capture local features and some longer-range dependencies. The label inconsistency suggests avoiding openmax or unknown heads to reduce complexity and tuning overhead. Dropout at 0.3 balances overfitting risk due to label noise. Batch size 64 fits memory and training stability. This config should outperform the baseline deterministic CNN by leveraging attention without excessive capacity or open-set complexity."\n}'}
+11-16 22:58:14 llm_cfg_stamp: 20251116_225503
+11-16 22:58:14 tag: detcnn_20251116_225503
+11-16 22:58:14 sngp: False
+11-16 22:58:14 openmax: False
+11-16 22:58:14 use_unknown_head: False
+11-16 22:58:14 pretrained_model_path: None
+11-16 22:58:14 using 1 cpu

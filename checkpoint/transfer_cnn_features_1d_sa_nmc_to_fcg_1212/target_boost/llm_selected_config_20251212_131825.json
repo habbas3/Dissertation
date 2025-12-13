@@ -1,0 +1,561 @@
+{
+  "llm_choice": {
+    "architecture": "cnn_1d_sa",
+    "model_name": "cnn_features_1d_sa",
+    "self_attention": true,
+    "sngp": true,
+    "openmax": false,
+    "use_unknown_head": false,
+    "bottleneck": 256,
+    "dropout": 0.35,
+    "learning_rate": 0.0005,
+    "batch_size": 8,
+    "lambda_src": 1.5,
+    "warmup_epochs": 10,
+    "rationale": "The dataset has 21 channels and short sequence length (32), favoring CNN with self-attention to capture local and some long-range dependencies. The chemistry domain shift and label inconsistency suggest using SNGP and an unknown head to improve uncertainty calibration and avoid overconfident extrapolation. Dropout at 0.35 balances regularization given the moderate dataset size. Bottleneck 256 provides sufficient capacity for multi-channel battery signals. Batch size 32 matches seen data, and moderate lambda_src and warmup_epochs support stable transfer learning. Target cathode: FCG (graphite focused). Source cathodes: HE5050 (high-energy experimental blend), NMC111 (low-Ni NMC (stable, slower fade)), NMC532 (mid-Ni NMC (balanced energy vs. stability)), NMC622 (higher-Ni NMC (stronger energy, more fragile)), NMC811 (high-Ni NMC (highest energy, OOD vs low-Ni)). Source/target chemistries differ \u2192 expect domain shift. Evaluated 21 channels \u00d7 32-step windows and matched them with cnn_1d_sa capacity. Target fine-tune spans \u22485 cycles versus 165 source cycles, guiding lr=5.00e-04 and dropout=0.35.",
+    "_provider": "openai",
+    "_raw": "{\n  \"model_name\": \"cnn_features_1d_sa\",\n  \"self_attention\": true,\n  \"sngp\": true,\n  \"openmax\": false,\n  \"use_unknown_head\": true,\n  \"bottleneck\": 256,\n  \"dropout\": 0.35,\n  \"learning_rate\": 0.0005,\n  \"batch_size\": 32,\n  \"lambda_src\": 1.0,\n  \"warmup_epochs\": 10,\n  \"rationale\": \"The dataset has 21 channels and short sequence length (32), favoring CNN with self-attention to capture local and some long-range dependencies. The chemistry domain shift and label inconsistency suggest using SNGP and an unknown head to improve uncertainty calibration and avoid overconfident extrapolation. Dropout at 0.35 balances regularization given the moderate dataset size. Bottleneck 256 provides sufficient capacity for multi-channel battery signals. Batch size 32 matches seen data, and moderate lambda_src and warmup_epochs support stable transfer learning.\"\n}"
+  },
+  "inputs": {
+    "text_context": "Dataset: Argonne National Laboratory battery aging time-series with partial cycle windows.\nSource cathodes: HE5050, NMC111, NMC532, NMC622, NMC811; target cathodes: FCG.\nLabel column 'eol_class' with ~None classes; sequence length 32; 21 channels covering cycle_number, energy_charge, capacity_charge, energy_discharge, capacity_discharge, cycle_start, cycle_duration.\nLiterature cues (Joule S2542-4351(22)00409-3, chemistry-sensitive ablations):\nJoule 2022 (S2542-4351(22)00409-3) key cues for chemistry-aware ablation:\n- Early-cycle capacity fade slopes and coulombic-efficiency stabilization highlight whether aging is lithium-inventory loss (graphite/anode-electrolyte limited) versus cathode structural decay (e.g., Ni-rich NMC cathodes with electrolyte oxidation risk).\n- High initial impedance growth, thick SEI signatures, or electrolyte oxidation markers flag chemistries that benefit from uncertainty-aware heads (SNGP/OpenMax) to avoid overconfident extrapolation on outlier cycles.\n- LFP/graphite pairs tend to show flatter voltage plateaus and slower early fade; Ni-rich NMC chemistries degrade faster under aggressive cycling and need stronger regularization or shorter cycle horizons in ablations.\n- Transfer between mismatched chemistries (e.g., NMC \u2192 LFP) should down-weight source loss and favor architectures that adapt quickly with self-attention or wider bottlenecks; closely matched chemistries can rely more on convolutional baselines.\nsource_train: class counts 0:23, 1:22, 2:41, 3:37, 4:42 (example label 2).\nsource_train sample window (first 3 ch \u00d7 12 steps): [[-1.6202000379562378, -1.388700008392334, -1.1572999954223633, -0.9258000254631042, -0.6944000124931335, -0.4629000127315521, -0.23149999976158142, 0.0, 0.23149999976158142, 0.4629000127315521, 0.6944000124931335, 0.9258000254631042], [-1.1497000455856323, -1.069200038909912, -1.06850004196167, -1.0688999891281128, -1.069200038909912, -1.0693000555038452, -1.0693999528884888, -1.0700000524520874, -1.0699000358581543\u2026\nsource_train flattened row glimpses: [[-1.6202, -1.1497, -1.1467, -1.1167, -1.1408, -1.4623, -0.8017, -3.217, -3.1854, -0.1393], [-1.6202, -1.1497, -1.1467, -1.1167, -1.1408, -1.4623, -0.8017, -3.217, -3.1854, -0.1393], [-1.6202, -1.1497, -1.1467, -1.1167, -1.1408, -1.4623, -0.8017, -3.217, -3.1854, -0.1393]]\ntarget_train: class counts 3:5 (example label 3).\ntarget_train sample window (first 3 ch \u00d7 12 steps): [[-1.1812000274658203, 0.6226000189781189, 0.76419997215271, 0.6739000082015991, 0.5033000111579895, 0.6583999991416931, 0.7738000154495239, 0.5705999732017517, 0.5372999906539917, 0.6003000140190125, 0.4481000006198883, 0.6021000146865845], [-1.1704000234603882, 0.8004999756813049, 1.0563000440597534, 0.7498999834060669, 0.5728999972343445, 0.7458000183105469, 0.9312000274658203, 0.6460999846458435, 0.74790000915527\u2026\ntarget_train flattened row glimpses: [[-1.6202, -1.1497, -1.1467, -1.1167, -1.1408, -1.4623, -0.8017, -3.217, -3.1854, -0.1393], [-1.6202, -1.1497, -1.1467, -1.1167, -1.1408, -1.4623, -0.8017, -3.217, -3.1854, -0.1393], [-1.6202, -1.1497, -1.1467, -1.1167, -1.1408, -1.4623, -0.8017, -3.217, -3.1854, -0.1393]]\nsource_val: class counts 0:8, 1:10, 2:16, 3:14, 4:16 (example label 3).\nsource_val sample window (first 3 ch \u00d7 12 steps): [[-1.6202000379562378, -1.388700008392334, -1.1572999954223633, -0.9258000254631042, -0.6944000124931335, -0.4629000127315521, -0.23149999976158142, 0.0, 0.23149999976158142, 0.4629000127315521, 0.6944000124931335, 0.9258000254631042], [-1.1497000455856323, -1.1497000455856323, -1.1497000455856323, -1.1497000455856323, -1.1497000455856323, -1.1497000455856323, -1.1497000455856323, -1.1497000455856323, -1.149700045585\u2026\nsource_val flattened row glimpses: [[-1.6202, -1.1497, -1.1467, -1.1167, -1.1408, -1.4623, -0.8017, -3.217, -3.1854, -0.1393], [-1.6202, -1.1497, -1.1467, -1.1167, -1.1408, -1.4623, -0.8017, -3.217, -3.1854, -0.1393], [-1.6202, -1.1497, -1.1467, -1.1167, -1.1408, -1.4623, -0.8017, -3.217, -3.1854, -0.1393]]\ntarget_val: class counts 3:3 (example label 3).\ntarget_val sample window (first 3 ch \u00d7 12 steps): [[-1.6202000379562378, -1.388700008392334, -1.1572999954223633, -0.9258000254631042, -0.6944000124931335, -0.4629000127315521, -0.23149999976158142, 0.0, 0.23149999976158142, 0.4629000127315521, 0.6944000124931335, 0.9258000254631042], [-1.1497000455856323, 0.6460999846458435, 0.6833000183105469, 0.6733999848365784, 0.6600000262260437, 0.656000018119812, 0.6380000114440918, 0.6252999901771545, 0.6244999766349792, 0.6\u2026\ntarget_val flattened row glimpses: [[-1.6202, -1.1497, -1.1467, -1.1167, -1.1408, -1.4623, -0.8017, -3.217, -3.1854, -0.1393], [-1.6202, -1.1497, -1.1467, -1.1167, -1.1408, -1.4623, -0.8017, -3.217, -3.1854, -0.1393], [-1.6202, -1.1497, -1.1467, -1.1167, -1.1408, -1.4623, -0.8017, -3.217, -3.1854, -0.1393]]",
+    "numeric_summary": {
+      "dataset": "Battery_inconsistent",
+      "sequence_length_requested": 32,
+      "notes": "label_inconsistent",
+      "lr_hint": 0.0005,
+      "dropout_hint": 0.35,
+      "num_classes_hint": null,
+      "splits": {
+        "source_train": {
+          "batch_shape": [
+            32,
+            21,
+            32
+          ],
+          "channels": 21,
+          "seq_len": 32,
+          "example_label": 2,
+          "preview": {
+            "channels": 3,
+            "timesteps": 12,
+            "values": [
+              [
+                -1.6202000379562378,
+                -1.388700008392334,
+                -1.1572999954223633,
+                -0.9258000254631042,
+                -0.6944000124931335,
+                -0.4629000127315521,
+                -0.23149999976158142,
+                0.0,
+                0.23149999976158142,
+                0.4629000127315521,
+                0.6944000124931335,
+                0.9258000254631042
+              ],
+              [
+                -1.1497000455856323,
+                -1.069200038909912,
+                -1.06850004196167,
+                -1.0688999891281128,
+                -1.069200038909912,
+                -1.0693000555038452,
+                -1.0693999528884888,
+                -1.0700000524520874,
+                -1.0699000358581543,
+                -1.0707000494003296,
+                -1.0716999769210815,
+                -1.0720000267028809
+              ],
+              [
+                -1.1467000246047974,
+                -1.065999984741211,
+                -1.0650999546051025,
+                -1.065500020980835,
+                -1.0658999681472778,
+                -1.065999984741211,
+                -1.0662000179290771,
+                -1.0667999982833862,
+                -1.0667999982833862,
+                -1.0676000118255615,
+                -1.0687999725341797,
+                -1.069000005722046
+              ]
+            ]
+          },
+          "batch_channel_mean": [
+            0.8607000112533569,
+            -0.03959999978542328,
+            -0.04749999940395355,
+            -0.06019999831914902,
+            -0.04349999874830246,
+            0.31150001287460327,
+            -0.27959999442100525,
+            0.002300000051036477
+          ],
+          "batch_channel_std": [
+            1.059499979019165,
+            0.571399986743927,
+            0.5670999884605408,
+            0.5446000099182129,
+            0.5651000142097473,
+            0.9983999729156494,
+            0.7039999961853027,
+            0.7347000241279602
+          ],
+          "class_distribution": {
+            "0": 23,
+            "1": 22,
+            "2": 41,
+            "3": 37,
+            "4": 42
+          },
+          "feature_range": [
+            -9.340057149377733,
+            24.48976442541202
+          ],
+          "feature_global_mean": 0.03334999911755919,
+          "flattened_rows_head": [
+            [
+              -1.6202,
+              -1.1497,
+              -1.1467,
+              -1.1167,
+              -1.1408,
+              -1.4623,
+              -0.8017,
+              -3.217,
+              -3.1854,
+              -0.1393
+            ],
+            [
+              -1.6202,
+              -1.1497,
+              -1.1467,
+              -1.1167,
+              -1.1408,
+              -1.4623,
+              -0.8017,
+              -3.217,
+              -3.1854,
+              -0.1393
+            ],
+            [
+              -1.6202,
+              -1.1497,
+              -1.1467,
+              -1.1167,
+              -1.1408,
+              -1.4623,
+              -0.8017,
+              -3.217,
+              -3.1854,
+              -0.1393
+            ]
+          ]
+        },
+        "target_train": {
+          "batch_shape": [
+            32,
+            21,
+            32
+          ],
+          "channels": 21,
+          "seq_len": 32,
+          "example_label": 3,
+          "preview": {
+            "channels": 3,
+            "timesteps": 12,
+            "values": [
+              [
+                -1.1812000274658203,
+                0.6226000189781189,
+                0.76419997215271,
+                0.6739000082015991,
+                0.5033000111579895,
+                0.6583999991416931,
+                0.7738000154495239,
+                0.5705999732017517,
+                0.5372999906539917,
+                0.6003000140190125,
+                0.4481000006198883,
+                0.6021000146865845
+              ],
+              [
+                -1.1704000234603882,
+                0.8004999756813049,
+                1.0563000440597534,
+                0.7498999834060669,
+                0.5728999972343445,
+                0.7458000183105469,
+                0.9312000274658203,
+                0.6460999846458435,
+                0.7479000091552734,
+                0.6114000082015991,
+                0.5293999910354614,
+                0.5958999991416931
+              ],
+              [
+                -1.21589994430542,
+                0.6287999749183655,
+                0.8202000260353088,
+                0.6837000250816345,
+                0.41609999537467957,
+                0.5907999873161316,
+                0.7229999899864197,
+                0.5824000239372253,
+                0.7289000153541565,
+                0.5625,
+                0.5306000113487244,
+                0.5719000101089478
+              ]
+            ]
+          },
+          "batch_channel_mean": [
+            0.6520000100135803,
+            0.5450000166893005,
+            0.48500001430511475,
+            0.5221999883651733,
+            0.4316999912261963,
+            0.49000000953674316,
+            0.0892999991774559,
+            0.17839999496936798
+          ],
+          "batch_channel_std": [
+            0.8503000140190125,
+            0.5555999875068665,
+            0.6100999712944031,
+            0.5429999828338623,
+            0.6194000244140625,
+            0.7124999761581421,
+            0.7207000255584717,
+            0.7523999810218811
+          ],
+          "class_distribution": {
+            "3": 5
+          },
+          "feature_range": [
+            -3.217041018868009,
+            3.557174404293754
+          ],
+          "feature_global_mean": 0.2029450803873774,
+          "flattened_rows_head": [
+            [
+              -1.6202,
+              -1.1497,
+              -1.1467,
+              -1.1167,
+              -1.1408,
+              -1.4623,
+              -0.8017,
+              -3.217,
+              -3.1854,
+              -0.1393
+            ],
+            [
+              -1.6202,
+              -1.1497,
+              -1.1467,
+              -1.1167,
+              -1.1408,
+              -1.4623,
+              -0.8017,
+              -3.217,
+              -3.1854,
+              -0.1393
+            ],
+            [
+              -1.6202,
+              -1.1497,
+              -1.1467,
+              -1.1167,
+              -1.1408,
+              -1.4623,
+              -0.8017,
+              -3.217,
+              -3.1854,
+              -0.1393
+            ]
+          ]
+        },
+        "source_val": {
+          "batch_shape": [
+            32,
+            21,
+            32
+          ],
+          "channels": 21,
+          "seq_len": 32,
+          "example_label": 3,
+          "preview": {
+            "channels": 3,
+            "timesteps": 12,
+            "values": [
+              [
+                -1.6202000379562378,
+                -1.388700008392334,
+                -1.1572999954223633,
+                -0.9258000254631042,
+                -0.6944000124931335,
+                -0.4629000127315521,
+                -0.23149999976158142,
+                0.0,
+                0.23149999976158142,
+                0.4629000127315521,
+                0.6944000124931335,
+                0.9258000254631042
+              ],
+              [
+                -1.1497000455856323,
+                -1.1497000455856323,
+                -1.1497000455856323,
+                -1.1497000455856323,
+                -1.1497000455856323,
+                -1.1497000455856323,
+                -1.1497000455856323,
+                -1.1497000455856323,
+                -1.1497000455856323,
+                -1.1497000455856323,
+                -1.1497000455856323,
+                -1.1497000455856323
+              ],
+              [
+                -1.1467000246047974,
+                -1.1467000246047974,
+                -1.1467000246047974,
+                -1.1467000246047974,
+                -1.1467000246047974,
+                -1.1467000246047974,
+                -1.1467000246047974,
+                -1.1467000246047974,
+                -1.1467000246047974,
+                -1.1467000246047974,
+                -1.1467000246047974,
+                -1.1467000246047974
+              ]
+            ]
+          },
+          "batch_channel_mean": [
+            0.8607000112533569,
+            0.22120000422000885,
+            0.21780000627040863,
+            0.20819999277591705,
+            0.22139999270439148,
+            0.5842000246047974,
+            -0.25760000944137573,
+            -0.12439999729394913
+          ],
+          "batch_channel_std": [
+            1.059499979019165,
+            0.9200000166893005,
+            0.9273999929428101,
+            0.9363999962806702,
+            0.9348000288009644,
+            0.9352999925613403,
+            0.7980999946594238,
+            0.8086000084877014
+          ],
+          "class_distribution": {
+            "0": 8,
+            "1": 10,
+            "2": 16,
+            "3": 14,
+            "4": 16
+          },
+          "feature_range": [
+            -8.146578193100947,
+            31.445766758688194
+          ],
+          "feature_global_mean": 0.02218752736282119,
+          "flattened_rows_head": [
+            [
+              -1.6202,
+              -1.1497,
+              -1.1467,
+              -1.1167,
+              -1.1408,
+              -1.4623,
+              -0.8017,
+              -3.217,
+              -3.1854,
+              -0.1393
+            ],
+            [
+              -1.6202,
+              -1.1497,
+              -1.1467,
+              -1.1167,
+              -1.1408,
+              -1.4623,
+              -0.8017,
+              -3.217,
+              -3.1854,
+              -0.1393
+            ],
+            [
+              -1.6202,
+              -1.1497,
+              -1.1467,
+              -1.1167,
+              -1.1408,
+              -1.4623,
+              -0.8017,
+              -3.217,
+              -3.1854,
+              -0.1393
+            ]
+          ]
+        },
+        "target_val": {
+          "batch_shape": [
+            3,
+            21,
+            32
+          ],
+          "channels": 21,
+          "seq_len": 32,
+          "example_label": 3,
+          "preview": {
+            "channels": 3,
+            "timesteps": 12,
+            "values": [
+              [
+                -1.6202000379562378,
+                -1.388700008392334,
+                -1.1572999954223633,
+                -0.9258000254631042,
+                -0.6944000124931335,
+                -0.4629000127315521,
+                -0.23149999976158142,
+                0.0,
+                0.23149999976158142,
+                0.4629000127315521,
+                0.6944000124931335,
+                0.9258000254631042
+              ],
+              [
+                -1.1497000455856323,
+                0.6460999846458435,
+                0.6833000183105469,
+                0.6733999848365784,
+                0.6600000262260437,
+                0.656000018119812,
+                0.6380000114440918,
+                0.6252999901771545,
+                0.6244999766349792,
+                0.6079000234603882,
+                0.5766000151634216,
+                0.5720000267028809
+              ],
+              [
+                -1.1467000246047974,
+                0.6575000286102295,
+                0.7050999999046326,
+                0.6924999952316284,
+                0.6775000095367432,
+                0.6729000210762024,
+                0.6516000032424927,
+                0.6365000009536743,
+                0.6363000273704529,
+                0.6157000064849854,
+                0.5791000127792358,
+                0.5751000046730042
+              ]
+            ]
+          },
+          "batch_channel_mean": [
+            0.8607000112533569,
+            0.5012999773025513,
+            0.503600001335144,
+            0.5620999932289124,
+            0.5212000012397766,
+            0.8549000024795532,
+            -0.19470000267028809,
+            0.21549999713897705
+          ],
+          "batch_channel_std": [
+            1.059499979019165,
+            0.3012000024318695,
+            0.30250000953674316,
+            0.31189998984336853,
+            0.30480000376701355,
+            0.7975999712944031,
+            0.7246999740600586,
+            0.6290000081062317
+          ],
+          "class_distribution": {
+            "3": 3
+          },
+          "feature_range": [
+            -3.217041018868009,
+            3.5438761846653035
+          ],
+          "feature_global_mean": 0.20443169799369906,
+          "flattened_rows_head": [
+            [
+              -1.6202,
+              -1.1497,
+              -1.1467,
+              -1.1167,
+              -1.1408,
+              -1.4623,
+              -0.8017,
+              -3.217,
+              -3.1854,
+              -0.1393
+            ],
+            [
+              -1.6202,
+              -1.1497,
+              -1.1467,
+              -1.1167,
+              -1.1408,
+              -1.4623,
+              -0.8017,
+              -3.217,
+              -3.1854,
+              -0.1393
+            ],
+            [
+              -1.6202,
+              -1.1497,
+              -1.1467,
+              -1.1167,
+              -1.1408,
+              -1.4623,
+              -0.8017,
+              -3.217,
+              -3.1854,
+              -0.1393
+            ]
+          ]
+        }
+      },
+      "dataset_variant": "argonne_battery",
+      "feature_names": [
+        "cycle_number",
+        "energy_charge",
+        "capacity_charge",
+        "energy_discharge",
+        "capacity_discharge",
+        "cycle_start",
+        "cycle_duration"
+      ],
+      "source_cathodes": [
+        "HE5050",
+        "NMC111",
+        "NMC532",
+        "NMC622",
+        "NMC811"
+      ],
+      "target_cathodes": [
+        "FCG"
+      ],
+      "label_column": "eol_class",
+      "split_used": "source_train",
+      "batch_size_seen": 32,
+      "channels": 21,
+      "seq_len": 32
+    }
+  }
+}

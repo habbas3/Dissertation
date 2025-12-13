@@ -1,0 +1,7 @@
+model,source,target,comparison_metric,baseline_score,transfer_score,improvement,baseline_common_acc,transfer_common_acc,baseline_outlier_acc,transfer_outlier_acc,baseline_hscore,transfer_hscore,final_model,note
+cnn_features_1d,nmc,spinel5v,common,0.9166666666666666,0.9166666666666666,0.0,0.9166666666666666,0.9166666666666666,0.0,0.0,0.0,0.0,baseline,baseline_kept
+cnn_features_1d,nmc,fcg,common,1.0,1.0,0.0,1.0,1.0,0.0,0.0,0.0,0.0,baseline,baseline_kept
+cnn_features_1d,lirich,spinel5v,common,1.0,1.0,0.0,1.0,1.0,0.0,0.0,0.0,0.0,baseline,baseline_kept
+cnn_features_1d,spinel5v,nmc,common,0.938122332859175,0.9566145092460882,0.01849217638691314,0.938122332859175,0.9566145092460882,0.0,0.0,0.0,0.0,transfer,
+cnn_features_1d,spinel5v,lirich,common,1.0,1.0,0.0,1.0,1.0,0.0,0.0,0.0,0.0,baseline,baseline_kept
+cnn_features_1d,fcg,nmc,common,0.9395448079658606,0.9409672830725462,0.0014224751066855834,0.9395448079658606,0.9409672830725462,0.0,0.0,0.0,0.0,transfer,

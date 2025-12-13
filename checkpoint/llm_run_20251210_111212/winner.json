@@ -1,0 +1,12 @@
+{
+  "tag": "ablate_sngp_off",
+  "model_name": "cnn_features_1d_sa",
+  "method": "deterministic",
+  "droprate": 0.3,
+  "lr": 0.001,
+  "batch_size": 64,
+  "lambda_src": 1.0,
+  "summary_csv": "checkpoint/llm_run_20251210_111212/compare/ablate_sngp_off_summary_1210_115554_Battery_inconsistent.csv",
+  "avg_improvement": 0.03378378378378378,
+  "cycle_limit": null
+}

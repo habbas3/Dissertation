@@ -1,0 +1,4 @@
+split,index,label,pred,max_prob,entropy,is_outlier
+target_val,0,3,3,0.30102860927581787,1.569411039352417,False
+target_val,1,3,3,0.30197322368621826,1.568823218345642,False
+target_val,2,3,3,0.3016613721847534,1.56903076171875,False

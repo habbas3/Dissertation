@@ -1,0 +1,160 @@
+12-10 11:36:57 data_name: Battery_inconsistent
+12-10 11:36:57 data_dir: ./my_datasets/Battery
+12-10 11:36:57 csv: ./my_datasets/Battery/battery_cycles_labeled.csv
+12-10 11:36:57 normlizetype: mean-std
+12-10 11:36:57 method: sngp
+12-10 11:36:57 gp_hidden_dim: 2048
+12-10 11:36:57 spectral_norm_bound: 0.95
+12-10 11:36:57 n_power_iterations: 1
+12-10 11:36:57 nesterov: True
+12-10 11:36:57 print_freq: 10
+12-10 11:36:57 layers: 16
+12-10 11:36:57 widen_factor: 1
+12-10 11:36:57 droprate: 0.3
+12-10 11:36:57 cuda_device: 0
+12-10 11:36:57 checkpoint_dir: ./checkpoint
+12-10 11:36:57 pretrained: True
+12-10 11:36:57 batch_size: 64
+12-10 11:36:57 warmup_epochs: 4
+12-10 11:36:57 num_workers: 0
+12-10 11:36:57 bottleneck: True
+12-10 11:36:57 bottleneck_num: 256
+12-10 11:36:57 last_batch: False
+12-10 11:36:57 hidden_size: 1024
+12-10 11:36:57 trade_off_adversarial: Step
+12-10 11:36:57 lam_adversarial: 1
+12-10 11:36:57 opt: adam
+12-10 11:36:57 lr: 7e-05
+12-10 11:36:57 momentum: 0.9
+12-10 11:36:57 weight_decay: 1e-05
+12-10 11:36:57 lr_scheduler: step
+12-10 11:36:57 gamma: 0.1
+12-10 11:36:57 steps: 150, 250
+12-10 11:36:57 middle_epoch: 15
+12-10 11:36:57 max_epoch: 75
+12-10 11:36:57 print_step: 25
+12-10 11:36:57 inconsistent: UAN
+12-10 11:36:57 model_name: cnn_features_1d
+12-10 11:36:57 th: 0.5
+12-10 11:36:57 input_channels: 21
+12-10 11:36:57 classification_label: eol_class
+12-10 11:36:57 sequence_length: 32
+12-10 11:36:57 cycles_per_file: 15
+12-10 11:36:57 source_cycles_per_file: None
+12-10 11:36:57 target_cycles_per_file: None
+12-10 11:36:57 cycle_ablation: False
+12-10 11:36:57 cycle_ablation_start: 5
+12-10 11:36:57 cycle_ablation_step: 10
+12-10 11:36:57 cycle_ablation_max: None
+12-10 11:36:57 literature_context_file: ./references/joule_s2542-4351-22-00409-3.md
+12-10 11:36:57 sample_random_state: 42
+12-10 11:36:57 transfer_task: [[[0], [1]], [[0], [2]], [[0], [3]], [[1], [0]], [[1], [2]], [[1], [3]], [[2], [0]], [[2], [1]], [[2], [3]], [[3], [0]], [[3], [1]], [[3], [2]]]
+12-10 11:36:57 source_cathode: ['Li1.2Ni0.3Mn0.6O2', 'Li1.35Ni0.33Mn0.67O2.35']
+12-10 11:36:57 target_cathode: ['5Vspinel']
+12-10 11:36:57 num_classes: 5
+12-10 11:36:57 domain_temperature: 1.0
+12-10 11:36:57 class_temperature: 10.0
+12-10 11:36:57 lambda_src: 0.1
+12-10 11:36:57 lambda_src_decay_patience: 1
+12-10 11:36:57 lambda_src_decay_factor: 0.5
+12-10 11:36:57 lambda_src_min: 0.0
+12-10 11:36:57 lambda_src_warmup: 0
+12-10 11:36:57 improvement_metric: accuracy
+12-10 11:36:57 skip_retry: False
+12-10 11:36:57 auto_select: True
+12-10 11:36:57 llm_compare: True
+12-10 11:36:57 llm_backend: openai
+12-10 11:36:57 llm_model: None
+12-10 11:36:57 llm_context: 
+12-10 11:36:57 llm_ablation: False
+12-10 11:36:57 ablation_cycle_limits: 
+12-10 11:36:57 llm_cfg_inputs: {'text_context': "Dataset: Argonne National Laboratory battery aging time-series with partial cycle windows.\nSource cathodes: (all available); target cathodes: (none specified).\nLabel column 'eol_class' with ~None classes; sequence length 32; 7 channels covering cycle_number, energy_charge, capacity_charge, energy_discharge, capacity_discharge, cycle_start, cycle_duration.\nLiterature cues (Joule S2542-4351(22)00409-3, chemistry-sensitive ablations):\nJoule 2022 (S2542-4351(22)00409-3) key cues for chemistry-aware ablation:\n- Early-cycle capacity fade slopes and coulombic-efficiency stabilization highlight whether aging is lithium-inventory loss (graphite/anode-electrolyte limited) versus cathode structural decay (e.g., Ni-rich NMC cathodes with electrolyte oxidation risk).\n- High initial impedance growth, thick SEI signatures, or electrolyte oxidation markers flag chemistries that benefit from uncertainty-aware heads (SNGP/OpenMax) to avoid overconfident extrapolation on outlier cycles.\n- LFP/graphite pairs tend to show flatter voltage plateaus and slower early fade; Ni-rich NMC chemistries degrade faster under aggressive cycling and need stronger regularization or shorter cycle horizons in ablations.\n- Transfer between mismatched chemistries (e.g., NMC → LFP) should down-weight source loss and favor architectures that adapt quickly with self-attention or wider bottlenecks; closely matched chemistries can rely more on convolutional baselines.", 'numeric_summary': {'dataset': 'Battery_inconsistent', 'sequence_length_requested': 32, 'notes': 'label_inconsistent', 'lr_hint': 0.001, 'dropout_hint': 0.3, 'num_classes_hint': None, 'splits': {}, 'dataset_variant': 'argonne_battery', 'feature_names': ['cycle_number', 'energy_charge', 'capacity_charge', 'energy_discharge', 'capacity_discharge', 'cycle_start', 'cycle_duration'], 'source_cathodes': [], 'target_cathodes': [], 'label_column': 'eol_class'}}
+12-10 11:36:57 llm_cfg: {'architecture': 'cnn_1d_sa', 'model_name': 'cnn_features_1d_sa', 'self_attention': True, 'sngp': True, 'openmax': False, 'use_unknown_head': False, 'bottleneck': 256, 'dropout': 0.3, 'learning_rate': 0.001, 'batch_size': 64, 'lambda_src': 1.0, 'warmup_epochs': 10, 'rationale': 'The dataset has short sequences (32 steps) and 7 channels, suitable for 1D CNN with self-attention to capture local and multi-cycle correlations. Label inconsistency and potential outliers suggest using SNGP and unknown head for uncertainty-aware predictions. Moderate bottleneck (256) balances capacity and overfitting risk. Dropout 0.3 prevents overfitting given label noise. Learning rate 0.001 and batch size 64 balance convergence and memory. Warmup epochs 10 help stabilize training with uncertainty modules. Backbone frozen for 10 epoch(s) before full fine-tuning to stabilise feature reuse. Label inconsistency flagged → calibrated heads (SNGP/OpenMax) stay enabled for open-set robustness.', '_provider': 'openai', '_raw': '{\n  "model_name": "cnn_features_1d_sa",\n  "self_attention": true,\n  "sngp": true,\n  "openmax": false,\n  "use_unknown_head": true,\n  "bottleneck": 256,\n  "dropout": 0.3,\n  "learning_rate": 0.001,\n  "batch_size": 64,\n  "lambda_src": 1.0,\n  "warmup_epochs": 10,\n  "rationale": "The dataset has short sequences (32 steps) and 7 channels, suitable for 1D CNN with self-attention to capture local and multi-cycle correlations. Label inconsistency and potential outliers suggest using SNGP and unknown head for uncertainty-aware predictions. Moderate bottleneck (256) balances capacity and overfitting risk. Dropout 0.3 prevents overfitting given label noise. Learning rate 0.001 and batch size 64 balance convergence and memory. Warmup epochs 10 help stabilize training with uncertainty modules."\n}'}
+12-10 11:36:57 llm_cfg_stamp: 20251210_111212
+12-10 11:36:57 tag: no_sa_20251210_111212
+12-10 11:36:57 pretrained_model_path: ./checkpoint/pretrain_cnn_features_1d_lirich_1210/best_model.pth
+12-10 11:36:57 dataset_cycle_stats: {'source_train_cycles': 120, 'source_val_cycles': 30, 'source_val_has_holdout': True, 'source_cycle_limit': 15, 'target_train_cycles': 615, 'target_val_cycles': 180, 'target_val_has_holdout': True, 'target_cycle_limit': 15, 'source_train_sequences': 8, 'source_val_sequences': 2, 'target_train_sequences': 41, 'target_val_sequences': 12, 'source_train_cells': 6, 'source_val_cells': 2, 'target_train_cells': 5, 'target_val_cells': 2, 'cycles_per_cell_per_cathode': {'source_train': {'Li1.2Ni0.3Mn0.6O2': [{'filename': 'batch_B3A_cell_4.h5', 'cycles': 15, 'total_cycles': 181}, {'filename': 'batch_B3B_cell_1.h5', 'cycles': 15, 'total_cycles': 181}, {'filename': 'batch_B3B_cell_2.h5', 'cycles': 15, 'total_cycles': 181}, {'filename': 'batch_B3B_cell_3.h5', 'cycles': 15, 'total_cycles': 180}, {'filename': 'batch_B3B_cell_7.h5', 'cycles': 15, 'total_cycles': 180}], 'Li1.35Ni0.33Mn0.67O2.35': [{'filename': 'batch_B13A_cell_4.h5', 'cycles': 15, 'total_cycles': 169}, {'filename': 'batch_B13A_cell_8.h5', 'cycles': 15, 'total_cycles': 218}, {'filename': 'batch_B8A_cell_1.h5', 'cycles': 15, 'total_cycles': 214}]}, 'source_val': {'Li1.2Ni0.3Mn0.6O2': [{'filename': 'batch_B3B_cell_5.h5', 'cycles': 15, 'total_cycles': 180}], 'Li1.35Ni0.33Mn0.67O2.35': [{'filename': 'batch_B13A_cell_13.h5', 'cycles': 15, 'total_cycles': 218}]}, 'target_train': {'5Vspinel': [{'filename': 'batch_B11B_cell_4.h5', 'cycles': 15, 'total_cycles': 216}, {'filename': 'batch_B26U_cell_5.h5', 'cycles': 15, 'total_cycles': 219}, {'filename': 'batch_B26V_cell_3.h5', 'cycles': 15, 'total_cycles': 420}, {'filename': 'batch_B26V_cell_4.h5', 'cycles': 15, 'total_cycles': 420}, {'filename': 'batch_B26V_cell_5.h5', 'cycles': 15, 'total_cycles': 219}, {'filename': 'batch_B26W_cell_1.h5', 'cycles': 15, 'total_cycles': 420}, {'filename': 'batch_B26W_cell_3.h5', 'cycles': 15, 'total_cycles': 420}, {'filename': 'batch_B26W_cell_4.h5', 'cycles': 15, 'total_cycles': 420}, {'filename': 'batch_B26W_cell_5.h5', 'cycles': 15, 'total_cycles': 219}, {'filename': 'batch_B26X_cell_1.h5', 'cycles': 15, 'total_cycles': 420}, {'filename': 'batch_B26X_cell_3.h5', 'cycles': 15, 'total_cycles': 420}, {'filename': 'batch_B26X_cell_4.h5', 'cycles': 15, 'total_cycles': 420}, {'filename': 'batch_B26Y_cell_3.h5', 'cycles': 15, 'total_cycles': 420}, {'filename': 'batch_B26Y_cell_4.h5', 'cycles': 15, 'total_cycles': 420}, {'filename': 'batch_B26Y_cell_5.h5', 'cycles': 15, 'total_cycles': 219}, {'filename': 'batch_B26Z_cell_1.h5', 'cycles': 15, 'total_cycles': 219}, {'filename': 'batch_B26Z_cell_3.h5', 'cycles': 15, 'total_cycles': 219}, {'filename': 'batch_B5A_cell_1.h5', 'cycles': 15, 'total_cycles': 846}, {'filename': 'batch_B5A_cell_5.h5', 'cycles': 15, 'total_cycles': 855}, {'filename': 'batch_B26V_cell_1.h5', 'cycles': 15, 'total_cycles': 420}, {'filename': 'batch_B26T_cell_5.h5', 'cycles': 15, 'total_cycles': 219}, {'filename': 'batch_B26AA_cell_1.h5', 'cycles': 15, 'total_cycles': 219}, {'filename': 'batch_B26T_cell_4.h5', 'cycles': 15, 'total_cycles': 219}, {'filename': 'batch_B26AA_cell_4.h5', 'cycles': 15, 'total_cycles': 219}, {'filename': 'batch_B26K_cell_1.h5', 'cycles': 15, 'total_cycles': 221}, {'filename': 'batch_B26L_cell_1.h5', 'cycles': 15, 'total_cycles': 2028}, {'filename': 'batch_B26N_cell_1.h5', 'cycles': 15, 'total_cycles': 219}, {'filename': 'batch_B26O_cell_1.h5', 'cycles': 15, 'total_cycles': 219}, {'filename': 'batch_B26O_cell_4.h5', 'cycles': 15, 'total_cycles': 219}, {'filename': 'batch_B26O_cell_5.h5', 'cycles': 15, 'total_cycles': 219}, {'filename': 'batch_B26P_cell_3.h5', 'cycles': 15, 'total_cycles': 421}, {'filename': 'batch_B26P_cell_4.h5', 'cycles': 15, 'total_cycles': 420}, {'filename': 'batch_B26Q_cell_3.h5', 'cycles': 15, 'total_cycles': 219}, {'filename': 'batch_B26Q_cell_5.h5', 'cycles': 15, 'total_cycles': 219}, {'filename': 'batch_B26R_cell_1.h5', 'cycles': 15, 'total_cycles': 420}, {'filename': 'batch_B26R_cell_3.h5', 'cycles': 15, 'total_cycles': 420}, {'filename': 'batch_B26R_cell_4.h5', 'cycles': 15, 'total_cycles': 420}, {'filename': 'batch_B26S_cell_3.h5', 'cycles': 15, 'total_cycles': 420}, {'filename': 'batch_B26S_cell_4.h5', 'cycles': 15, 'total_cycles': 420}, {'filename': 'batch_B26S_cell_5.h5', 'cycles': 15, 'total_cycles': 219}, {'filename': 'batch_B5A_cell_7.h5', 'cycles': 15, 'total_cycles': 687}]}, 'target_val': {'5Vspinel': [{'filename': 'batch_B26K_cell_2.h5', 'cycles': 15, 'total_cycles': 221}, {'filename': 'batch_B26L_cell_2.h5', 'cycles': 15, 'total_cycles': 2028}, {'filename': 'batch_B26M_cell_2.h5', 'cycles': 15, 'total_cycles': 219}, {'filename': 'batch_B26P_cell_2.h5', 'cycles': 15, 'total_cycles': 420}, {'filename': 'batch_B26P_cell_6.h5', 'cycles': 15, 'total_cycles': 219}, {'filename': 'batch_B26R_cell_2.h5', 'cycles': 15, 'total_cycles': 420}, {'filename': 'batch_B26T_cell_2.h5', 'cycles': 15, 'total_cycles': 220}, {'filename': 'batch_B26V_cell_2.h5', 'cycles': 15, 'total_cycles': 421}, {'filename': 'batch_B26X_cell_2.h5', 'cycles': 15, 'total_cycles': 420}, {'filename': 'batch_B26Y_cell_2.h5', 'cycles': 15, 'total_cycles': 421}, {'filename': 'batch_B26Z_cell_2.h5', 'cycles': 15, 'total_cycles': 219}, {'filename': 'batch_B5A_cell_2.h5', 'cycles': 15, 'total_cycles': 820}]}}, 'feature_columns': ('cycle_number', 'energy_charge', 'capacity_charge', 'energy_discharge', 'capacity_discharge', 'cycle_start', 'cycle_duration', 'capacity_retention', 'energy_retention', 'delta_capacity_discharge', 'delta_energy_discharge', 'delta_cycle_duration', 'rolling_capacity_mean', 'rolling_capacity_std', 'rolling_energy_mean', 'rolling_energy_std', 'rolling_duration_mean', 'duration_ratio', 'coulombic_efficiency', 'energy_efficiency', 'time_per_capacity'), 'chemistry_by_cathode': {'5Vspinel': {'cathode': '5Vspinel', 'anode': 'LTO', 'electrolyte': 'R&D', 'dataset': 'Argonne'}, 'FCG': {'cathode': 'FCG', 'anode': 'C', 'electrolyte': 'Gen 2', 'dataset': 'Argonne'}, 'HE5050': {'cathode': 'HE5050', 'anode': 'C', 'electrolyte': 'Gen 2', 'dataset': 'Argonne'}, 'Li1.2Ni0.3Mn0.6O2': {'cathode': 'Li1.2Ni0.3Mn0.6O2', 'anode': 'C', 'electrolyte': 'Gen 2', 'dataset': 'Argonne'}, 'Li1.35Ni0.33Mn0.67O2.35': {'cathode': 'Li1.35Ni0.33Mn0.67O2.35', 'anode': 'C', 'electrolyte': 'Gen 2', 'dataset': 'Argonne'}, 'NMC111': {'cathode': 'NMC111', 'anode': 'C', 'electrolyte': 'Gen 2', 'dataset': 'Argonne'}, 'NMC532': {'cathode': 'NMC532', 'anode': 'C', 'electrolyte': 'Gen 2', 'dataset': 'Argonne'}, 'NMC622': {'cathode': 'NMC622', 'anode': 'C_Si', 'electrolyte': 'Gen 2', 'dataset': 'Argonne'}, 'NMC811': {'cathode': 'NMC811', 'anode': 'C', 'electrolyte': 'Gen 2', 'dataset': 'Argonne'}}, 'chemistry_context': {'source': {'Li1.2Ni0.3Mn0.6O2': {'cathode': 'Li1.2Ni0.3Mn0.6O2', 'anode': 'C', 'electrolyte': 'Gen 2', 'dataset': 'Argonne'}, 'Li1.35Ni0.33Mn0.67O2.35': {'cathode': 'Li1.35Ni0.33Mn0.67O2.35', 'anode': 'C', 'electrolyte': 'Gen 2', 'dataset': 'Argonne'}}, 'target': {'5Vspinel': {'cathode': '5Vspinel', 'anode': 'LTO', 'electrolyte': 'R&D', 'dataset': 'Argonne'}}, 'dataset_names': ['Argonne']}}
+12-10 11:36:57 input_size: 32
+12-10 11:36:57 using 1 cpu
+12-10 11:36:57 Reducing learning rate to 7e-05 for 41 target samples
+12-10 11:36:57 Freezing early layers of backbone for 41 target samples
+12-10 11:57:16 data_name: Battery_inconsistent
+12-10 11:57:16 data_dir: ./my_datasets/Battery
+12-10 11:57:16 csv: ./my_datasets/Battery/battery_cycles_labeled.csv
+12-10 11:57:16 normlizetype: mean-std
+12-10 11:57:16 method: deterministic
+12-10 11:57:16 gp_hidden_dim: 2048
+12-10 11:57:16 spectral_norm_bound: 0.95
+12-10 11:57:16 n_power_iterations: 1
+12-10 11:57:16 nesterov: True
+12-10 11:57:16 print_freq: 10
+12-10 11:57:16 layers: 16
+12-10 11:57:16 widen_factor: 1
+12-10 11:57:16 droprate: 0.3
+12-10 11:57:16 cuda_device: 0
+12-10 11:57:16 checkpoint_dir: ./checkpoint
+12-10 11:57:16 pretrained: True
+12-10 11:57:16 batch_size: 64
+12-10 11:57:16 warmup_epochs: 4
+12-10 11:57:16 num_workers: 0
+12-10 11:57:16 bottleneck: True
+12-10 11:57:16 bottleneck_num: 256
+12-10 11:57:16 last_batch: False
+12-10 11:57:16 hidden_size: 1024
+12-10 11:57:16 trade_off_adversarial: Step
+12-10 11:57:16 lam_adversarial: 1
+12-10 11:57:16 opt: adam
+12-10 11:57:16 lr: 7e-05
+12-10 11:57:16 momentum: 0.9
+12-10 11:57:16 weight_decay: 1e-05
+12-10 11:57:16 lr_scheduler: step
+12-10 11:57:16 gamma: 0.1
+12-10 11:57:16 steps: 150, 250
+12-10 11:57:16 middle_epoch: 15
+12-10 11:57:16 max_epoch: 75
+12-10 11:57:16 print_step: 25
+12-10 11:57:16 inconsistent: UAN
+12-10 11:57:16 model_name: cnn_features_1d
+12-10 11:57:16 th: 0.5
+12-10 11:57:16 input_channels: 21
+12-10 11:57:16 classification_label: eol_class
+12-10 11:57:16 sequence_length: 32
+12-10 11:57:16 cycles_per_file: 15
+12-10 11:57:16 source_cycles_per_file: None
+12-10 11:57:16 target_cycles_per_file: None
+12-10 11:57:16 cycle_ablation: False
+12-10 11:57:16 cycle_ablation_start: 5
+12-10 11:57:16 cycle_ablation_step: 10
+12-10 11:57:16 cycle_ablation_max: None
+12-10 11:57:16 literature_context_file: ./references/joule_s2542-4351-22-00409-3.md
+12-10 11:57:16 sample_random_state: 42
+12-10 11:57:16 transfer_task: [[[0], [1]], [[0], [2]], [[0], [3]], [[1], [0]], [[1], [2]], [[1], [3]], [[2], [0]], [[2], [1]], [[2], [3]], [[3], [0]], [[3], [1]], [[3], [2]]]
+12-10 11:57:16 source_cathode: ['Li1.2Ni0.3Mn0.6O2', 'Li1.35Ni0.33Mn0.67O2.35']
+12-10 11:57:16 target_cathode: ['5Vspinel']
+12-10 11:57:16 num_classes: 5
+12-10 11:57:16 domain_temperature: 1.0
+12-10 11:57:16 class_temperature: 10.0
+12-10 11:57:16 lambda_src: 0.1
+12-10 11:57:16 lambda_src_decay_patience: 1
+12-10 11:57:16 lambda_src_decay_factor: 0.5
+12-10 11:57:16 lambda_src_min: 0.0
+12-10 11:57:16 lambda_src_warmup: 0
+12-10 11:57:16 improvement_metric: accuracy
+12-10 11:57:16 skip_retry: False
+12-10 11:57:16 auto_select: True
+12-10 11:57:16 llm_compare: True
+12-10 11:57:16 llm_backend: openai
+12-10 11:57:16 llm_model: None
+12-10 11:57:16 llm_context: 
+12-10 11:57:16 llm_ablation: False
+12-10 11:57:16 ablation_cycle_limits: 
+12-10 11:57:16 llm_cfg_inputs: {'text_context': "Dataset: Argonne National Laboratory battery aging time-series with partial cycle windows.\nSource cathodes: (all available); target cathodes: (none specified).\nLabel column 'eol_class' with ~None classes; sequence length 32; 7 channels covering cycle_number, energy_charge, capacity_charge, energy_discharge, capacity_discharge, cycle_start, cycle_duration.\nLiterature cues (Joule S2542-4351(22)00409-3, chemistry-sensitive ablations):\nJoule 2022 (S2542-4351(22)00409-3) key cues for chemistry-aware ablation:\n- Early-cycle capacity fade slopes and coulombic-efficiency stabilization highlight whether aging is lithium-inventory loss (graphite/anode-electrolyte limited) versus cathode structural decay (e.g., Ni-rich NMC cathodes with electrolyte oxidation risk).\n- High initial impedance growth, thick SEI signatures, or electrolyte oxidation markers flag chemistries that benefit from uncertainty-aware heads (SNGP/OpenMax) to avoid overconfident extrapolation on outlier cycles.\n- LFP/graphite pairs tend to show flatter voltage plateaus and slower early fade; Ni-rich NMC chemistries degrade faster under aggressive cycling and need stronger regularization or shorter cycle horizons in ablations.\n- Transfer between mismatched chemistries (e.g., NMC → LFP) should down-weight source loss and favor architectures that adapt quickly with self-attention or wider bottlenecks; closely matched chemistries can rely more on convolutional baselines.", 'numeric_summary': {'dataset': 'Battery_inconsistent', 'sequence_length_requested': 32, 'notes': 'label_inconsistent', 'lr_hint': 0.001, 'dropout_hint': 0.3, 'num_classes_hint': None, 'splits': {}, 'dataset_variant': 'argonne_battery', 'feature_names': ['cycle_number', 'energy_charge', 'capacity_charge', 'energy_discharge', 'capacity_discharge', 'cycle_start', 'cycle_duration'], 'source_cathodes': [], 'target_cathodes': [], 'label_column': 'eol_class'}}
+12-10 11:57:16 llm_cfg: {'architecture': 'cnn_1d_sa', 'model_name': 'cnn_features_1d_sa', 'self_attention': True, 'sngp': True, 'openmax': False, 'use_unknown_head': False, 'bottleneck': 256, 'dropout': 0.3, 'learning_rate': 0.001, 'batch_size': 64, 'lambda_src': 1.0, 'warmup_epochs': 10, 'rationale': 'The dataset has short sequences (32 steps) and 7 channels, suitable for 1D CNN with self-attention to capture local and multi-cycle correlations. Label inconsistency and potential outliers suggest using SNGP and unknown head for uncertainty-aware predictions. Moderate bottleneck (256) balances capacity and overfitting risk. Dropout 0.3 prevents overfitting given label noise. Learning rate 0.001 and batch size 64 balance convergence and memory. Warmup epochs 10 help stabilize training with uncertainty modules. Backbone frozen for 10 epoch(s) before full fine-tuning to stabilise feature reuse. Label inconsistency flagged → calibrated heads (SNGP/OpenMax) stay enabled for open-set robustness.', '_provider': 'openai', '_raw': '{\n  "model_name": "cnn_features_1d_sa",\n  "self_attention": true,\n  "sngp": true,\n  "openmax": false,\n  "use_unknown_head": true,\n  "bottleneck": 256,\n  "dropout": 0.3,\n  "learning_rate": 0.001,\n  "batch_size": 64,\n  "lambda_src": 1.0,\n  "warmup_epochs": 10,\n  "rationale": "The dataset has short sequences (32 steps) and 7 channels, suitable for 1D CNN with self-attention to capture local and multi-cycle correlations. Label inconsistency and potential outliers suggest using SNGP and unknown head for uncertainty-aware predictions. Moderate bottleneck (256) balances capacity and overfitting risk. Dropout 0.3 prevents overfitting given label noise. Learning rate 0.001 and batch size 64 balance convergence and memory. Warmup epochs 10 help stabilize training with uncertainty modules."\n}'}
+12-10 11:57:16 llm_cfg_stamp: 20251210_111212
+12-10 11:57:16 tag: detcnn_20251210_111212
+12-10 11:57:16 pretrained_model_path: ./checkpoint/pretrain_cnn_features_1d_lirich_1210/best_model.pth
+12-10 11:57:16 dataset_cycle_stats: {'source_train_cycles': 120, 'source_val_cycles': 30, 'source_val_has_holdout': True, 'source_cycle_limit': 15, 'target_train_cycles': 615, 'target_val_cycles': 180, 'target_val_has_holdout': True, 'target_cycle_limit': 15, 'source_train_sequences': 8, 'source_val_sequences': 2, 'target_train_sequences': 41, 'target_val_sequences': 12, 'source_train_cells': 6, 'source_val_cells': 2, 'target_train_cells': 5, 'target_val_cells': 2, 'cycles_per_cell_per_cathode': {'source_train': {'Li1.2Ni0.3Mn0.6O2': [{'filename': 'batch_B3A_cell_4.h5', 'cycles': 15, 'total_cycles': 181}, {'filename': 'batch_B3B_cell_1.h5', 'cycles': 15, 'total_cycles': 181}, {'filename': 'batch_B3B_cell_2.h5', 'cycles': 15, 'total_cycles': 181}, {'filename': 'batch_B3B_cell_3.h5', 'cycles': 15, 'total_cycles': 180}, {'filename': 'batch_B3B_cell_7.h5', 'cycles': 15, 'total_cycles': 180}], 'Li1.35Ni0.33Mn0.67O2.35': [{'filename': 'batch_B13A_cell_4.h5', 'cycles': 15, 'total_cycles': 169}, {'filename': 'batch_B13A_cell_8.h5', 'cycles': 15, 'total_cycles': 218}, {'filename': 'batch_B8A_cell_1.h5', 'cycles': 15, 'total_cycles': 214}]}, 'source_val': {'Li1.2Ni0.3Mn0.6O2': [{'filename': 'batch_B3B_cell_5.h5', 'cycles': 15, 'total_cycles': 180}], 'Li1.35Ni0.33Mn0.67O2.35': [{'filename': 'batch_B13A_cell_13.h5', 'cycles': 15, 'total_cycles': 218}]}, 'target_train': {'5Vspinel': [{'filename': 'batch_B11B_cell_4.h5', 'cycles': 15, 'total_cycles': 216}, {'filename': 'batch_B26U_cell_5.h5', 'cycles': 15, 'total_cycles': 219}, {'filename': 'batch_B26V_cell_3.h5', 'cycles': 15, 'total_cycles': 420}, {'filename': 'batch_B26V_cell_4.h5', 'cycles': 15, 'total_cycles': 420}, {'filename': 'batch_B26V_cell_5.h5', 'cycles': 15, 'total_cycles': 219}, {'filename': 'batch_B26W_cell_1.h5', 'cycles': 15, 'total_cycles': 420}, {'filename': 'batch_B26W_cell_3.h5', 'cycles': 15, 'total_cycles': 420}, {'filename': 'batch_B26W_cell_4.h5', 'cycles': 15, 'total_cycles': 420}, {'filename': 'batch_B26W_cell_5.h5', 'cycles': 15, 'total_cycles': 219}, {'filename': 'batch_B26X_cell_1.h5', 'cycles': 15, 'total_cycles': 420}, {'filename': 'batch_B26X_cell_3.h5', 'cycles': 15, 'total_cycles': 420}, {'filename': 'batch_B26X_cell_4.h5', 'cycles': 15, 'total_cycles': 420}, {'filename': 'batch_B26Y_cell_3.h5', 'cycles': 15, 'total_cycles': 420}, {'filename': 'batch_B26Y_cell_4.h5', 'cycles': 15, 'total_cycles': 420}, {'filename': 'batch_B26Y_cell_5.h5', 'cycles': 15, 'total_cycles': 219}, {'filename': 'batch_B26Z_cell_1.h5', 'cycles': 15, 'total_cycles': 219}, {'filename': 'batch_B26Z_cell_3.h5', 'cycles': 15, 'total_cycles': 219}, {'filename': 'batch_B5A_cell_1.h5', 'cycles': 15, 'total_cycles': 846}, {'filename': 'batch_B5A_cell_5.h5', 'cycles': 15, 'total_cycles': 855}, {'filename': 'batch_B26V_cell_1.h5', 'cycles': 15, 'total_cycles': 420}, {'filename': 'batch_B26T_cell_5.h5', 'cycles': 15, 'total_cycles': 219}, {'filename': 'batch_B26AA_cell_1.h5', 'cycles': 15, 'total_cycles': 219}, {'filename': 'batch_B26T_cell_4.h5', 'cycles': 15, 'total_cycles': 219}, {'filename': 'batch_B26AA_cell_4.h5', 'cycles': 15, 'total_cycles': 219}, {'filename': 'batch_B26K_cell_1.h5', 'cycles': 15, 'total_cycles': 221}, {'filename': 'batch_B26L_cell_1.h5', 'cycles': 15, 'total_cycles': 2028}, {'filename': 'batch_B26N_cell_1.h5', 'cycles': 15, 'total_cycles': 219}, {'filename': 'batch_B26O_cell_1.h5', 'cycles': 15, 'total_cycles': 219}, {'filename': 'batch_B26O_cell_4.h5', 'cycles': 15, 'total_cycles': 219}, {'filename': 'batch_B26O_cell_5.h5', 'cycles': 15, 'total_cycles': 219}, {'filename': 'batch_B26P_cell_3.h5', 'cycles': 15, 'total_cycles': 421}, {'filename': 'batch_B26P_cell_4.h5', 'cycles': 15, 'total_cycles': 420}, {'filename': 'batch_B26Q_cell_3.h5', 'cycles': 15, 'total_cycles': 219}, {'filename': 'batch_B26Q_cell_5.h5', 'cycles': 15, 'total_cycles': 219}, {'filename': 'batch_B26R_cell_1.h5', 'cycles': 15, 'total_cycles': 420}, {'filename': 'batch_B26R_cell_3.h5', 'cycles': 15, 'total_cycles': 420}, {'filename': 'batch_B26R_cell_4.h5', 'cycles': 15, 'total_cycles': 420}, {'filename': 'batch_B26S_cell_3.h5', 'cycles': 15, 'total_cycles': 420}, {'filename': 'batch_B26S_cell_4.h5', 'cycles': 15, 'total_cycles': 420}, {'filename': 'batch_B26S_cell_5.h5', 'cycles': 15, 'total_cycles': 219}, {'filename': 'batch_B5A_cell_7.h5', 'cycles': 15, 'total_cycles': 687}]}, 'target_val': {'5Vspinel': [{'filename': 'batch_B26K_cell_2.h5', 'cycles': 15, 'total_cycles': 221}, {'filename': 'batch_B26L_cell_2.h5', 'cycles': 15, 'total_cycles': 2028}, {'filename': 'batch_B26M_cell_2.h5', 'cycles': 15, 'total_cycles': 219}, {'filename': 'batch_B26P_cell_2.h5', 'cycles': 15, 'total_cycles': 420}, {'filename': 'batch_B26P_cell_6.h5', 'cycles': 15, 'total_cycles': 219}, {'filename': 'batch_B26R_cell_2.h5', 'cycles': 15, 'total_cycles': 420}, {'filename': 'batch_B26T_cell_2.h5', 'cycles': 15, 'total_cycles': 220}, {'filename': 'batch_B26V_cell_2.h5', 'cycles': 15, 'total_cycles': 421}, {'filename': 'batch_B26X_cell_2.h5', 'cycles': 15, 'total_cycles': 420}, {'filename': 'batch_B26Y_cell_2.h5', 'cycles': 15, 'total_cycles': 421}, {'filename': 'batch_B26Z_cell_2.h5', 'cycles': 15, 'total_cycles': 219}, {'filename': 'batch_B5A_cell_2.h5', 'cycles': 15, 'total_cycles': 820}]}}, 'feature_columns': ('cycle_number', 'energy_charge', 'capacity_charge', 'energy_discharge', 'capacity_discharge', 'cycle_start', 'cycle_duration', 'capacity_retention', 'energy_retention', 'delta_capacity_discharge', 'delta_energy_discharge', 'delta_cycle_duration', 'rolling_capacity_mean', 'rolling_capacity_std', 'rolling_energy_mean', 'rolling_energy_std', 'rolling_duration_mean', 'duration_ratio', 'coulombic_efficiency', 'energy_efficiency', 'time_per_capacity'), 'chemistry_by_cathode': {'5Vspinel': {'cathode': '5Vspinel', 'anode': 'LTO', 'electrolyte': 'R&D', 'dataset': 'Argonne'}, 'FCG': {'cathode': 'FCG', 'anode': 'C', 'electrolyte': 'Gen 2', 'dataset': 'Argonne'}, 'HE5050': {'cathode': 'HE5050', 'anode': 'C', 'electrolyte': 'Gen 2', 'dataset': 'Argonne'}, 'Li1.2Ni0.3Mn0.6O2': {'cathode': 'Li1.2Ni0.3Mn0.6O2', 'anode': 'C', 'electrolyte': 'Gen 2', 'dataset': 'Argonne'}, 'Li1.35Ni0.33Mn0.67O2.35': {'cathode': 'Li1.35Ni0.33Mn0.67O2.35', 'anode': 'C', 'electrolyte': 'Gen 2', 'dataset': 'Argonne'}, 'NMC111': {'cathode': 'NMC111', 'anode': 'C', 'electrolyte': 'Gen 2', 'dataset': 'Argonne'}, 'NMC532': {'cathode': 'NMC532', 'anode': 'C', 'electrolyte': 'Gen 2', 'dataset': 'Argonne'}, 'NMC622': {'cathode': 'NMC622', 'anode': 'C_Si', 'electrolyte': 'Gen 2', 'dataset': 'Argonne'}, 'NMC811': {'cathode': 'NMC811', 'anode': 'C', 'electrolyte': 'Gen 2', 'dataset': 'Argonne'}}, 'chemistry_context': {'source': {'Li1.2Ni0.3Mn0.6O2': {'cathode': 'Li1.2Ni0.3Mn0.6O2', 'anode': 'C', 'electrolyte': 'Gen 2', 'dataset': 'Argonne'}, 'Li1.35Ni0.33Mn0.67O2.35': {'cathode': 'Li1.35Ni0.33Mn0.67O2.35', 'anode': 'C', 'electrolyte': 'Gen 2', 'dataset': 'Argonne'}}, 'target': {'5Vspinel': {'cathode': '5Vspinel', 'anode': 'LTO', 'electrolyte': 'R&D', 'dataset': 'Argonne'}}, 'dataset_names': ['Argonne']}}
+12-10 11:57:16 input_size: 32
+12-10 11:57:16 using 1 cpu
+12-10 11:57:16 Reducing learning rate to 7e-05 for 41 target samples
+12-10 11:57:16 Freezing early layers of backbone for 41 target samples

@@ -1,0 +1,14 @@
+{
+  "model_name": "cnn_features_1d_sa",
+  "self_attention": true,
+  "sngp": false,
+  "openmax": false,
+  "use_unknown_head": false,
+  "bottleneck": 256,
+  "dropout": 0.35,
+  "learning_rate": 0.0005,
+  "batch_size": 16,
+  "lambda_src": 1.0,
+  "warmup_epochs": 10,
+  "rationale": "The dataset has 21 channels and short sequences (32 steps), with label inconsistency and domain shift between source and target chemistries. A CNN with self-attention balances local feature extraction and global context, helping capture multi-cycle correlations and adapt to domain shifts. The moderate bottleneck and dropout prevent overfitting given the small batch size and label noise. OpenMax or SNGP are less favored since explicit unknown rejection is not mandatory, and the dataset benefits more from attention-based adaptation."
+}

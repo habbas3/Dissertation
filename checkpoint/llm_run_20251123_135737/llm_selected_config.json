@@ -1,0 +1,41 @@
+{
+  "llm_choice": {
+    "architecture": "cnn_openmax",
+    "model_name": "cnn_openmax",
+    "self_attention": false,
+    "sngp": true,
+    "openmax": true,
+    "use_unknown_head": true,
+    "bottleneck": 128,
+    "dropout": 0.3,
+    "learning_rate": 0.001,
+    "batch_size": 64,
+    "lambda_src": 1.0,
+    "warmup_epochs": 5,
+    "rationale": "The dataset has short sequences (32 steps) and 7 channels, fitting well with a 1-D CNN backbone. Label inconsistency and unknown classes motivate using OpenMax for explicit unknown rejection. Self-attention is avoided to reduce overfitting risk on small data. Moderate bottleneck and dropout balance capacity and regularization. Batch size 64 ensures stable training with transfer learning lambda_src=1.0 and a short warmup to adapt to domain shift. Backbone frozen for 5 epoch(s) before full fine-tuning to stabilise feature reuse. Label inconsistency flagged \u2192 calibrated heads (SNGP/OpenMax) stay enabled for open-set robustness. Benchmarking against Zhao et al.'s CNN baseline to highlight transfer-aware gains.",
+    "_provider": "openai",
+    "_raw": "{\n  \"model_name\": \"cnn_openmax\",\n  \"self_attention\": false,\n  \"sngp\": false,\n  \"openmax\": true,\n  \"use_unknown_head\": true,\n  \"bottleneck\": 128,\n  \"dropout\": 0.3,\n  \"learning_rate\": 0.001,\n  \"batch_size\": 64,\n  \"lambda_src\": 1.0,\n  \"warmup_epochs\": 5,\n  \"rationale\": \"The dataset has short sequences (32 steps) and 7 channels, fitting well with a 1-D CNN backbone. Label inconsistency and unknown classes motivate using OpenMax for explicit unknown rejection. Self-attention is avoided to reduce overfitting risk on small data. Moderate bottleneck and dropout balance capacity and regularization. Batch size 64 ensures stable training with transfer learning lambda_src=1.0 and a short warmup to adapt to domain shift.\"\n}"
+  },
+  "inputs": {
+    "text_context": "Dataset: Case Western Reserve University bearing vibration transfer benchmark with label inconsistency handling.\nTransfer from motors 0 to 1; inconsistency setting UAN.\nWindows are length 32 with 7 vibration channels; task uses None classes.",
+    "numeric_summary": {
+      "dataset": "CWRU_inconsistent",
+      "sequence_length_requested": 32,
+      "notes": "label_inconsistent",
+      "lr_hint": 0.001,
+      "dropout_hint": 0.3,
+      "num_classes_hint": null,
+      "splits": {},
+      "dataset_variant": "cwru_bearing",
+      "transfer_task": [
+        [
+          0
+        ],
+        [
+          1
+        ]
+      ]
+    }
+  },
+  "timestamp": "20251123_135737"
+}

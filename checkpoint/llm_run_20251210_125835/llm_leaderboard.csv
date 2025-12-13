@@ -1,0 +1,6 @@
+tag,model_name,method,droprate,lr,batch_size,lambda_src,summary_csv,avg_improvement,cycle_limit
+llm_pick,cnn_openmax,sngp,0.3,0.001,64,1.0,checkpoint/llm_run_20251210_125835/compare/llm_pick_summary_1210_161139_CWRU_inconsistent.csv,0.016433194035115267,
+ablate_openmax_off,cnn_features_1d,sngp,0.3,0.001,64,1.0,checkpoint/llm_run_20251210_125835/compare/ablate_openmax_off_summary_1210_184601_CWRU_inconsistent.csv,0.0,
+ablate_sngp_off,cnn_openmax,deterministic,0.3,0.001,64,1.0,checkpoint/llm_run_20251210_125835/compare/ablate_sngp_off_summary_1210_211731_CWRU_inconsistent.csv,0.016783334091137674,
+deterministic_cnn,cnn_features_1d,deterministic,0.3,0.001,64,1.0,checkpoint/llm_run_20251210_125835/compare/deterministic_cnn_summary_1210_222659_CWRU_inconsistent.csv,0.005874981571575975,
+sngp_wrn_sa,WideResNet_sa,sngp,0.3,0.001,64,1.0,checkpoint/llm_run_20251210_125835/compare/sngp_wrn_sa_summary_1211_142533_CWRU_inconsistent.csv,0.011715563418349792,

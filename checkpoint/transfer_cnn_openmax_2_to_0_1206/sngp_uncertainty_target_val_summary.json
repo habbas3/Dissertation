@@ -1,0 +1,7 @@
+{
+  "mean_entropy": 0.24180617597428472,
+  "mean_entropy_known": 0.06542732710704992,
+  "mean_entropy_outlier": 0.3826128200279596,
+  "mean_max_prob_known": 0.9880342596455625,
+  "mean_max_prob_outlier": 0.8164307960943014
+}

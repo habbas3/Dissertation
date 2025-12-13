@@ -1,0 +1,637 @@
+11-16 15:14:42 data_name: Battery_inconsistent
+11-16 15:14:42 data_dir: ./my_datasets/Battery
+11-16 15:14:42 csv: ./my_datasets/Battery/battery_cycles_labeled.csv
+11-16 15:14:42 normlizetype: mean-std
+11-16 15:14:42 method: sngp
+11-16 15:14:42 gp_hidden_dim: 2048
+11-16 15:14:42 spectral_norm_bound: 0.95
+11-16 15:14:42 n_power_iterations: 1
+11-16 15:14:42 nesterov: True
+11-16 15:14:42 print_freq: 10
+11-16 15:14:42 layers: 16
+11-16 15:14:42 widen_factor: 1
+11-16 15:14:42 droprate: 0.3
+11-16 15:14:42 cuda_device: 0
+11-16 15:14:42 checkpoint_dir: ./checkpoint
+11-16 15:14:42 pretrained: True
+11-16 15:14:42 batch_size: 64
+11-16 15:14:42 num_workers: 0
+11-16 15:14:42 bottleneck: True
+11-16 15:14:42 bottleneck_num: 128
+11-16 15:14:42 last_batch: False
+11-16 15:14:42 hidden_size: 1024
+11-16 15:14:42 trade_off_adversarial: Step
+11-16 15:14:42 lam_adversarial: 1
+11-16 15:14:42 opt: adam
+11-16 15:14:42 lr: 0.0005
+11-16 15:14:42 momentum: 0.9
+11-16 15:14:42 weight_decay: 1e-05
+11-16 15:14:42 lr_scheduler: step
+11-16 15:14:42 gamma: 0.1
+11-16 15:14:42 steps: 150, 250
+11-16 15:14:42 middle_epoch: 15
+11-16 15:14:42 max_epoch: 62
+11-16 15:14:42 print_step: 25
+11-16 15:14:42 inconsistent: UAN
+11-16 15:14:42 model_name: WideResNet_sa
+11-16 15:14:42 th: 0.5
+11-16 15:14:42 input_channels: 22
+11-16 15:14:42 classification_label: eol_class
+11-16 15:14:42 sequence_length: 32
+11-16 15:14:42 cycles_per_file: 50
+11-16 15:14:42 sample_random_state: 42
+11-16 15:14:42 transfer_task: [[0], [1]]
+11-16 15:14:42 source_cathode: ['5Vspinel']
+11-16 15:14:42 target_cathode: ['Li1.2Ni0.3Mn0.6O2', 'Li1.35Ni0.33Mn0.67O2.35']
+11-16 15:14:42 num_classes: 5
+11-16 15:14:42 domain_temperature: 1.0
+11-16 15:14:42 class_temperature: 10.0
+11-16 15:14:42 lambda_src: 0.0
+11-16 15:14:42 lambda_src_decay_patience: 2
+11-16 15:14:42 lambda_src_decay_factor: 0.5
+11-16 15:14:42 lambda_src_min: 0.0
+11-16 15:14:42 lambda_src_warmup: 0
+11-16 15:14:42 improvement_metric: common
+11-16 15:14:42 auto_select: True
+11-16 15:14:42 llm_compare: True
+11-16 15:14:42 llm_backend: openai
+11-16 15:14:42 llm_model: None
+11-16 15:14:42 llm_context: 
+11-16 15:14:42 llm_cfg_inputs: {'text_context': "Dataset: Argonne National Laboratory battery aging time-series with partial cycle windows.\nSource cathodes: (all available); target cathodes: (none specified).\nLabel column 'eol_class' with ~None classes; sequence length 32; 7 channels covering cycle_number, energy_charge, capacity_charge, energy_discharge, capacity_discharge, cycle_start, cycle_duration.", 'numeric_summary': {'dataset': 'Battery_inconsistent', 'sequence_length_requested': 32, 'notes': 'label_inconsistent', 'lr_hint': 0.001, 'dropout_hint': 0.3, 'num_classes_hint': None, 'splits': {}, 'dataset_variant': 'argonne_battery', 'feature_names': ['cycle_number', 'energy_charge', 'capacity_charge', 'energy_discharge', 'capacity_discharge', 'cycle_start', 'cycle_duration'], 'source_cathodes': [], 'target_cathodes': [], 'label_column': 'eol_class'}}
+11-16 15:14:42 llm_cfg: {'architecture': 'cnn_1d_sa', 'model_name': 'cnn_features_1d_sa', 'self_attention': True, 'sngp': True, 'openmax': False, 'use_unknown_head': False, 'bottleneck': 128, 'dropout': 0.3, 'learning_rate': 0.001, 'batch_size': 64, 'lambda_src': 0.0, 'rationale': 'The dataset has short sequences (32 steps) and 7 channels, making a 1-D CNN with self-attention ideal to capture local and some longer-range dependencies without excessive memory use. Label inconsistency suggests avoiding openmax or unknown heads to reduce tuning complexity. Moderate dropout (0.3) helps prevent overfitting given small data and attention. Batch size 64 balances GPU efficiency and stable training. Label inconsistency flagged → calibrated heads (SNGP/OpenMax) stay enabled for open-set robustness. Enabled SNGP to stabilise open-set transfer risk detected in metadata.', '_provider': 'openai', '_raw': '{\n  "model_name": "cnn_features_1d_sa",\n  "self_attention": true,\n  "sngp": false,\n  "openmax": false,\n  "use_unknown_head": false,\n  "bottleneck": 128,\n  "dropout": 0.3,\n  "learning_rate": 0.001,\n  "batch_size": 64,\n  "lambda_src": 0.0,\n  "rationale": "The dataset has short sequences (32 steps) and 7 channels, making a 1-D CNN with self-attention ideal to capture local and some longer-range dependencies without excessive memory use. Label inconsistency suggests avoiding openmax or unknown heads to reduce tuning complexity. Moderate dropout (0.3) helps prevent overfitting given small data and attention. Batch size 64 balances GPU efficiency and stable training."\n}'}
+11-16 15:14:42 llm_cfg_stamp: 20251116_144741
+11-16 15:14:42 tag: sngp_wrn_sa_20251116_144741
+11-16 15:14:42 pretrained_model_path: ./checkpoint/transfer_WideResNet_sa_spinel5v_to_lirich_1116/best_model.pth
+11-16 15:14:42 dataset_cycle_stats: {'source_train_cycles': 2050, 'source_val_cycles': 600, 'source_val_has_holdout': True, 'target_train_cycles': 300, 'target_val_cycles': 200, 'target_val_has_holdout': True, 'source_train_sequences': 779, 'source_val_sequences': 228, 'target_train_sequences': 114, 'target_val_sequences': 76, 'source_train_cells': 5, 'source_val_cells': 2, 'target_train_cells': 5, 'target_val_cells': 3, 'cycles_per_cell_per_cathode': {'source_train': {'5Vspinel': [{'filename': 'batch_B11B_cell_4.h5', 'cycles': 50}, {'filename': 'batch_B26U_cell_5.h5', 'cycles': 50}, {'filename': 'batch_B26V_cell_3.h5', 'cycles': 50}, {'filename': 'batch_B26V_cell_4.h5', 'cycles': 50}, {'filename': 'batch_B26V_cell_5.h5', 'cycles': 50}, {'filename': 'batch_B26W_cell_1.h5', 'cycles': 50}, {'filename': 'batch_B26W_cell_3.h5', 'cycles': 50}, {'filename': 'batch_B26W_cell_4.h5', 'cycles': 50}, {'filename': 'batch_B26W_cell_5.h5', 'cycles': 50}, {'filename': 'batch_B26X_cell_1.h5', 'cycles': 50}, {'filename': 'batch_B26X_cell_3.h5', 'cycles': 50}, {'filename': 'batch_B26X_cell_4.h5', 'cycles': 50}, {'filename': 'batch_B26Y_cell_3.h5', 'cycles': 50}, {'filename': 'batch_B26Y_cell_4.h5', 'cycles': 50}, {'filename': 'batch_B26Y_cell_5.h5', 'cycles': 50}, {'filename': 'batch_B26Z_cell_1.h5', 'cycles': 50}, {'filename': 'batch_B26Z_cell_3.h5', 'cycles': 50}, {'filename': 'batch_B5A_cell_1.h5', 'cycles': 50}, {'filename': 'batch_B5A_cell_5.h5', 'cycles': 50}, {'filename': 'batch_B26V_cell_1.h5', 'cycles': 50}, {'filename': 'batch_B26T_cell_5.h5', 'cycles': 50}, {'filename': 'batch_B26AA_cell_1.h5', 'cycles': 50}, {'filename': 'batch_B26T_cell_4.h5', 'cycles': 50}, {'filename': 'batch_B26AA_cell_4.h5', 'cycles': 50}, {'filename': 'batch_B26K_cell_1.h5', 'cycles': 50}, {'filename': 'batch_B26L_cell_1.h5', 'cycles': 50}, {'filename': 'batch_B26N_cell_1.h5', 'cycles': 50}, {'filename': 'batch_B26O_cell_1.h5', 'cycles': 50}, {'filename': 'batch_B26O_cell_4.h5', 'cycles': 50}, {'filename': 'batch_B26O_cell_5.h5', 'cycles': 50}, {'filename': 'batch_B26P_cell_3.h5', 'cycles': 50}, {'filename': 'batch_B26P_cell_4.h5', 'cycles': 50}, {'filename': 'batch_B26Q_cell_3.h5', 'cycles': 50}, {'filename': 'batch_B26Q_cell_5.h5', 'cycles': 50}, {'filename': 'batch_B26R_cell_1.h5', 'cycles': 50}, {'filename': 'batch_B26R_cell_3.h5', 'cycles': 50}, {'filename': 'batch_B26R_cell_4.h5', 'cycles': 50}, {'filename': 'batch_B26S_cell_3.h5', 'cycles': 50}, {'filename': 'batch_B26S_cell_4.h5', 'cycles': 50}, {'filename': 'batch_B26S_cell_5.h5', 'cycles': 50}, {'filename': 'batch_B5A_cell_7.h5', 'cycles': 50}]}, 'source_val': {'5Vspinel': [{'filename': 'batch_B26K_cell_2.h5', 'cycles': 50}, {'filename': 'batch_B26L_cell_2.h5', 'cycles': 50}, {'filename': 'batch_B26M_cell_2.h5', 'cycles': 50}, {'filename': 'batch_B26P_cell_2.h5', 'cycles': 50}, {'filename': 'batch_B26P_cell_6.h5', 'cycles': 50}, {'filename': 'batch_B26R_cell_2.h5', 'cycles': 50}, {'filename': 'batch_B26T_cell_2.h5', 'cycles': 50}, {'filename': 'batch_B26V_cell_2.h5', 'cycles': 50}, {'filename': 'batch_B26X_cell_2.h5', 'cycles': 50}, {'filename': 'batch_B26Y_cell_2.h5', 'cycles': 50}, {'filename': 'batch_B26Z_cell_2.h5', 'cycles': 50}, {'filename': 'batch_B5A_cell_2.h5', 'cycles': 50}]}, 'target_train': {'Li1.2Ni0.3Mn0.6O2': [{'filename': 'batch_B3A_cell_4.h5', 'cycles': 50}, {'filename': 'batch_B3B_cell_2.h5', 'cycles': 50}, {'filename': 'batch_B3B_cell_3.h5', 'cycles': 50}, {'filename': 'batch_B3B_cell_7.h5', 'cycles': 50}], 'Li1.35Ni0.33Mn0.67O2.35': [{'filename': 'batch_B13A_cell_4.h5', 'cycles': 50}, {'filename': 'batch_B13A_cell_8.h5', 'cycles': 50}]}, 'target_val': {'Li1.2Ni0.3Mn0.6O2': [{'filename': 'batch_B3B_cell_1.h5', 'cycles': 50}, {'filename': 'batch_B3B_cell_5.h5', 'cycles': 50}], 'Li1.35Ni0.33Mn0.67O2.35': [{'filename': 'batch_B13A_cell_13.h5', 'cycles': 50}, {'filename': 'batch_B8A_cell_1.h5', 'cycles': 50}]}}}
+11-16 15:14:42 input_size: 32
+11-16 15:14:42 reinit_head: False
+11-16 15:14:42 using 1 cpu
+11-16 15:14:42 Exception in callback functools.partial(<bound method OutStream._flush of <spyder_kernels.console.outstream.TTYOutStream object at 0x172cdca90>>)
+Traceback (most recent call last):
+  File "/Users/moondiab/opt/anaconda3/envs/venv/lib/python3.11/site-packages/jupyter_client/session.py", line 100, in json_packer
+    ).encode("utf8", errors="surrogateescape")
+      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+UnicodeEncodeError: 'utf-8' codec can't encode characters in position 673-674: surrogates not allowed
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/Users/moondiab/opt/anaconda3/envs/venv/lib/python3.11/site-packages/tornado/ioloop.py", line 750, in _run_callback
+    ret = callback()
+          ^^^^^^^^^^
+  File "/Users/moondiab/opt/anaconda3/envs/venv/lib/python3.11/site-packages/ipykernel/iostream.py", line 649, in _flush
+    self.session.send(
+  File "/Users/moondiab/opt/anaconda3/envs/venv/lib/python3.11/site-packages/jupyter_client/session.py", line 852, in send
+    to_send = self.serialize(msg, ident)
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/moondiab/opt/anaconda3/envs/venv/lib/python3.11/site-packages/jupyter_client/session.py", line 721, in serialize
+    content = self.pack(content)
+              ^^^^^^^^^^^^^^^^^^
+  File "/Users/moondiab/opt/anaconda3/envs/venv/lib/python3.11/site-packages/jupyter_client/session.py", line 108, in json_packer
+    ).encode("utf8", errors="surrogateescape")
+      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+UnicodeEncodeError: 'utf-8' codec can't encode characters in position 673-674: surrogates not allowed
+11-16 19:33:03 data_name: Battery_inconsistent
+11-16 19:33:03 data_dir: ./my_datasets/Battery
+11-16 19:33:03 csv: ./my_datasets/Battery/battery_cycles_labeled.csv
+11-16 19:33:03 normlizetype: mean-std
+11-16 19:33:03 method: sngp
+11-16 19:33:03 gp_hidden_dim: 2048
+11-16 19:33:03 spectral_norm_bound: 0.95
+11-16 19:33:03 n_power_iterations: 1
+11-16 19:33:03 nesterov: True
+11-16 19:33:03 print_freq: 10
+11-16 19:33:03 layers: 16
+11-16 19:33:03 widen_factor: 1
+11-16 19:33:03 droprate: 0.3
+11-16 19:33:03 cuda_device: 0
+11-16 19:33:03 checkpoint_dir: ./checkpoint
+11-16 19:33:03 pretrained: True
+11-16 19:33:03 batch_size: 64
+11-16 19:33:03 num_workers: 0
+11-16 19:33:03 bottleneck: True
+11-16 19:33:03 bottleneck_num: 128
+11-16 19:33:03 last_batch: False
+11-16 19:33:03 hidden_size: 1024
+11-16 19:33:03 trade_off_adversarial: Step
+11-16 19:33:03 lam_adversarial: 1
+11-16 19:33:03 opt: adam
+11-16 19:33:03 lr: 5e-05
+11-16 19:33:03 momentum: 0.9
+11-16 19:33:03 weight_decay: 1e-05
+11-16 19:33:03 lr_scheduler: step
+11-16 19:33:03 gamma: 0.1
+11-16 19:33:03 steps: 150, 250
+11-16 19:33:03 middle_epoch: 15
+11-16 19:33:03 max_epoch: 62
+11-16 19:33:03 print_step: 25
+11-16 19:33:03 inconsistent: UAN
+11-16 19:33:03 model_name: WideResNet_sa
+11-16 19:33:03 th: 0.5
+11-16 19:33:03 input_channels: 22
+11-16 19:33:03 classification_label: eol_class
+11-16 19:33:03 sequence_length: 32
+11-16 19:33:03 cycles_per_file: 20
+11-16 19:33:03 sample_random_state: 42
+11-16 19:33:03 transfer_task: [[0], [1]]
+11-16 19:33:03 source_cathode: ['5Vspinel']
+11-16 19:33:03 target_cathode: ['Li1.2Ni0.3Mn0.6O2', 'Li1.35Ni0.33Mn0.67O2.35']
+11-16 19:33:03 num_classes: 5
+11-16 19:33:03 domain_temperature: 1.0
+11-16 19:33:03 class_temperature: 10.0
+11-16 19:33:03 lambda_src: 0.0
+11-16 19:33:03 lambda_src_decay_patience: 2
+11-16 19:33:03 lambda_src_decay_factor: 0.5
+11-16 19:33:03 lambda_src_min: 0.0
+11-16 19:33:03 lambda_src_warmup: 0
+11-16 19:33:03 improvement_metric: common
+11-16 19:33:03 auto_select: True
+11-16 19:33:03 llm_compare: True
+11-16 19:33:03 llm_backend: openai
+11-16 19:33:03 llm_model: None
+11-16 19:33:03 llm_context: 
+11-16 19:33:03 llm_cfg_inputs: {'text_context': "Dataset: Argonne National Laboratory battery aging time-series with partial cycle windows.\nSource cathodes: (all available); target cathodes: (none specified).\nLabel column 'eol_class' with ~None classes; sequence length 32; 7 channels covering cycle_number, energy_charge, capacity_charge, energy_discharge, capacity_discharge, cycle_start, cycle_duration.", 'numeric_summary': {'dataset': 'Battery_inconsistent', 'sequence_length_requested': 32, 'notes': 'label_inconsistent', 'lr_hint': 0.001, 'dropout_hint': 0.3, 'num_classes_hint': None, 'splits': {}, 'dataset_variant': 'argonne_battery', 'feature_names': ['cycle_number', 'energy_charge', 'capacity_charge', 'energy_discharge', 'capacity_discharge', 'cycle_start', 'cycle_duration'], 'source_cathodes': [], 'target_cathodes': [], 'label_column': 'eol_class'}}
+11-16 19:33:03 llm_cfg: {'architecture': 'cnn_1d_sa', 'model_name': 'cnn_features_1d_sa', 'self_attention': True, 'sngp': True, 'openmax': False, 'use_unknown_head': False, 'bottleneck': 128, 'dropout': 0.3, 'learning_rate': 0.001, 'batch_size': 64, 'lambda_src': 0.0, 'rationale': 'The dataset has short sequences (32 steps) and 7 channels, making a lightweight CNN with self-attention ideal to capture local features and some long-range dependencies. Label inconsistency suggests avoiding openmax or unknown heads to reduce complexity. Dropout at 0.3 balances overfitting risk from attention layers on a small dataset. Batch size 64 and learning rate 0.001 align with hints and ensure stable training. Label inconsistency flagged → calibrated heads (SNGP/OpenMax) stay enabled for open-set robustness. Enabled SNGP to stabilise open-set transfer risk detected in metadata.', '_provider': 'openai', '_raw': '{\n  "model_name": "cnn_features_1d_sa",\n  "self_attention": true,\n  "sngp": false,\n  "openmax": false,\n  "use_unknown_head": false,\n  "bottleneck": 128,\n  "dropout": 0.3,\n  "learning_rate": 0.001,\n  "batch_size": 64,\n  "lambda_src": 0.0,\n  "rationale": "The dataset has short sequences (32 steps) and 7 channels, making a lightweight CNN with self-attention ideal to capture local features and some long-range dependencies. Label inconsistency suggests avoiding openmax or unknown heads to reduce complexity. Dropout at 0.3 balances overfitting risk from attention layers on a small dataset. Batch size 64 and learning rate 0.001 align with hints and ensure stable training."\n}'}
+11-16 19:33:03 llm_cfg_stamp: 20251116_192719
+11-16 19:33:03 tag: sngp_wrn_sa_20251116_192719
+11-16 19:33:03 pretrained_model_path: ./checkpoint/transfer_WideResNet_sa_spinel5v_to_lirich_1116/best_model.pth
+11-16 19:33:03 dataset_cycle_stats: {'source_train_cycles': 820, 'source_val_cycles': 240, 'source_val_has_holdout': True, 'target_train_cycles': 120, 'target_val_cycles': 80, 'target_val_has_holdout': True, 'source_train_sequences': 41, 'source_val_sequences': 12, 'target_train_sequences': 6, 'target_val_sequences': 4, 'source_train_cells': 5, 'source_val_cells': 2, 'target_train_cells': 5, 'target_val_cells': 3, 'cycles_per_cell_per_cathode': {'source_train': {'5Vspinel': [{'filename': 'batch_B11B_cell_4.h5', 'cycles': 20, 'total_cycles': 216}, {'filename': 'batch_B26U_cell_5.h5', 'cycles': 20, 'total_cycles': 219}, {'filename': 'batch_B26V_cell_3.h5', 'cycles': 20, 'total_cycles': 420}, {'filename': 'batch_B26V_cell_4.h5', 'cycles': 20, 'total_cycles': 420}, {'filename': 'batch_B26V_cell_5.h5', 'cycles': 20, 'total_cycles': 219}, {'filename': 'batch_B26W_cell_1.h5', 'cycles': 20, 'total_cycles': 420}, {'filename': 'batch_B26W_cell_3.h5', 'cycles': 20, 'total_cycles': 420}, {'filename': 'batch_B26W_cell_4.h5', 'cycles': 20, 'total_cycles': 420}, {'filename': 'batch_B26W_cell_5.h5', 'cycles': 20, 'total_cycles': 219}, {'filename': 'batch_B26X_cell_1.h5', 'cycles': 20, 'total_cycles': 420}, {'filename': 'batch_B26X_cell_3.h5', 'cycles': 20, 'total_cycles': 420}, {'filename': 'batch_B26X_cell_4.h5', 'cycles': 20, 'total_cycles': 420}, {'filename': 'batch_B26Y_cell_3.h5', 'cycles': 20, 'total_cycles': 420}, {'filename': 'batch_B26Y_cell_4.h5', 'cycles': 20, 'total_cycles': 420}, {'filename': 'batch_B26Y_cell_5.h5', 'cycles': 20, 'total_cycles': 219}, {'filename': 'batch_B26Z_cell_1.h5', 'cycles': 20, 'total_cycles': 219}, {'filename': 'batch_B26Z_cell_3.h5', 'cycles': 20, 'total_cycles': 219}, {'filename': 'batch_B5A_cell_1.h5', 'cycles': 20, 'total_cycles': 846}, {'filename': 'batch_B5A_cell_5.h5', 'cycles': 20, 'total_cycles': 855}, {'filename': 'batch_B26V_cell_1.h5', 'cycles': 20, 'total_cycles': 420}, {'filename': 'batch_B26T_cell_5.h5', 'cycles': 20, 'total_cycles': 219}, {'filename': 'batch_B26AA_cell_1.h5', 'cycles': 20, 'total_cycles': 219}, {'filename': 'batch_B26T_cell_4.h5', 'cycles': 20, 'total_cycles': 219}, {'filename': 'batch_B26AA_cell_4.h5', 'cycles': 20, 'total_cycles': 219}, {'filename': 'batch_B26K_cell_1.h5', 'cycles': 20, 'total_cycles': 221}, {'filename': 'batch_B26L_cell_1.h5', 'cycles': 20, 'total_cycles': 2028}, {'filename': 'batch_B26N_cell_1.h5', 'cycles': 20, 'total_cycles': 219}, {'filename': 'batch_B26O_cell_1.h5', 'cycles': 20, 'total_cycles': 219}, {'filename': 'batch_B26O_cell_4.h5', 'cycles': 20, 'total_cycles': 219}, {'filename': 'batch_B26O_cell_5.h5', 'cycles': 20, 'total_cycles': 219}, {'filename': 'batch_B26P_cell_3.h5', 'cycles': 20, 'total_cycles': 421}, {'filename': 'batch_B26P_cell_4.h5', 'cycles': 20, 'total_cycles': 420}, {'filename': 'batch_B26Q_cell_3.h5', 'cycles': 20, 'total_cycles': 219}, {'filename': 'batch_B26Q_cell_5.h5', 'cycles': 20, 'total_cycles': 219}, {'filename': 'batch_B26R_cell_1.h5', 'cycles': 20, 'total_cycles': 420}, {'filename': 'batch_B26R_cell_3.h5', 'cycles': 20, 'total_cycles': 420}, {'filename': 'batch_B26R_cell_4.h5', 'cycles': 20, 'total_cycles': 420}, {'filename': 'batch_B26S_cell_3.h5', 'cycles': 20, 'total_cycles': 420}, {'filename': 'batch_B26S_cell_4.h5', 'cycles': 20, 'total_cycles': 420}, {'filename': 'batch_B26S_cell_5.h5', 'cycles': 20, 'total_cycles': 219}, {'filename': 'batch_B5A_cell_7.h5', 'cycles': 20, 'total_cycles': 687}]}, 'source_val': {'5Vspinel': [{'filename': 'batch_B26K_cell_2.h5', 'cycles': 20, 'total_cycles': 221}, {'filename': 'batch_B26L_cell_2.h5', 'cycles': 20, 'total_cycles': 2028}, {'filename': 'batch_B26M_cell_2.h5', 'cycles': 20, 'total_cycles': 219}, {'filename': 'batch_B26P_cell_2.h5', 'cycles': 20, 'total_cycles': 420}, {'filename': 'batch_B26P_cell_6.h5', 'cycles': 20, 'total_cycles': 219}, {'filename': 'batch_B26R_cell_2.h5', 'cycles': 20, 'total_cycles': 420}, {'filename': 'batch_B26T_cell_2.h5', 'cycles': 20, 'total_cycles': 220}, {'filename': 'batch_B26V_cell_2.h5', 'cycles': 20, 'total_cycles': 421}, {'filename': 'batch_B26X_cell_2.h5', 'cycles': 20, 'total_cycles': 420}, {'filename': 'batch_B26Y_cell_2.h5', 'cycles': 20, 'total_cycles': 421}, {'filename': 'batch_B26Z_cell_2.h5', 'cycles': 20, 'total_cycles': 219}, {'filename': 'batch_B5A_cell_2.h5', 'cycles': 20, 'total_cycles': 820}]}, 'target_train': {'Li1.2Ni0.3Mn0.6O2': [{'filename': 'batch_B3A_cell_4.h5', 'cycles': 20, 'total_cycles': 181}, {'filename': 'batch_B3B_cell_2.h5', 'cycles': 20, 'total_cycles': 181}, {'filename': 'batch_B3B_cell_3.h5', 'cycles': 20, 'total_cycles': 180}, {'filename': 'batch_B3B_cell_7.h5', 'cycles': 20, 'total_cycles': 180}], 'Li1.35Ni0.33Mn0.67O2.35': [{'filename': 'batch_B13A_cell_4.h5', 'cycles': 20, 'total_cycles': 169}, {'filename': 'batch_B13A_cell_8.h5', 'cycles': 20, 'total_cycles': 218}]}, 'target_val': {'Li1.2Ni0.3Mn0.6O2': [{'filename': 'batch_B3B_cell_1.h5', 'cycles': 20, 'total_cycles': 181}, {'filename': 'batch_B3B_cell_5.h5', 'cycles': 20, 'total_cycles': 180}], 'Li1.35Ni0.33Mn0.67O2.35': [{'filename': 'batch_B13A_cell_13.h5', 'cycles': 20, 'total_cycles': 218}, {'filename': 'batch_B8A_cell_1.h5', 'cycles': 20, 'total_cycles': 214}]}}}
+11-16 19:33:03 input_size: 32
+11-16 19:33:03 reinit_head: False
+11-16 19:33:03 using 1 cpu
+11-16 19:33:03 Reducing learning rate to 5e-05 for 6 target samples
+11-16 19:33:03 Freezing early layers of backbone for 6 target samples
+11-16 19:33:04 Uncaught exception in ZMQStream callback
+Traceback (most recent call last):
+  File "/Users/moondiab/opt/anaconda3/envs/venv/lib/python3.11/site-packages/jupyter_client/session.py", line 100, in json_packer
+    ).encode("utf8", errors="surrogateescape")
+      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+UnicodeEncodeError: 'utf-8' codec can't encode characters in position 137-138: surrogates not allowed
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/Users/moondiab/opt/anaconda3/envs/venv/lib/python3.11/site-packages/zmq/eventloop/zmqstream.py", line 560, in _run_callback
+    f = callback(*args, **kwargs)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/moondiab/opt/anaconda3/envs/venv/lib/python3.11/site-packages/ipykernel/iostream.py", line 170, in _handle_event
+    event_f()
+  File "/Users/moondiab/opt/anaconda3/envs/venv/lib/python3.11/site-packages/ipykernel/iostream.py", line 649, in _flush
+    self.session.send(
+  File "/Users/moondiab/opt/anaconda3/envs/venv/lib/python3.11/site-packages/jupyter_client/session.py", line 852, in send
+    to_send = self.serialize(msg, ident)
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/moondiab/opt/anaconda3/envs/venv/lib/python3.11/site-packages/jupyter_client/session.py", line 721, in serialize
+    content = self.pack(content)
+              ^^^^^^^^^^^^^^^^^^
+  File "/Users/moondiab/opt/anaconda3/envs/venv/lib/python3.11/site-packages/jupyter_client/session.py", line 108, in json_packer
+    ).encode("utf8", errors="surrogateescape")
+      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+UnicodeEncodeError: 'utf-8' codec can't encode characters in position 137-138: surrogates not allowed
+11-16 19:33:04 Uncaught exception in zmqstream callback
+Traceback (most recent call last):
+  File "/Users/moondiab/opt/anaconda3/envs/venv/lib/python3.11/site-packages/jupyter_client/session.py", line 100, in json_packer
+    ).encode("utf8", errors="surrogateescape")
+      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+UnicodeEncodeError: 'utf-8' codec can't encode characters in position 137-138: surrogates not allowed
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/Users/moondiab/opt/anaconda3/envs/venv/lib/python3.11/site-packages/zmq/eventloop/zmqstream.py", line 610, in _handle_events
+    self._handle_recv()
+  File "/Users/moondiab/opt/anaconda3/envs/venv/lib/python3.11/site-packages/zmq/eventloop/zmqstream.py", line 639, in _handle_recv
+    self._run_callback(callback, msg)
+  File "/Users/moondiab/opt/anaconda3/envs/venv/lib/python3.11/site-packages/zmq/eventloop/zmqstream.py", line 560, in _run_callback
+    f = callback(*args, **kwargs)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/moondiab/opt/anaconda3/envs/venv/lib/python3.11/site-packages/ipykernel/iostream.py", line 170, in _handle_event
+    event_f()
+  File "/Users/moondiab/opt/anaconda3/envs/venv/lib/python3.11/site-packages/ipykernel/iostream.py", line 649, in _flush
+    self.session.send(
+  File "/Users/moondiab/opt/anaconda3/envs/venv/lib/python3.11/site-packages/jupyter_client/session.py", line 852, in send
+    to_send = self.serialize(msg, ident)
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/moondiab/opt/anaconda3/envs/venv/lib/python3.11/site-packages/jupyter_client/session.py", line 721, in serialize
+    content = self.pack(content)
+              ^^^^^^^^^^^^^^^^^^
+  File "/Users/moondiab/opt/anaconda3/envs/venv/lib/python3.11/site-packages/jupyter_client/session.py", line 108, in json_packer
+    ).encode("utf8", errors="surrogateescape")
+      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+UnicodeEncodeError: 'utf-8' codec can't encode characters in position 137-138: surrogates not allowed
+11-16 19:33:04 Exception in callback BaseAsyncIOLoop._handle_events(43, 1)
+handle: <Handle BaseAsyncIOLoop._handle_events(43, 1)>
+Traceback (most recent call last):
+  File "/Users/moondiab/opt/anaconda3/envs/venv/lib/python3.11/site-packages/jupyter_client/session.py", line 100, in json_packer
+    ).encode("utf8", errors="surrogateescape")
+      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+UnicodeEncodeError: 'utf-8' codec can't encode characters in position 137-138: surrogates not allowed
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/Users/moondiab/opt/anaconda3/envs/venv/lib/python3.11/asyncio/events.py", line 84, in _run
+    self._context.run(self._callback, *self._args)
+  File "/Users/moondiab/opt/anaconda3/envs/venv/lib/python3.11/site-packages/tornado/platform/asyncio.py", line 202, in _handle_events
+    handler_func(fileobj, events)
+  File "/Users/moondiab/opt/anaconda3/envs/venv/lib/python3.11/site-packages/zmq/eventloop/zmqstream.py", line 610, in _handle_events
+    self._handle_recv()
+  File "/Users/moondiab/opt/anaconda3/envs/venv/lib/python3.11/site-packages/zmq/eventloop/zmqstream.py", line 639, in _handle_recv
+    self._run_callback(callback, msg)
+  File "/Users/moondiab/opt/anaconda3/envs/venv/lib/python3.11/site-packages/zmq/eventloop/zmqstream.py", line 560, in _run_callback
+    f = callback(*args, **kwargs)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/moondiab/opt/anaconda3/envs/venv/lib/python3.11/site-packages/ipykernel/iostream.py", line 170, in _handle_event
+    event_f()
+  File "/Users/moondiab/opt/anaconda3/envs/venv/lib/python3.11/site-packages/ipykernel/iostream.py", line 649, in _flush
+    self.session.send(
+  File "/Users/moondiab/opt/anaconda3/envs/venv/lib/python3.11/site-packages/jupyter_client/session.py", line 852, in send
+    to_send = self.serialize(msg, ident)
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/moondiab/opt/anaconda3/envs/venv/lib/python3.11/site-packages/jupyter_client/session.py", line 721, in serialize
+    content = self.pack(content)
+              ^^^^^^^^^^^^^^^^^^
+  File "/Users/moondiab/opt/anaconda3/envs/venv/lib/python3.11/site-packages/jupyter_client/session.py", line 108, in json_packer
+    ).encode("utf8", errors="surrogateescape")
+      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+UnicodeEncodeError: 'utf-8' codec can't encode characters in position 137-138: surrogates not allowed
+11-16 20:28:18 data_name: Battery_inconsistent
+11-16 20:28:18 data_dir: ./my_datasets/Battery
+11-16 20:28:18 csv: ./my_datasets/Battery/battery_cycles_labeled.csv
+11-16 20:28:18 normlizetype: mean-std
+11-16 20:28:18 method: sngp
+11-16 20:28:18 gp_hidden_dim: 2048
+11-16 20:28:18 spectral_norm_bound: 0.95
+11-16 20:28:18 n_power_iterations: 1
+11-16 20:28:18 nesterov: True
+11-16 20:28:18 print_freq: 10
+11-16 20:28:18 layers: 16
+11-16 20:28:18 widen_factor: 1
+11-16 20:28:18 droprate: 0.3
+11-16 20:28:18 cuda_device: 0
+11-16 20:28:18 checkpoint_dir: ./checkpoint
+11-16 20:28:18 pretrained: True
+11-16 20:28:18 batch_size: 64
+11-16 20:28:18 num_workers: 0
+11-16 20:28:18 bottleneck: True
+11-16 20:28:18 bottleneck_num: 128
+11-16 20:28:18 last_batch: False
+11-16 20:28:18 hidden_size: 1024
+11-16 20:28:18 trade_off_adversarial: Step
+11-16 20:28:18 lam_adversarial: 1
+11-16 20:28:18 opt: adam
+11-16 20:28:18 lr: 5e-05
+11-16 20:28:18 momentum: 0.9
+11-16 20:28:18 weight_decay: 1e-05
+11-16 20:28:18 lr_scheduler: step
+11-16 20:28:18 gamma: 0.1
+11-16 20:28:18 steps: 150, 250
+11-16 20:28:18 middle_epoch: 15
+11-16 20:28:18 max_epoch: 62
+11-16 20:28:18 print_step: 25
+11-16 20:28:18 inconsistent: UAN
+11-16 20:28:18 model_name: WideResNet_sa
+11-16 20:28:18 th: 0.5
+11-16 20:28:18 input_channels: 22
+11-16 20:28:18 classification_label: eol_class
+11-16 20:28:18 sequence_length: 32
+11-16 20:28:18 cycles_per_file: 5
+11-16 20:28:18 sample_random_state: 42
+11-16 20:28:18 transfer_task: [[0], [1]]
+11-16 20:28:18 source_cathode: ['5Vspinel']
+11-16 20:28:18 target_cathode: ['Li1.2Ni0.3Mn0.6O2', 'Li1.35Ni0.33Mn0.67O2.35']
+11-16 20:28:18 num_classes: 5
+11-16 20:28:18 domain_temperature: 1.0
+11-16 20:28:18 class_temperature: 10.0
+11-16 20:28:18 lambda_src: 0.0
+11-16 20:28:18 lambda_src_decay_patience: 2
+11-16 20:28:18 lambda_src_decay_factor: 0.5
+11-16 20:28:18 lambda_src_min: 0.0
+11-16 20:28:18 lambda_src_warmup: 0
+11-16 20:28:18 improvement_metric: common
+11-16 20:28:18 auto_select: True
+11-16 20:28:18 llm_compare: True
+11-16 20:28:18 llm_backend: openai
+11-16 20:28:18 llm_model: None
+11-16 20:28:18 llm_context: 
+11-16 20:28:18 llm_cfg_inputs: {'text_context': "Dataset: Argonne National Laboratory battery aging time-series with partial cycle windows.\nSource cathodes: (all available); target cathodes: (none specified).\nLabel column 'eol_class' with ~None classes; sequence length 32; 7 channels covering cycle_number, energy_charge, capacity_charge, energy_discharge, capacity_discharge, cycle_start, cycle_duration.", 'numeric_summary': {'dataset': 'Battery_inconsistent', 'sequence_length_requested': 32, 'notes': 'label_inconsistent', 'lr_hint': 0.001, 'dropout_hint': 0.3, 'num_classes_hint': None, 'splits': {}, 'dataset_variant': 'argonne_battery', 'feature_names': ['cycle_number', 'energy_charge', 'capacity_charge', 'energy_discharge', 'capacity_discharge', 'cycle_start', 'cycle_duration'], 'source_cathodes': [], 'target_cathodes': [], 'label_column': 'eol_class'}}
+11-16 20:28:18 llm_cfg: {'architecture': 'cnn_1d_sa', 'model_name': 'cnn_features_1d_sa', 'self_attention': True, 'sngp': True, 'openmax': False, 'use_unknown_head': False, 'bottleneck': 128, 'dropout': 0.3, 'learning_rate': 0.001, 'batch_size': 64, 'lambda_src': 0.0, 'rationale': 'The dataset has short sequences (32 steps) and 7 channels, making a 1-D CNN with self-attention ideal to capture local features and some long-range dependencies. Label inconsistency suggests avoiding openmax or unknown heads to reduce complexity and overfitting risk. Moderate bottleneck and dropout balance capacity and regularization. The learning rate and batch size align with hints for stable training on this battery dataset. Label inconsistency flagged → calibrated heads (SNGP/OpenMax) stay enabled for open-set robustness. Enabled SNGP to stabilise open-set transfer risk detected in metadata.', '_provider': 'openai', '_raw': '{\n  "model_name": "cnn_features_1d_sa",\n  "self_attention": true,\n  "sngp": false,\n  "openmax": false,\n  "use_unknown_head": false,\n  "bottleneck": 128,\n  "dropout": 0.3,\n  "learning_rate": 0.001,\n  "batch_size": 64,\n  "lambda_src": 0.0,\n  "rationale": "The dataset has short sequences (32 steps) and 7 channels, making a 1-D CNN with self-attention ideal to capture local features and some long-range dependencies. Label inconsistency suggests avoiding openmax or unknown heads to reduce complexity and overfitting risk. Moderate bottleneck and dropout balance capacity and regularization. The learning rate and batch size align with hints for stable training on this battery dataset."\n}'}
+11-16 20:28:18 llm_cfg_stamp: 20251116_202238
+11-16 20:28:18 tag: sngp_wrn_sa_20251116_202238
+11-16 20:28:18 pretrained_model_path: ./checkpoint/transfer_WideResNet_sa_spinel5v_to_lirich_1116/best_model.pth
+11-16 20:28:18 dataset_cycle_stats: {'source_train_cycles': 205, 'source_val_cycles': 60, 'source_val_has_holdout': True, 'target_train_cycles': 30, 'target_val_cycles': 20, 'target_val_has_holdout': True, 'source_train_sequences': 41, 'source_val_sequences': 12, 'target_train_sequences': 6, 'target_val_sequences': 4, 'source_train_cells': 5, 'source_val_cells': 2, 'target_train_cells': 5, 'target_val_cells': 3, 'cycles_per_cell_per_cathode': {'source_train': {'5Vspinel': [{'filename': 'batch_B11B_cell_4.h5', 'cycles': 5, 'total_cycles': 216}, {'filename': 'batch_B26U_cell_5.h5', 'cycles': 5, 'total_cycles': 219}, {'filename': 'batch_B26V_cell_3.h5', 'cycles': 5, 'total_cycles': 420}, {'filename': 'batch_B26V_cell_4.h5', 'cycles': 5, 'total_cycles': 420}, {'filename': 'batch_B26V_cell_5.h5', 'cycles': 5, 'total_cycles': 219}, {'filename': 'batch_B26W_cell_1.h5', 'cycles': 5, 'total_cycles': 420}, {'filename': 'batch_B26W_cell_3.h5', 'cycles': 5, 'total_cycles': 420}, {'filename': 'batch_B26W_cell_4.h5', 'cycles': 5, 'total_cycles': 420}, {'filename': 'batch_B26W_cell_5.h5', 'cycles': 5, 'total_cycles': 219}, {'filename': 'batch_B26X_cell_1.h5', 'cycles': 5, 'total_cycles': 420}, {'filename': 'batch_B26X_cell_3.h5', 'cycles': 5, 'total_cycles': 420}, {'filename': 'batch_B26X_cell_4.h5', 'cycles': 5, 'total_cycles': 420}, {'filename': 'batch_B26Y_cell_3.h5', 'cycles': 5, 'total_cycles': 420}, {'filename': 'batch_B26Y_cell_4.h5', 'cycles': 5, 'total_cycles': 420}, {'filename': 'batch_B26Y_cell_5.h5', 'cycles': 5, 'total_cycles': 219}, {'filename': 'batch_B26Z_cell_1.h5', 'cycles': 5, 'total_cycles': 219}, {'filename': 'batch_B26Z_cell_3.h5', 'cycles': 5, 'total_cycles': 219}, {'filename': 'batch_B5A_cell_1.h5', 'cycles': 5, 'total_cycles': 846}, {'filename': 'batch_B5A_cell_5.h5', 'cycles': 5, 'total_cycles': 855}, {'filename': 'batch_B26V_cell_1.h5', 'cycles': 5, 'total_cycles': 420}, {'filename': 'batch_B26T_cell_5.h5', 'cycles': 5, 'total_cycles': 219}, {'filename': 'batch_B26AA_cell_1.h5', 'cycles': 5, 'total_cycles': 219}, {'filename': 'batch_B26T_cell_4.h5', 'cycles': 5, 'total_cycles': 219}, {'filename': 'batch_B26AA_cell_4.h5', 'cycles': 5, 'total_cycles': 219}, {'filename': 'batch_B26K_cell_1.h5', 'cycles': 5, 'total_cycles': 221}, {'filename': 'batch_B26L_cell_1.h5', 'cycles': 5, 'total_cycles': 2028}, {'filename': 'batch_B26N_cell_1.h5', 'cycles': 5, 'total_cycles': 219}, {'filename': 'batch_B26O_cell_1.h5', 'cycles': 5, 'total_cycles': 219}, {'filename': 'batch_B26O_cell_4.h5', 'cycles': 5, 'total_cycles': 219}, {'filename': 'batch_B26O_cell_5.h5', 'cycles': 5, 'total_cycles': 219}, {'filename': 'batch_B26P_cell_3.h5', 'cycles': 5, 'total_cycles': 421}, {'filename': 'batch_B26P_cell_4.h5', 'cycles': 5, 'total_cycles': 420}, {'filename': 'batch_B26Q_cell_3.h5', 'cycles': 5, 'total_cycles': 219}, {'filename': 'batch_B26Q_cell_5.h5', 'cycles': 5, 'total_cycles': 219}, {'filename': 'batch_B26R_cell_1.h5', 'cycles': 5, 'total_cycles': 420}, {'filename': 'batch_B26R_cell_3.h5', 'cycles': 5, 'total_cycles': 420}, {'filename': 'batch_B26R_cell_4.h5', 'cycles': 5, 'total_cycles': 420}, {'filename': 'batch_B26S_cell_3.h5', 'cycles': 5, 'total_cycles': 420}, {'filename': 'batch_B26S_cell_4.h5', 'cycles': 5, 'total_cycles': 420}, {'filename': 'batch_B26S_cell_5.h5', 'cycles': 5, 'total_cycles': 219}, {'filename': 'batch_B5A_cell_7.h5', 'cycles': 5, 'total_cycles': 687}]}, 'source_val': {'5Vspinel': [{'filename': 'batch_B26K_cell_2.h5', 'cycles': 5, 'total_cycles': 221}, {'filename': 'batch_B26L_cell_2.h5', 'cycles': 5, 'total_cycles': 2028}, {'filename': 'batch_B26M_cell_2.h5', 'cycles': 5, 'total_cycles': 219}, {'filename': 'batch_B26P_cell_2.h5', 'cycles': 5, 'total_cycles': 420}, {'filename': 'batch_B26P_cell_6.h5', 'cycles': 5, 'total_cycles': 219}, {'filename': 'batch_B26R_cell_2.h5', 'cycles': 5, 'total_cycles': 420}, {'filename': 'batch_B26T_cell_2.h5', 'cycles': 5, 'total_cycles': 220}, {'filename': 'batch_B26V_cell_2.h5', 'cycles': 5, 'total_cycles': 421}, {'filename': 'batch_B26X_cell_2.h5', 'cycles': 5, 'total_cycles': 420}, {'filename': 'batch_B26Y_cell_2.h5', 'cycles': 5, 'total_cycles': 421}, {'filename': 'batch_B26Z_cell_2.h5', 'cycles': 5, 'total_cycles': 219}, {'filename': 'batch_B5A_cell_2.h5', 'cycles': 5, 'total_cycles': 820}]}, 'target_train': {'Li1.2Ni0.3Mn0.6O2': [{'filename': 'batch_B3A_cell_4.h5', 'cycles': 5, 'total_cycles': 181}, {'filename': 'batch_B3B_cell_2.h5', 'cycles': 5, 'total_cycles': 181}, {'filename': 'batch_B3B_cell_3.h5', 'cycles': 5, 'total_cycles': 180}, {'filename': 'batch_B3B_cell_7.h5', 'cycles': 5, 'total_cycles': 180}], 'Li1.35Ni0.33Mn0.67O2.35': [{'filename': 'batch_B13A_cell_4.h5', 'cycles': 5, 'total_cycles': 169}, {'filename': 'batch_B13A_cell_8.h5', 'cycles': 5, 'total_cycles': 218}]}, 'target_val': {'Li1.2Ni0.3Mn0.6O2': [{'filename': 'batch_B3B_cell_1.h5', 'cycles': 5, 'total_cycles': 181}, {'filename': 'batch_B3B_cell_5.h5', 'cycles': 5, 'total_cycles': 180}], 'Li1.35Ni0.33Mn0.67O2.35': [{'filename': 'batch_B13A_cell_13.h5', 'cycles': 5, 'total_cycles': 218}, {'filename': 'batch_B8A_cell_1.h5', 'cycles': 5, 'total_cycles': 214}]}}}
+11-16 20:28:18 input_size: 32
+11-16 20:28:18 reinit_head: False
+11-16 20:28:18 using 1 cpu
+11-16 20:28:18 Reducing learning rate to 5e-05 for 6 target samples
+11-16 20:28:18 Freezing early layers of backbone for 6 target samples
+11-16 20:28:18 Exception in callback functools.partial(<bound method OutStream._flush of <spyder_kernels.console.outstream.TTYOutStream object at 0x172cdca90>>)
+Traceback (most recent call last):
+  File "/Users/moondiab/opt/anaconda3/envs/venv/lib/python3.11/site-packages/jupyter_client/session.py", line 100, in json_packer
+    ).encode("utf8", errors="surrogateescape")
+      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+UnicodeEncodeError: 'utf-8' codec can't encode characters in position 28-29: surrogates not allowed
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/Users/moondiab/opt/anaconda3/envs/venv/lib/python3.11/site-packages/tornado/ioloop.py", line 750, in _run_callback
+    ret = callback()
+          ^^^^^^^^^^
+  File "/Users/moondiab/opt/anaconda3/envs/venv/lib/python3.11/site-packages/ipykernel/iostream.py", line 649, in _flush
+    self.session.send(
+  File "/Users/moondiab/opt/anaconda3/envs/venv/lib/python3.11/site-packages/jupyter_client/session.py", line 852, in send
+    to_send = self.serialize(msg, ident)
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/moondiab/opt/anaconda3/envs/venv/lib/python3.11/site-packages/jupyter_client/session.py", line 721, in serialize
+    content = self.pack(content)
+              ^^^^^^^^^^^^^^^^^^
+  File "/Users/moondiab/opt/anaconda3/envs/venv/lib/python3.11/site-packages/jupyter_client/session.py", line 108, in json_packer
+    ).encode("utf8", errors="surrogateescape")
+      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+UnicodeEncodeError: 'utf-8' codec can't encode characters in position 28-29: surrogates not allowed
+11-16 21:38:25 data_name: Battery_inconsistent
+11-16 21:38:25 data_dir: ./my_datasets/Battery
+11-16 21:38:25 csv: ./my_datasets/Battery/battery_cycles_labeled.csv
+11-16 21:38:25 normlizetype: mean-std
+11-16 21:38:25 method: sngp
+11-16 21:38:25 gp_hidden_dim: 2048
+11-16 21:38:25 spectral_norm_bound: 0.95
+11-16 21:38:25 n_power_iterations: 1
+11-16 21:38:25 nesterov: True
+11-16 21:38:25 print_freq: 10
+11-16 21:38:25 layers: 16
+11-16 21:38:25 widen_factor: 1
+11-16 21:38:25 droprate: 0.3
+11-16 21:38:25 cuda_device: 0
+11-16 21:38:25 checkpoint_dir: ./checkpoint
+11-16 21:38:25 pretrained: True
+11-16 21:38:25 batch_size: 64
+11-16 21:38:25 num_workers: 0
+11-16 21:38:25 bottleneck: True
+11-16 21:38:25 bottleneck_num: 128
+11-16 21:38:25 last_batch: False
+11-16 21:38:25 hidden_size: 1024
+11-16 21:38:25 trade_off_adversarial: Step
+11-16 21:38:25 lam_adversarial: 1
+11-16 21:38:25 opt: adam
+11-16 21:38:25 lr: 5e-05
+11-16 21:38:25 momentum: 0.9
+11-16 21:38:25 weight_decay: 1e-05
+11-16 21:38:25 lr_scheduler: step
+11-16 21:38:25 gamma: 0.1
+11-16 21:38:25 steps: 150, 250
+11-16 21:38:25 middle_epoch: 15
+11-16 21:38:25 max_epoch: 62
+11-16 21:38:25 print_step: 25
+11-16 21:38:25 inconsistent: UAN
+11-16 21:38:25 model_name: WideResNet_sa
+11-16 21:38:25 th: 0.5
+11-16 21:38:25 input_channels: 21
+11-16 21:38:25 classification_label: eol_class
+11-16 21:38:25 sequence_length: 32
+11-16 21:38:25 cycles_per_file: 5
+11-16 21:38:25 sample_random_state: 42
+11-16 21:38:25 transfer_task: [[0], [1]]
+11-16 21:38:25 source_cathode: ['5Vspinel']
+11-16 21:38:25 target_cathode: ['Li1.2Ni0.3Mn0.6O2', 'Li1.35Ni0.33Mn0.67O2.35']
+11-16 21:38:25 num_classes: 5
+11-16 21:38:25 domain_temperature: 1.0
+11-16 21:38:25 class_temperature: 10.0
+11-16 21:38:25 lambda_src: 0.0
+11-16 21:38:25 lambda_src_decay_patience: 2
+11-16 21:38:25 lambda_src_decay_factor: 0.5
+11-16 21:38:25 lambda_src_min: 0.0
+11-16 21:38:25 lambda_src_warmup: 0
+11-16 21:38:25 improvement_metric: common
+11-16 21:38:25 auto_select: True
+11-16 21:38:25 llm_compare: True
+11-16 21:38:25 llm_backend: openai
+11-16 21:38:25 llm_model: None
+11-16 21:38:25 llm_context: 
+11-16 21:38:25 llm_cfg_inputs: {'text_context': "Dataset: Argonne National Laboratory battery aging time-series with partial cycle windows.\nSource cathodes: (all available); target cathodes: (none specified).\nLabel column 'eol_class' with ~None classes; sequence length 32; 7 channels covering cycle_number, energy_charge, capacity_charge, energy_discharge, capacity_discharge, cycle_start, cycle_duration.", 'numeric_summary': {'dataset': 'Battery_inconsistent', 'sequence_length_requested': 32, 'notes': 'label_inconsistent', 'lr_hint': 0.001, 'dropout_hint': 0.3, 'num_classes_hint': None, 'splits': {}, 'dataset_variant': 'argonne_battery', 'feature_names': ['cycle_number', 'energy_charge', 'capacity_charge', 'energy_discharge', 'capacity_discharge', 'cycle_start', 'cycle_duration'], 'source_cathodes': [], 'target_cathodes': [], 'label_column': 'eol_class'}}
+11-16 21:38:25 llm_cfg: {'architecture': 'cnn_1d_sa', 'model_name': 'cnn_features_1d_sa', 'self_attention': True, 'sngp': True, 'openmax': False, 'use_unknown_head': False, 'bottleneck': 128, 'dropout': 0.3, 'learning_rate': 0.001, 'batch_size': 64, 'lambda_src': 0.0, 'rationale': 'The dataset has short sequences (32 steps) and 7 channels, suitable for a 1-D CNN with self-attention to capture local and some longer-range dependencies. Label inconsistency suggests avoiding openmax or unknown heads to reduce complexity and tuning overhead. Dropout at 0.3 balances overfitting risk given the small sequence length and label noise. Batch size 64 and learning rate 0.001 align with typical stable training for this domain. Label inconsistency flagged → calibrated heads (SNGP/OpenMax) stay enabled for open-set robustness. Enabled SNGP to stabilise open-set transfer risk detected in metadata.', '_provider': 'openai', '_raw': '{\n  "model_name": "cnn_features_1d_sa",\n  "self_attention": true,\n  "sngp": false,\n  "openmax": false,\n  "use_unknown_head": false,\n  "bottleneck": 128,\n  "dropout": 0.3,\n  "learning_rate": 0.001,\n  "batch_size": 64,\n  "lambda_src": 0.0,\n  "rationale": "The dataset has short sequences (32 steps) and 7 channels, suitable for a 1-D CNN with self-attention to capture local and some longer-range dependencies. Label inconsistency suggests avoiding openmax or unknown heads to reduce complexity and tuning overhead. Dropout at 0.3 balances overfitting risk given the small sequence length and label noise. Batch size 64 and learning rate 0.001 align with typical stable training for this domain."\n}'}
+11-16 21:38:25 llm_cfg_stamp: 20251116_213306
+11-16 21:38:25 tag: sngp_wrn_sa_20251116_213306
+11-16 21:38:25 pretrained_model_path: ./checkpoint/transfer_WideResNet_sa_spinel5v_to_lirich_1116/best_model.pth
+11-16 21:38:25 dataset_cycle_stats: {'source_train_cycles': 205, 'source_val_cycles': 60, 'source_val_has_holdout': True, 'target_train_cycles': 30, 'target_val_cycles': 20, 'target_val_has_holdout': True, 'source_train_sequences': 41, 'source_val_sequences': 12, 'target_train_sequences': 6, 'target_val_sequences': 4, 'source_train_cells': 5, 'source_val_cells': 2, 'target_train_cells': 5, 'target_val_cells': 3, 'cycles_per_cell_per_cathode': {'source_train': {'5Vspinel': [{'filename': 'batch_B11B_cell_4.h5', 'cycles': 5, 'total_cycles': 216}, {'filename': 'batch_B26U_cell_5.h5', 'cycles': 5, 'total_cycles': 219}, {'filename': 'batch_B26V_cell_3.h5', 'cycles': 5, 'total_cycles': 420}, {'filename': 'batch_B26V_cell_4.h5', 'cycles': 5, 'total_cycles': 420}, {'filename': 'batch_B26V_cell_5.h5', 'cycles': 5, 'total_cycles': 219}, {'filename': 'batch_B26W_cell_1.h5', 'cycles': 5, 'total_cycles': 420}, {'filename': 'batch_B26W_cell_3.h5', 'cycles': 5, 'total_cycles': 420}, {'filename': 'batch_B26W_cell_4.h5', 'cycles': 5, 'total_cycles': 420}, {'filename': 'batch_B26W_cell_5.h5', 'cycles': 5, 'total_cycles': 219}, {'filename': 'batch_B26X_cell_1.h5', 'cycles': 5, 'total_cycles': 420}, {'filename': 'batch_B26X_cell_3.h5', 'cycles': 5, 'total_cycles': 420}, {'filename': 'batch_B26X_cell_4.h5', 'cycles': 5, 'total_cycles': 420}, {'filename': 'batch_B26Y_cell_3.h5', 'cycles': 5, 'total_cycles': 420}, {'filename': 'batch_B26Y_cell_4.h5', 'cycles': 5, 'total_cycles': 420}, {'filename': 'batch_B26Y_cell_5.h5', 'cycles': 5, 'total_cycles': 219}, {'filename': 'batch_B26Z_cell_1.h5', 'cycles': 5, 'total_cycles': 219}, {'filename': 'batch_B26Z_cell_3.h5', 'cycles': 5, 'total_cycles': 219}, {'filename': 'batch_B5A_cell_1.h5', 'cycles': 5, 'total_cycles': 846}, {'filename': 'batch_B5A_cell_5.h5', 'cycles': 5, 'total_cycles': 855}, {'filename': 'batch_B26V_cell_1.h5', 'cycles': 5, 'total_cycles': 420}, {'filename': 'batch_B26T_cell_5.h5', 'cycles': 5, 'total_cycles': 219}, {'filename': 'batch_B26AA_cell_1.h5', 'cycles': 5, 'total_cycles': 219}, {'filename': 'batch_B26T_cell_4.h5', 'cycles': 5, 'total_cycles': 219}, {'filename': 'batch_B26AA_cell_4.h5', 'cycles': 5, 'total_cycles': 219}, {'filename': 'batch_B26K_cell_1.h5', 'cycles': 5, 'total_cycles': 221}, {'filename': 'batch_B26L_cell_1.h5', 'cycles': 5, 'total_cycles': 2028}, {'filename': 'batch_B26N_cell_1.h5', 'cycles': 5, 'total_cycles': 219}, {'filename': 'batch_B26O_cell_1.h5', 'cycles': 5, 'total_cycles': 219}, {'filename': 'batch_B26O_cell_4.h5', 'cycles': 5, 'total_cycles': 219}, {'filename': 'batch_B26O_cell_5.h5', 'cycles': 5, 'total_cycles': 219}, {'filename': 'batch_B26P_cell_3.h5', 'cycles': 5, 'total_cycles': 421}, {'filename': 'batch_B26P_cell_4.h5', 'cycles': 5, 'total_cycles': 420}, {'filename': 'batch_B26Q_cell_3.h5', 'cycles': 5, 'total_cycles': 219}, {'filename': 'batch_B26Q_cell_5.h5', 'cycles': 5, 'total_cycles': 219}, {'filename': 'batch_B26R_cell_1.h5', 'cycles': 5, 'total_cycles': 420}, {'filename': 'batch_B26R_cell_3.h5', 'cycles': 5, 'total_cycles': 420}, {'filename': 'batch_B26R_cell_4.h5', 'cycles': 5, 'total_cycles': 420}, {'filename': 'batch_B26S_cell_3.h5', 'cycles': 5, 'total_cycles': 420}, {'filename': 'batch_B26S_cell_4.h5', 'cycles': 5, 'total_cycles': 420}, {'filename': 'batch_B26S_cell_5.h5', 'cycles': 5, 'total_cycles': 219}, {'filename': 'batch_B5A_cell_7.h5', 'cycles': 5, 'total_cycles': 687}]}, 'source_val': {'5Vspinel': [{'filename': 'batch_B26K_cell_2.h5', 'cycles': 5, 'total_cycles': 221}, {'filename': 'batch_B26L_cell_2.h5', 'cycles': 5, 'total_cycles': 2028}, {'filename': 'batch_B26M_cell_2.h5', 'cycles': 5, 'total_cycles': 219}, {'filename': 'batch_B26P_cell_2.h5', 'cycles': 5, 'total_cycles': 420}, {'filename': 'batch_B26P_cell_6.h5', 'cycles': 5, 'total_cycles': 219}, {'filename': 'batch_B26R_cell_2.h5', 'cycles': 5, 'total_cycles': 420}, {'filename': 'batch_B26T_cell_2.h5', 'cycles': 5, 'total_cycles': 220}, {'filename': 'batch_B26V_cell_2.h5', 'cycles': 5, 'total_cycles': 421}, {'filename': 'batch_B26X_cell_2.h5', 'cycles': 5, 'total_cycles': 420}, {'filename': 'batch_B26Y_cell_2.h5', 'cycles': 5, 'total_cycles': 421}, {'filename': 'batch_B26Z_cell_2.h5', 'cycles': 5, 'total_cycles': 219}, {'filename': 'batch_B5A_cell_2.h5', 'cycles': 5, 'total_cycles': 820}]}, 'target_train': {'Li1.2Ni0.3Mn0.6O2': [{'filename': 'batch_B3A_cell_4.h5', 'cycles': 5, 'total_cycles': 181}, {'filename': 'batch_B3B_cell_2.h5', 'cycles': 5, 'total_cycles': 181}, {'filename': 'batch_B3B_cell_3.h5', 'cycles': 5, 'total_cycles': 180}, {'filename': 'batch_B3B_cell_7.h5', 'cycles': 5, 'total_cycles': 180}], 'Li1.35Ni0.33Mn0.67O2.35': [{'filename': 'batch_B13A_cell_4.h5', 'cycles': 5, 'total_cycles': 169}, {'filename': 'batch_B13A_cell_8.h5', 'cycles': 5, 'total_cycles': 218}]}, 'target_val': {'Li1.2Ni0.3Mn0.6O2': [{'filename': 'batch_B3B_cell_1.h5', 'cycles': 5, 'total_cycles': 181}, {'filename': 'batch_B3B_cell_5.h5', 'cycles': 5, 'total_cycles': 180}], 'Li1.35Ni0.33Mn0.67O2.35': [{'filename': 'batch_B13A_cell_13.h5', 'cycles': 5, 'total_cycles': 218}, {'filename': 'batch_B8A_cell_1.h5', 'cycles': 5, 'total_cycles': 214}]}}, 'feature_columns': ('cycle_number', 'energy_charge', 'capacity_charge', 'energy_discharge', 'capacity_discharge', 'cycle_start', 'cycle_duration', 'capacity_retention', 'energy_retention', 'delta_capacity_discharge', 'delta_energy_discharge', 'delta_cycle_duration', 'rolling_capacity_mean', 'rolling_capacity_std', 'rolling_energy_mean', 'rolling_energy_std', 'rolling_duration_mean', 'duration_ratio', 'coulombic_efficiency', 'energy_efficiency', 'time_per_capacity')}
+11-16 21:38:25 input_size: 32
+11-16 21:38:25 reinit_head: False
+11-16 21:38:25 using 1 cpu
+11-16 21:38:25 Reducing learning rate to 5e-05 for 6 target samples
+11-16 21:38:25 Freezing early layers of backbone for 6 target samples
+11-16 21:38:25 Exception in callback functools.partial(<bound method OutStream._flush of <spyder_kernels.console.outstream.TTYOutStream object at 0x172cdca90>>)
+Traceback (most recent call last):
+  File "/Users/moondiab/opt/anaconda3/envs/venv/lib/python3.11/site-packages/jupyter_client/session.py", line 100, in json_packer
+    ).encode("utf8", errors="surrogateescape")
+      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+UnicodeEncodeError: 'utf-8' codec can't encode characters in position 137-138: surrogates not allowed
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/Users/moondiab/opt/anaconda3/envs/venv/lib/python3.11/site-packages/tornado/ioloop.py", line 750, in _run_callback
+    ret = callback()
+          ^^^^^^^^^^
+  File "/Users/moondiab/opt/anaconda3/envs/venv/lib/python3.11/site-packages/ipykernel/iostream.py", line 649, in _flush
+    self.session.send(
+  File "/Users/moondiab/opt/anaconda3/envs/venv/lib/python3.11/site-packages/jupyter_client/session.py", line 852, in send
+    to_send = self.serialize(msg, ident)
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/moondiab/opt/anaconda3/envs/venv/lib/python3.11/site-packages/jupyter_client/session.py", line 721, in serialize
+    content = self.pack(content)
+              ^^^^^^^^^^^^^^^^^^
+  File "/Users/moondiab/opt/anaconda3/envs/venv/lib/python3.11/site-packages/jupyter_client/session.py", line 108, in json_packer
+    ).encode("utf8", errors="surrogateescape")
+      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+UnicodeEncodeError: 'utf-8' codec can't encode characters in position 137-138: surrogates not allowed
+11-16 22:26:02 data_name: Battery_inconsistent
+11-16 22:26:02 data_dir: ./my_datasets/Battery
+11-16 22:26:02 csv: ./my_datasets/Battery/battery_cycles_labeled.csv
+11-16 22:26:02 normlizetype: mean-std
+11-16 22:26:02 method: sngp
+11-16 22:26:02 gp_hidden_dim: 2048
+11-16 22:26:02 spectral_norm_bound: 0.95
+11-16 22:26:02 n_power_iterations: 1
+11-16 22:26:02 nesterov: True
+11-16 22:26:02 print_freq: 10
+11-16 22:26:02 layers: 16
+11-16 22:26:02 widen_factor: 1
+11-16 22:26:02 droprate: 0.3
+11-16 22:26:02 cuda_device: 0
+11-16 22:26:02 checkpoint_dir: ./checkpoint
+11-16 22:26:02 pretrained: True
+11-16 22:26:02 batch_size: 64
+11-16 22:26:02 num_workers: 0
+11-16 22:26:02 bottleneck: True
+11-16 22:26:02 bottleneck_num: 128
+11-16 22:26:02 last_batch: False
+11-16 22:26:02 hidden_size: 1024
+11-16 22:26:02 trade_off_adversarial: Step
+11-16 22:26:02 lam_adversarial: 1
+11-16 22:26:02 opt: adam
+11-16 22:26:02 lr: 5e-05
+11-16 22:26:02 momentum: 0.9
+11-16 22:26:02 weight_decay: 1e-05
+11-16 22:26:02 lr_scheduler: step
+11-16 22:26:02 gamma: 0.1
+11-16 22:26:02 steps: 150, 250
+11-16 22:26:02 middle_epoch: 15
+11-16 22:26:02 max_epoch: 62
+11-16 22:26:02 print_step: 25
+11-16 22:26:02 inconsistent: UAN
+11-16 22:26:02 model_name: WideResNet_sa
+11-16 22:26:02 th: 0.5
+11-16 22:26:02 input_channels: 21
+11-16 22:26:02 classification_label: eol_class
+11-16 22:26:02 sequence_length: 32
+11-16 22:26:02 cycles_per_file: 5
+11-16 22:26:02 sample_random_state: 42
+11-16 22:26:02 transfer_task: [[0], [1]]
+11-16 22:26:02 source_cathode: ['5Vspinel']
+11-16 22:26:02 target_cathode: ['Li1.2Ni0.3Mn0.6O2', 'Li1.35Ni0.33Mn0.67O2.35']
+11-16 22:26:02 num_classes: 5
+11-16 22:26:02 domain_temperature: 1.0
+11-16 22:26:02 class_temperature: 10.0
+11-16 22:26:02 lambda_src: 0.0
+11-16 22:26:02 lambda_src_decay_patience: 2
+11-16 22:26:02 lambda_src_decay_factor: 0.5
+11-16 22:26:02 lambda_src_min: 0.0
+11-16 22:26:02 lambda_src_warmup: 0
+11-16 22:26:02 improvement_metric: common
+11-16 22:26:02 auto_select: True
+11-16 22:26:02 llm_compare: True
+11-16 22:26:02 llm_backend: openai
+11-16 22:26:02 llm_model: None
+11-16 22:26:02 llm_context: 
+11-16 22:26:02 llm_cfg_inputs: {'text_context': "Dataset: Argonne National Laboratory battery aging time-series with partial cycle windows.\nSource cathodes: (all available); target cathodes: (none specified).\nLabel column 'eol_class' with ~None classes; sequence length 32; 7 channels covering cycle_number, energy_charge, capacity_charge, energy_discharge, capacity_discharge, cycle_start, cycle_duration.", 'numeric_summary': {'dataset': 'Battery_inconsistent', 'sequence_length_requested': 32, 'notes': 'label_inconsistent', 'lr_hint': 0.001, 'dropout_hint': 0.3, 'num_classes_hint': None, 'splits': {}, 'dataset_variant': 'argonne_battery', 'feature_names': ['cycle_number', 'energy_charge', 'capacity_charge', 'energy_discharge', 'capacity_discharge', 'cycle_start', 'cycle_duration'], 'source_cathodes': [], 'target_cathodes': [], 'label_column': 'eol_class'}}
+11-16 22:26:02 llm_cfg: {'architecture': 'cnn_1d_sa', 'model_name': 'cnn_features_1d_sa', 'self_attention': True, 'sngp': True, 'openmax': False, 'use_unknown_head': False, 'bottleneck': 128, 'dropout': 0.3, 'learning_rate': 0.001, 'batch_size': 64, 'lambda_src': 0.0, 'rationale': 'The dataset has short sequences (32 steps) and 7 channels, making a 1-D CNN with self-attention suitable to capture local and some longer-range dependencies without excessive compute. Label inconsistency suggests avoiding openmax or unknown heads to reduce tuning complexity. Dropout at 0.3 balances overfitting risk due to label noise. Batch size 64 and learning rate 0.001 align with hints and stable training. Label inconsistency flagged → calibrated heads (SNGP/OpenMax) stay enabled for open-set robustness. Enabled SNGP to stabilise open-set transfer risk detected in metadata.', '_provider': 'openai', '_raw': '{\n  "model_name": "cnn_features_1d_sa",\n  "self_attention": true,\n  "sngp": false,\n  "openmax": false,\n  "use_unknown_head": false,\n  "bottleneck": 128,\n  "dropout": 0.3,\n  "learning_rate": 0.001,\n  "batch_size": 64,\n  "lambda_src": 0.0,\n  "rationale": "The dataset has short sequences (32 steps) and 7 channels, making a 1-D CNN with self-attention suitable to capture local and some longer-range dependencies without excessive compute. Label inconsistency suggests avoiding openmax or unknown heads to reduce tuning complexity. Dropout at 0.3 balances overfitting risk due to label noise. Batch size 64 and learning rate 0.001 align with hints and stable training."\n}'}
+11-16 22:26:02 llm_cfg_stamp: 20251116_222040
+11-16 22:26:02 tag: sngp_wrn_sa_20251116_222040
+11-16 22:26:02 pretrained_model_path: ./checkpoint/transfer_WideResNet_sa_spinel5v_to_lirich_1116/best_model.pth
+11-16 22:26:02 dataset_cycle_stats: {'source_train_cycles': 205, 'source_val_cycles': 60, 'source_val_has_holdout': True, 'target_train_cycles': 30, 'target_val_cycles': 20, 'target_val_has_holdout': True, 'source_train_sequences': 41, 'source_val_sequences': 12, 'target_train_sequences': 6, 'target_val_sequences': 4, 'source_train_cells': 5, 'source_val_cells': 2, 'target_train_cells': 5, 'target_val_cells': 3, 'cycles_per_cell_per_cathode': {'source_train': {'5Vspinel': [{'filename': 'batch_B11B_cell_4.h5', 'cycles': 5, 'total_cycles': 216}, {'filename': 'batch_B26U_cell_5.h5', 'cycles': 5, 'total_cycles': 219}, {'filename': 'batch_B26V_cell_3.h5', 'cycles': 5, 'total_cycles': 420}, {'filename': 'batch_B26V_cell_4.h5', 'cycles': 5, 'total_cycles': 420}, {'filename': 'batch_B26V_cell_5.h5', 'cycles': 5, 'total_cycles': 219}, {'filename': 'batch_B26W_cell_1.h5', 'cycles': 5, 'total_cycles': 420}, {'filename': 'batch_B26W_cell_3.h5', 'cycles': 5, 'total_cycles': 420}, {'filename': 'batch_B26W_cell_4.h5', 'cycles': 5, 'total_cycles': 420}, {'filename': 'batch_B26W_cell_5.h5', 'cycles': 5, 'total_cycles': 219}, {'filename': 'batch_B26X_cell_1.h5', 'cycles': 5, 'total_cycles': 420}, {'filename': 'batch_B26X_cell_3.h5', 'cycles': 5, 'total_cycles': 420}, {'filename': 'batch_B26X_cell_4.h5', 'cycles': 5, 'total_cycles': 420}, {'filename': 'batch_B26Y_cell_3.h5', 'cycles': 5, 'total_cycles': 420}, {'filename': 'batch_B26Y_cell_4.h5', 'cycles': 5, 'total_cycles': 420}, {'filename': 'batch_B26Y_cell_5.h5', 'cycles': 5, 'total_cycles': 219}, {'filename': 'batch_B26Z_cell_1.h5', 'cycles': 5, 'total_cycles': 219}, {'filename': 'batch_B26Z_cell_3.h5', 'cycles': 5, 'total_cycles': 219}, {'filename': 'batch_B5A_cell_1.h5', 'cycles': 5, 'total_cycles': 846}, {'filename': 'batch_B5A_cell_5.h5', 'cycles': 5, 'total_cycles': 855}, {'filename': 'batch_B26V_cell_1.h5', 'cycles': 5, 'total_cycles': 420}, {'filename': 'batch_B26T_cell_5.h5', 'cycles': 5, 'total_cycles': 219}, {'filename': 'batch_B26AA_cell_1.h5', 'cycles': 5, 'total_cycles': 219}, {'filename': 'batch_B26T_cell_4.h5', 'cycles': 5, 'total_cycles': 219}, {'filename': 'batch_B26AA_cell_4.h5', 'cycles': 5, 'total_cycles': 219}, {'filename': 'batch_B26K_cell_1.h5', 'cycles': 5, 'total_cycles': 221}, {'filename': 'batch_B26L_cell_1.h5', 'cycles': 5, 'total_cycles': 2028}, {'filename': 'batch_B26N_cell_1.h5', 'cycles': 5, 'total_cycles': 219}, {'filename': 'batch_B26O_cell_1.h5', 'cycles': 5, 'total_cycles': 219}, {'filename': 'batch_B26O_cell_4.h5', 'cycles': 5, 'total_cycles': 219}, {'filename': 'batch_B26O_cell_5.h5', 'cycles': 5, 'total_cycles': 219}, {'filename': 'batch_B26P_cell_3.h5', 'cycles': 5, 'total_cycles': 421}, {'filename': 'batch_B26P_cell_4.h5', 'cycles': 5, 'total_cycles': 420}, {'filename': 'batch_B26Q_cell_3.h5', 'cycles': 5, 'total_cycles': 219}, {'filename': 'batch_B26Q_cell_5.h5', 'cycles': 5, 'total_cycles': 219}, {'filename': 'batch_B26R_cell_1.h5', 'cycles': 5, 'total_cycles': 420}, {'filename': 'batch_B26R_cell_3.h5', 'cycles': 5, 'total_cycles': 420}, {'filename': 'batch_B26R_cell_4.h5', 'cycles': 5, 'total_cycles': 420}, {'filename': 'batch_B26S_cell_3.h5', 'cycles': 5, 'total_cycles': 420}, {'filename': 'batch_B26S_cell_4.h5', 'cycles': 5, 'total_cycles': 420}, {'filename': 'batch_B26S_cell_5.h5', 'cycles': 5, 'total_cycles': 219}, {'filename': 'batch_B5A_cell_7.h5', 'cycles': 5, 'total_cycles': 687}]}, 'source_val': {'5Vspinel': [{'filename': 'batch_B26K_cell_2.h5', 'cycles': 5, 'total_cycles': 221}, {'filename': 'batch_B26L_cell_2.h5', 'cycles': 5, 'total_cycles': 2028}, {'filename': 'batch_B26M_cell_2.h5', 'cycles': 5, 'total_cycles': 219}, {'filename': 'batch_B26P_cell_2.h5', 'cycles': 5, 'total_cycles': 420}, {'filename': 'batch_B26P_cell_6.h5', 'cycles': 5, 'total_cycles': 219}, {'filename': 'batch_B26R_cell_2.h5', 'cycles': 5, 'total_cycles': 420}, {'filename': 'batch_B26T_cell_2.h5', 'cycles': 5, 'total_cycles': 220}, {'filename': 'batch_B26V_cell_2.h5', 'cycles': 5, 'total_cycles': 421}, {'filename': 'batch_B26X_cell_2.h5', 'cycles': 5, 'total_cycles': 420}, {'filename': 'batch_B26Y_cell_2.h5', 'cycles': 5, 'total_cycles': 421}, {'filename': 'batch_B26Z_cell_2.h5', 'cycles': 5, 'total_cycles': 219}, {'filename': 'batch_B5A_cell_2.h5', 'cycles': 5, 'total_cycles': 820}]}, 'target_train': {'Li1.2Ni0.3Mn0.6O2': [{'filename': 'batch_B3A_cell_4.h5', 'cycles': 5, 'total_cycles': 181}, {'filename': 'batch_B3B_cell_2.h5', 'cycles': 5, 'total_cycles': 181}, {'filename': 'batch_B3B_cell_3.h5', 'cycles': 5, 'total_cycles': 180}, {'filename': 'batch_B3B_cell_7.h5', 'cycles': 5, 'total_cycles': 180}], 'Li1.35Ni0.33Mn0.67O2.35': [{'filename': 'batch_B13A_cell_4.h5', 'cycles': 5, 'total_cycles': 169}, {'filename': 'batch_B13A_cell_8.h5', 'cycles': 5, 'total_cycles': 218}]}, 'target_val': {'Li1.2Ni0.3Mn0.6O2': [{'filename': 'batch_B3B_cell_1.h5', 'cycles': 5, 'total_cycles': 181}, {'filename': 'batch_B3B_cell_5.h5', 'cycles': 5, 'total_cycles': 180}], 'Li1.35Ni0.33Mn0.67O2.35': [{'filename': 'batch_B13A_cell_13.h5', 'cycles': 5, 'total_cycles': 218}, {'filename': 'batch_B8A_cell_1.h5', 'cycles': 5, 'total_cycles': 214}]}}, 'feature_columns': ('cycle_number', 'energy_charge', 'capacity_charge', 'energy_discharge', 'capacity_discharge', 'cycle_start', 'cycle_duration', 'capacity_retention', 'energy_retention', 'delta_capacity_discharge', 'delta_energy_discharge', 'delta_cycle_duration', 'rolling_capacity_mean', 'rolling_capacity_std', 'rolling_energy_mean', 'rolling_energy_std', 'rolling_duration_mean', 'duration_ratio', 'coulombic_efficiency', 'energy_efficiency', 'time_per_capacity')}
+11-16 22:26:02 input_size: 32
+11-16 22:26:02 reinit_head: False
+11-16 22:26:02 using 1 cpu
+11-16 22:26:02 Reducing learning rate to 5e-05 for 6 target samples
+11-16 22:26:02 Freezing early layers of backbone for 6 target samples
+11-16 22:26:02 Exception in callback functools.partial(<bound method OutStream._flush of <spyder_kernels.console.outstream.TTYOutStream object at 0x172cdca90>>)
+Traceback (most recent call last):
+  File "/Users/moondiab/opt/anaconda3/envs/venv/lib/python3.11/site-packages/jupyter_client/session.py", line 100, in json_packer
+    ).encode("utf8", errors="surrogateescape")
+      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+UnicodeEncodeError: 'utf-8' codec can't encode characters in position 1173-1174: surrogates not allowed
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/Users/moondiab/opt/anaconda3/envs/venv/lib/python3.11/site-packages/tornado/ioloop.py", line 750, in _run_callback
+    ret = callback()
+          ^^^^^^^^^^
+  File "/Users/moondiab/opt/anaconda3/envs/venv/lib/python3.11/site-packages/ipykernel/iostream.py", line 649, in _flush
+    self.session.send(
+  File "/Users/moondiab/opt/anaconda3/envs/venv/lib/python3.11/site-packages/jupyter_client/session.py", line 852, in send
+    to_send = self.serialize(msg, ident)
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/moondiab/opt/anaconda3/envs/venv/lib/python3.11/site-packages/jupyter_client/session.py", line 721, in serialize
+    content = self.pack(content)
+              ^^^^^^^^^^^^^^^^^^
+  File "/Users/moondiab/opt/anaconda3/envs/venv/lib/python3.11/site-packages/jupyter_client/session.py", line 108, in json_packer
+    ).encode("utf8", errors="surrogateescape")
+      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+UnicodeEncodeError: 'utf-8' codec can't encode characters in position 1173-1174: surrogates not allowed
+11-16 23:00:22 data_name: Battery_inconsistent
+11-16 23:00:22 data_dir: ./my_datasets/Battery
+11-16 23:00:22 csv: ./my_datasets/Battery/battery_cycles_labeled.csv
+11-16 23:00:22 normlizetype: mean-std
+11-16 23:00:22 method: sngp
+11-16 23:00:22 gp_hidden_dim: 2048
+11-16 23:00:22 spectral_norm_bound: 0.95
+11-16 23:00:22 n_power_iterations: 1
+11-16 23:00:22 nesterov: True
+11-16 23:00:22 print_freq: 10
+11-16 23:00:22 layers: 16
+11-16 23:00:22 widen_factor: 1
+11-16 23:00:22 droprate: 0.3
+11-16 23:00:22 cuda_device: 0
+11-16 23:00:22 checkpoint_dir: ./checkpoint
+11-16 23:00:22 pretrained: True
+11-16 23:00:22 batch_size: 64
+11-16 23:00:22 num_workers: 0
+11-16 23:00:22 bottleneck: True
+11-16 23:00:22 bottleneck_num: 128
+11-16 23:00:22 last_batch: False
+11-16 23:00:22 hidden_size: 1024
+11-16 23:00:22 trade_off_adversarial: Step
+11-16 23:00:22 lam_adversarial: 1
+11-16 23:00:22 opt: adam
+11-16 23:00:22 lr: 5e-05
+11-16 23:00:22 momentum: 0.9
+11-16 23:00:22 weight_decay: 1e-05
+11-16 23:00:22 lr_scheduler: step
+11-16 23:00:22 gamma: 0.1
+11-16 23:00:22 steps: 150, 250
+11-16 23:00:22 middle_epoch: 15
+11-16 23:00:22 max_epoch: 62
+11-16 23:00:22 print_step: 25
+11-16 23:00:22 inconsistent: UAN
+11-16 23:00:22 model_name: WideResNet_sa
+11-16 23:00:22 th: 0.5
+11-16 23:00:22 input_channels: 21
+11-16 23:00:22 classification_label: eol_class
+11-16 23:00:22 sequence_length: 32
+11-16 23:00:22 cycles_per_file: 30
+11-16 23:00:22 sample_random_state: 42
+11-16 23:00:22 transfer_task: [[0], [1]]
+11-16 23:00:22 source_cathode: ['5Vspinel']
+11-16 23:00:22 target_cathode: ['Li1.2Ni0.3Mn0.6O2', 'Li1.35Ni0.33Mn0.67O2.35']
+11-16 23:00:22 num_classes: 5
+11-16 23:00:22 domain_temperature: 1.0
+11-16 23:00:22 class_temperature: 10.0
+11-16 23:00:22 lambda_src: 0.0
+11-16 23:00:22 lambda_src_decay_patience: 2
+11-16 23:00:22 lambda_src_decay_factor: 0.5
+11-16 23:00:22 lambda_src_min: 0.0
+11-16 23:00:22 lambda_src_warmup: 0
+11-16 23:00:22 improvement_metric: common
+11-16 23:00:22 auto_select: True
+11-16 23:00:22 llm_compare: True
+11-16 23:00:22 llm_backend: openai
+11-16 23:00:22 llm_model: None
+11-16 23:00:22 llm_context: 
+11-16 23:00:22 llm_cfg_inputs: {'text_context': "Dataset: Argonne National Laboratory battery aging time-series with partial cycle windows.\nSource cathodes: (all available); target cathodes: (none specified).\nLabel column 'eol_class' with ~None classes; sequence length 32; 7 channels covering cycle_number, energy_charge, capacity_charge, energy_discharge, capacity_discharge, cycle_start, cycle_duration.", 'numeric_summary': {'dataset': 'Battery_inconsistent', 'sequence_length_requested': 32, 'notes': 'label_inconsistent', 'lr_hint': 0.001, 'dropout_hint': 0.3, 'num_classes_hint': None, 'splits': {}, 'dataset_variant': 'argonne_battery', 'feature_names': ['cycle_number', 'energy_charge', 'capacity_charge', 'energy_discharge', 'capacity_discharge', 'cycle_start', 'cycle_duration'], 'source_cathodes': [], 'target_cathodes': [], 'label_column': 'eol_class'}}
+11-16 23:00:22 llm_cfg: {'architecture': 'cnn_1d_sa', 'model_name': 'cnn_features_1d_sa', 'self_attention': True, 'sngp': True, 'openmax': False, 'use_unknown_head': False, 'bottleneck': 128, 'dropout': 0.3, 'learning_rate': 0.001, 'batch_size': 64, 'lambda_src': 0.0, 'rationale': 'The dataset has short sequences (32) and 7 channels, making a lightweight CNN with self-attention ideal to capture local features and some longer-range dependencies. The label inconsistency suggests avoiding openmax or unknown heads to reduce complexity and tuning overhead. Dropout at 0.3 balances overfitting risk due to label noise. Batch size 64 fits memory and training stability. This config should outperform the baseline deterministic CNN by leveraging attention without excessive capacity or open-set complexity. Label inconsistency flagged → calibrated heads (SNGP/OpenMax) stay enabled for open-set robustness. Enabled SNGP to stabilise open-set transfer risk detected in metadata.', '_provider': 'openai', '_raw': '{\n  "model_name": "cnn_features_1d_sa",\n  "self_attention": true,\n  "sngp": false,\n  "openmax": false,\n  "use_unknown_head": false,\n  "bottleneck": 128,\n  "dropout": 0.3,\n  "learning_rate": 0.001,\n  "batch_size": 64,\n  "lambda_src": 0.0,\n  "rationale": "The dataset has short sequences (32) and 7 channels, making a lightweight CNN with self-attention ideal to capture local features and some longer-range dependencies. The label inconsistency suggests avoiding openmax or unknown heads to reduce complexity and tuning overhead. Dropout at 0.3 balances overfitting risk due to label noise. Batch size 64 fits memory and training stability. This config should outperform the baseline deterministic CNN by leveraging attention without excessive capacity or open-set complexity."\n}'}
+11-16 23:00:22 llm_cfg_stamp: 20251116_225503
+11-16 23:00:22 tag: sngp_wrn_sa_20251116_225503
+11-16 23:00:22 pretrained_model_path: ./checkpoint/transfer_WideResNet_sa_spinel5v_to_lirich_1116/best_model.pth
+11-16 23:00:22 dataset_cycle_stats: {'source_train_cycles': 1230, 'source_val_cycles': 360, 'source_val_has_holdout': True, 'target_train_cycles': 180, 'target_val_cycles': 120, 'target_val_has_holdout': True, 'source_train_sequences': 41, 'source_val_sequences': 12, 'target_train_sequences': 6, 'target_val_sequences': 4, 'source_train_cells': 5, 'source_val_cells': 2, 'target_train_cells': 5, 'target_val_cells': 3, 'cycles_per_cell_per_cathode': {'source_train': {'5Vspinel': [{'filename': 'batch_B11B_cell_4.h5', 'cycles': 30, 'total_cycles': 216}, {'filename': 'batch_B26U_cell_5.h5', 'cycles': 30, 'total_cycles': 219}, {'filename': 'batch_B26V_cell_3.h5', 'cycles': 30, 'total_cycles': 420}, {'filename': 'batch_B26V_cell_4.h5', 'cycles': 30, 'total_cycles': 420}, {'filename': 'batch_B26V_cell_5.h5', 'cycles': 30, 'total_cycles': 219}, {'filename': 'batch_B26W_cell_1.h5', 'cycles': 30, 'total_cycles': 420}, {'filename': 'batch_B26W_cell_3.h5', 'cycles': 30, 'total_cycles': 420}, {'filename': 'batch_B26W_cell_4.h5', 'cycles': 30, 'total_cycles': 420}, {'filename': 'batch_B26W_cell_5.h5', 'cycles': 30, 'total_cycles': 219}, {'filename': 'batch_B26X_cell_1.h5', 'cycles': 30, 'total_cycles': 420}, {'filename': 'batch_B26X_cell_3.h5', 'cycles': 30, 'total_cycles': 420}, {'filename': 'batch_B26X_cell_4.h5', 'cycles': 30, 'total_cycles': 420}, {'filename': 'batch_B26Y_cell_3.h5', 'cycles': 30, 'total_cycles': 420}, {'filename': 'batch_B26Y_cell_4.h5', 'cycles': 30, 'total_cycles': 420}, {'filename': 'batch_B26Y_cell_5.h5', 'cycles': 30, 'total_cycles': 219}, {'filename': 'batch_B26Z_cell_1.h5', 'cycles': 30, 'total_cycles': 219}, {'filename': 'batch_B26Z_cell_3.h5', 'cycles': 30, 'total_cycles': 219}, {'filename': 'batch_B5A_cell_1.h5', 'cycles': 30, 'total_cycles': 846}, {'filename': 'batch_B5A_cell_5.h5', 'cycles': 30, 'total_cycles': 855}, {'filename': 'batch_B26V_cell_1.h5', 'cycles': 30, 'total_cycles': 420}, {'filename': 'batch_B26T_cell_5.h5', 'cycles': 30, 'total_cycles': 219}, {'filename': 'batch_B26AA_cell_1.h5', 'cycles': 30, 'total_cycles': 219}, {'filename': 'batch_B26T_cell_4.h5', 'cycles': 30, 'total_cycles': 219}, {'filename': 'batch_B26AA_cell_4.h5', 'cycles': 30, 'total_cycles': 219}, {'filename': 'batch_B26K_cell_1.h5', 'cycles': 30, 'total_cycles': 221}, {'filename': 'batch_B26L_cell_1.h5', 'cycles': 30, 'total_cycles': 2028}, {'filename': 'batch_B26N_cell_1.h5', 'cycles': 30, 'total_cycles': 219}, {'filename': 'batch_B26O_cell_1.h5', 'cycles': 30, 'total_cycles': 219}, {'filename': 'batch_B26O_cell_4.h5', 'cycles': 30, 'total_cycles': 219}, {'filename': 'batch_B26O_cell_5.h5', 'cycles': 30, 'total_cycles': 219}, {'filename': 'batch_B26P_cell_3.h5', 'cycles': 30, 'total_cycles': 421}, {'filename': 'batch_B26P_cell_4.h5', 'cycles': 30, 'total_cycles': 420}, {'filename': 'batch_B26Q_cell_3.h5', 'cycles': 30, 'total_cycles': 219}, {'filename': 'batch_B26Q_cell_5.h5', 'cycles': 30, 'total_cycles': 219}, {'filename': 'batch_B26R_cell_1.h5', 'cycles': 30, 'total_cycles': 420}, {'filename': 'batch_B26R_cell_3.h5', 'cycles': 30, 'total_cycles': 420}, {'filename': 'batch_B26R_cell_4.h5', 'cycles': 30, 'total_cycles': 420}, {'filename': 'batch_B26S_cell_3.h5', 'cycles': 30, 'total_cycles': 420}, {'filename': 'batch_B26S_cell_4.h5', 'cycles': 30, 'total_cycles': 420}, {'filename': 'batch_B26S_cell_5.h5', 'cycles': 30, 'total_cycles': 219}, {'filename': 'batch_B5A_cell_7.h5', 'cycles': 30, 'total_cycles': 687}]}, 'source_val': {'5Vspinel': [{'filename': 'batch_B26K_cell_2.h5', 'cycles': 30, 'total_cycles': 221}, {'filename': 'batch_B26L_cell_2.h5', 'cycles': 30, 'total_cycles': 2028}, {'filename': 'batch_B26M_cell_2.h5', 'cycles': 30, 'total_cycles': 219}, {'filename': 'batch_B26P_cell_2.h5', 'cycles': 30, 'total_cycles': 420}, {'filename': 'batch_B26P_cell_6.h5', 'cycles': 30, 'total_cycles': 219}, {'filename': 'batch_B26R_cell_2.h5', 'cycles': 30, 'total_cycles': 420}, {'filename': 'batch_B26T_cell_2.h5', 'cycles': 30, 'total_cycles': 220}, {'filename': 'batch_B26V_cell_2.h5', 'cycles': 30, 'total_cycles': 421}, {'filename': 'batch_B26X_cell_2.h5', 'cycles': 30, 'total_cycles': 420}, {'filename': 'batch_B26Y_cell_2.h5', 'cycles': 30, 'total_cycles': 421}, {'filename': 'batch_B26Z_cell_2.h5', 'cycles': 30, 'total_cycles': 219}, {'filename': 'batch_B5A_cell_2.h5', 'cycles': 30, 'total_cycles': 820}]}, 'target_train': {'Li1.2Ni0.3Mn0.6O2': [{'filename': 'batch_B3A_cell_4.h5', 'cycles': 30, 'total_cycles': 181}, {'filename': 'batch_B3B_cell_2.h5', 'cycles': 30, 'total_cycles': 181}, {'filename': 'batch_B3B_cell_3.h5', 'cycles': 30, 'total_cycles': 180}, {'filename': 'batch_B3B_cell_7.h5', 'cycles': 30, 'total_cycles': 180}], 'Li1.35Ni0.33Mn0.67O2.35': [{'filename': 'batch_B13A_cell_4.h5', 'cycles': 30, 'total_cycles': 169}, {'filename': 'batch_B13A_cell_8.h5', 'cycles': 30, 'total_cycles': 218}]}, 'target_val': {'Li1.2Ni0.3Mn0.6O2': [{'filename': 'batch_B3B_cell_1.h5', 'cycles': 30, 'total_cycles': 181}, {'filename': 'batch_B3B_cell_5.h5', 'cycles': 30, 'total_cycles': 180}], 'Li1.35Ni0.33Mn0.67O2.35': [{'filename': 'batch_B13A_cell_13.h5', 'cycles': 30, 'total_cycles': 218}, {'filename': 'batch_B8A_cell_1.h5', 'cycles': 30, 'total_cycles': 214}]}}, 'feature_columns': ('cycle_number', 'energy_charge', 'capacity_charge', 'energy_discharge', 'capacity_discharge', 'cycle_start', 'cycle_duration', 'capacity_retention', 'energy_retention', 'delta_capacity_discharge', 'delta_energy_discharge', 'delta_cycle_duration', 'rolling_capacity_mean', 'rolling_capacity_std', 'rolling_energy_mean', 'rolling_energy_std', 'rolling_duration_mean', 'duration_ratio', 'coulombic_efficiency', 'energy_efficiency', 'time_per_capacity')}
+11-16 23:00:22 input_size: 32
+11-16 23:00:22 reinit_head: False
+11-16 23:00:22 using 1 cpu
+11-16 23:00:22 Reducing learning rate to 5e-05 for 6 target samples
+11-16 23:00:22 Freezing early layers of backbone for 6 target samples
+11-16 23:00:22 Exception in callback functools.partial(<bound method OutStream._flush of <spyder_kernels.console.outstream.TTYOutStream object at 0x172cdca90>>)
+Traceback (most recent call last):
+  File "/Users/moondiab/opt/anaconda3/envs/venv/lib/python3.11/site-packages/jupyter_client/session.py", line 100, in json_packer
+    ).encode("utf8", errors="surrogateescape")
+      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+UnicodeEncodeError: 'utf-8' codec can't encode characters in position 673-674: surrogates not allowed
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/Users/moondiab/opt/anaconda3/envs/venv/lib/python3.11/site-packages/tornado/ioloop.py", line 750, in _run_callback
+    ret = callback()
+          ^^^^^^^^^^
+  File "/Users/moondiab/opt/anaconda3/envs/venv/lib/python3.11/site-packages/ipykernel/iostream.py", line 649, in _flush
+    self.session.send(
+  File "/Users/moondiab/opt/anaconda3/envs/venv/lib/python3.11/site-packages/jupyter_client/session.py", line 852, in send
+    to_send = self.serialize(msg, ident)
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/moondiab/opt/anaconda3/envs/venv/lib/python3.11/site-packages/jupyter_client/session.py", line 721, in serialize
+    content = self.pack(content)
+              ^^^^^^^^^^^^^^^^^^
+  File "/Users/moondiab/opt/anaconda3/envs/venv/lib/python3.11/site-packages/jupyter_client/session.py", line 108, in json_packer
+    ).encode("utf8", errors="surrogateescape")
+      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+UnicodeEncodeError: 'utf-8' codec can't encode characters in position 673-674: surrogates not allowed

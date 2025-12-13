@@ -1,0 +1,9 @@
+{
+  "wall_time_sec": 20.774028062820435,
+  "time_to_best_sec": 20.767499923706055,
+  "best_epoch": 49,
+  "transfer_mode": false,
+  "num_target_samples": 0,
+  "best_target_balanced_accuracy": 0.0,
+  "best_target_common_accuracy": 0.0
+}

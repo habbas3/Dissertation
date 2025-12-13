@@ -1,0 +1,747 @@
+11-16 15:12:26 data_name: Battery_inconsistent
+11-16 15:12:26 data_dir: ./my_datasets/Battery
+11-16 15:12:26 csv: ./my_datasets/Battery/battery_cycles_labeled.csv
+11-16 15:12:26 normlizetype: mean-std
+11-16 15:12:26 method: sngp
+11-16 15:12:26 gp_hidden_dim: 2048
+11-16 15:12:26 spectral_norm_bound: 0.95
+11-16 15:12:26 n_power_iterations: 1
+11-16 15:12:26 nesterov: True
+11-16 15:12:26 print_freq: 10
+11-16 15:12:26 layers: 16
+11-16 15:12:26 widen_factor: 1
+11-16 15:12:26 droprate: 0.3
+11-16 15:12:26 cuda_device: 0
+11-16 15:12:26 checkpoint_dir: ./checkpoint
+11-16 15:12:26 pretrained: True
+11-16 15:12:26 batch_size: 64
+11-16 15:12:26 num_workers: 0
+11-16 15:12:26 bottleneck: True
+11-16 15:12:26 bottleneck_num: 128
+11-16 15:12:26 last_batch: False
+11-16 15:12:26 hidden_size: 1024
+11-16 15:12:26 trade_off_adversarial: Step
+11-16 15:12:26 lam_adversarial: 1
+11-16 15:12:26 opt: adam
+11-16 15:12:26 lr: 0.001
+11-16 15:12:26 momentum: 0.9
+11-16 15:12:26 weight_decay: 1e-05
+11-16 15:12:26 lr_scheduler: step
+11-16 15:12:26 gamma: 0.1
+11-16 15:12:26 steps: 150, 250
+11-16 15:12:26 middle_epoch: 15
+11-16 15:12:26 max_epoch: 50
+11-16 15:12:26 print_step: 25
+11-16 15:12:26 inconsistent: UAN
+11-16 15:12:26 model_name: WideResNet_sa
+11-16 15:12:26 th: 0.5
+11-16 15:12:26 input_channels: 7
+11-16 15:12:26 classification_label: eol_class
+11-16 15:12:26 sequence_length: 32
+11-16 15:12:26 cycles_per_file: 50
+11-16 15:12:26 sample_random_state: 42
+11-16 15:12:26 transfer_task: [[0], [1]]
+11-16 15:12:26 source_cathode: ['5Vspinel']
+11-16 15:12:26 target_cathode: ['HE5050', 'NMC111', 'NMC532', 'NMC622', 'NMC811']
+11-16 15:12:26 num_classes: None
+11-16 15:12:26 domain_temperature: 1.0
+11-16 15:12:26 class_temperature: 10.0
+11-16 15:12:26 lambda_src: 0.0
+11-16 15:12:26 lambda_src_decay_patience: 5
+11-16 15:12:26 lambda_src_decay_factor: 0.5
+11-16 15:12:26 lambda_src_min: 0.0
+11-16 15:12:26 lambda_src_warmup: 0
+11-16 15:12:26 improvement_metric: common
+11-16 15:12:26 auto_select: True
+11-16 15:12:26 llm_compare: True
+11-16 15:12:26 llm_backend: openai
+11-16 15:12:26 llm_model: None
+11-16 15:12:26 llm_context: 
+11-16 15:12:26 llm_cfg_inputs: {'text_context': "Dataset: Argonne National Laboratory battery aging time-series with partial cycle windows.\nSource cathodes: (all available); target cathodes: (none specified).\nLabel column 'eol_class' with ~None classes; sequence length 32; 7 channels covering cycle_number, energy_charge, capacity_charge, energy_discharge, capacity_discharge, cycle_start, cycle_duration.", 'numeric_summary': {'dataset': 'Battery_inconsistent', 'sequence_length_requested': 32, 'notes': 'label_inconsistent', 'lr_hint': 0.001, 'dropout_hint': 0.3, 'num_classes_hint': None, 'splits': {}, 'dataset_variant': 'argonne_battery', 'feature_names': ['cycle_number', 'energy_charge', 'capacity_charge', 'energy_discharge', 'capacity_discharge', 'cycle_start', 'cycle_duration'], 'source_cathodes': [], 'target_cathodes': [], 'label_column': 'eol_class'}}
+11-16 15:12:26 llm_cfg: {'architecture': 'cnn_1d_sa', 'model_name': 'cnn_features_1d_sa', 'self_attention': True, 'sngp': True, 'openmax': False, 'use_unknown_head': False, 'bottleneck': 128, 'dropout': 0.3, 'learning_rate': 0.001, 'batch_size': 64, 'lambda_src': 0.0, 'rationale': 'The dataset has short sequences (32 steps) and 7 channels, making a 1-D CNN with self-attention ideal to capture local and some longer-range dependencies without excessive memory use. Label inconsistency suggests avoiding openmax or unknown heads to reduce tuning complexity. Moderate dropout (0.3) helps prevent overfitting given small data and attention. Batch size 64 balances GPU efficiency and stable training. Label inconsistency flagged → calibrated heads (SNGP/OpenMax) stay enabled for open-set robustness. Enabled SNGP to stabilise open-set transfer risk detected in metadata.', '_provider': 'openai', '_raw': '{\n  "model_name": "cnn_features_1d_sa",\n  "self_attention": true,\n  "sngp": false,\n  "openmax": false,\n  "use_unknown_head": false,\n  "bottleneck": 128,\n  "dropout": 0.3,\n  "learning_rate": 0.001,\n  "batch_size": 64,\n  "lambda_src": 0.0,\n  "rationale": "The dataset has short sequences (32 steps) and 7 channels, making a 1-D CNN with self-attention ideal to capture local and some longer-range dependencies without excessive memory use. Label inconsistency suggests avoiding openmax or unknown heads to reduce tuning complexity. Moderate dropout (0.3) helps prevent overfitting given small data and attention. Batch size 64 balances GPU efficiency and stable training."\n}'}
+11-16 15:12:26 llm_cfg_stamp: 20251116_144741
+11-16 15:12:26 tag: sngp_wrn_sa_20251116_144741
+11-16 15:12:26 pretrained_model_path: ./checkpoint/pretrain_WideResNet_sa_spinel5v_1116/best_model.pth
+11-16 15:12:26 using 1 cpu
+11-16 15:12:26 Uncaught exception in ZMQStream callback
+Traceback (most recent call last):
+  File "/Users/moondiab/opt/anaconda3/envs/venv/lib/python3.11/site-packages/jupyter_client/session.py", line 100, in json_packer
+    ).encode("utf8", errors="surrogateescape")
+      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+UnicodeEncodeError: 'utf-8' codec can't encode characters in position 709-710: surrogates not allowed
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/Users/moondiab/opt/anaconda3/envs/venv/lib/python3.11/site-packages/zmq/eventloop/zmqstream.py", line 560, in _run_callback
+    f = callback(*args, **kwargs)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/moondiab/opt/anaconda3/envs/venv/lib/python3.11/site-packages/ipykernel/iostream.py", line 170, in _handle_event
+    event_f()
+  File "/Users/moondiab/opt/anaconda3/envs/venv/lib/python3.11/site-packages/ipykernel/iostream.py", line 649, in _flush
+    self.session.send(
+  File "/Users/moondiab/opt/anaconda3/envs/venv/lib/python3.11/site-packages/jupyter_client/session.py", line 852, in send
+    to_send = self.serialize(msg, ident)
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/moondiab/opt/anaconda3/envs/venv/lib/python3.11/site-packages/jupyter_client/session.py", line 721, in serialize
+    content = self.pack(content)
+              ^^^^^^^^^^^^^^^^^^
+  File "/Users/moondiab/opt/anaconda3/envs/venv/lib/python3.11/site-packages/jupyter_client/session.py", line 108, in json_packer
+    ).encode("utf8", errors="surrogateescape")
+      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+UnicodeEncodeError: 'utf-8' codec can't encode characters in position 709-710: surrogates not allowed
+11-16 15:12:26 Uncaught exception in zmqstream callback
+Traceback (most recent call last):
+  File "/Users/moondiab/opt/anaconda3/envs/venv/lib/python3.11/site-packages/jupyter_client/session.py", line 100, in json_packer
+    ).encode("utf8", errors="surrogateescape")
+      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+UnicodeEncodeError: 'utf-8' codec can't encode characters in position 709-710: surrogates not allowed
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/Users/moondiab/opt/anaconda3/envs/venv/lib/python3.11/site-packages/zmq/eventloop/zmqstream.py", line 610, in _handle_events
+    self._handle_recv()
+  File "/Users/moondiab/opt/anaconda3/envs/venv/lib/python3.11/site-packages/zmq/eventloop/zmqstream.py", line 639, in _handle_recv
+    self._run_callback(callback, msg)
+  File "/Users/moondiab/opt/anaconda3/envs/venv/lib/python3.11/site-packages/zmq/eventloop/zmqstream.py", line 560, in _run_callback
+    f = callback(*args, **kwargs)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/moondiab/opt/anaconda3/envs/venv/lib/python3.11/site-packages/ipykernel/iostream.py", line 170, in _handle_event
+    event_f()
+  File "/Users/moondiab/opt/anaconda3/envs/venv/lib/python3.11/site-packages/ipykernel/iostream.py", line 649, in _flush
+    self.session.send(
+  File "/Users/moondiab/opt/anaconda3/envs/venv/lib/python3.11/site-packages/jupyter_client/session.py", line 852, in send
+    to_send = self.serialize(msg, ident)
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/moondiab/opt/anaconda3/envs/venv/lib/python3.11/site-packages/jupyter_client/session.py", line 721, in serialize
+    content = self.pack(content)
+              ^^^^^^^^^^^^^^^^^^
+  File "/Users/moondiab/opt/anaconda3/envs/venv/lib/python3.11/site-packages/jupyter_client/session.py", line 108, in json_packer
+    ).encode("utf8", errors="surrogateescape")
+      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+UnicodeEncodeError: 'utf-8' codec can't encode characters in position 709-710: surrogates not allowed
+11-16 15:12:26 Exception in callback BaseAsyncIOLoop._handle_events(43, 1)
+handle: <Handle BaseAsyncIOLoop._handle_events(43, 1)>
+Traceback (most recent call last):
+  File "/Users/moondiab/opt/anaconda3/envs/venv/lib/python3.11/site-packages/jupyter_client/session.py", line 100, in json_packer
+    ).encode("utf8", errors="surrogateescape")
+      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+UnicodeEncodeError: 'utf-8' codec can't encode characters in position 709-710: surrogates not allowed
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/Users/moondiab/opt/anaconda3/envs/venv/lib/python3.11/asyncio/events.py", line 84, in _run
+    self._context.run(self._callback, *self._args)
+  File "/Users/moondiab/opt/anaconda3/envs/venv/lib/python3.11/site-packages/tornado/platform/asyncio.py", line 202, in _handle_events
+    handler_func(fileobj, events)
+  File "/Users/moondiab/opt/anaconda3/envs/venv/lib/python3.11/site-packages/zmq/eventloop/zmqstream.py", line 610, in _handle_events
+    self._handle_recv()
+  File "/Users/moondiab/opt/anaconda3/envs/venv/lib/python3.11/site-packages/zmq/eventloop/zmqstream.py", line 639, in _handle_recv
+    self._run_callback(callback, msg)
+  File "/Users/moondiab/opt/anaconda3/envs/venv/lib/python3.11/site-packages/zmq/eventloop/zmqstream.py", line 560, in _run_callback
+    f = callback(*args, **kwargs)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/moondiab/opt/anaconda3/envs/venv/lib/python3.11/site-packages/ipykernel/iostream.py", line 170, in _handle_event
+    event_f()
+  File "/Users/moondiab/opt/anaconda3/envs/venv/lib/python3.11/site-packages/ipykernel/iostream.py", line 649, in _flush
+    self.session.send(
+  File "/Users/moondiab/opt/anaconda3/envs/venv/lib/python3.11/site-packages/jupyter_client/session.py", line 852, in send
+    to_send = self.serialize(msg, ident)
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/moondiab/opt/anaconda3/envs/venv/lib/python3.11/site-packages/jupyter_client/session.py", line 721, in serialize
+    content = self.pack(content)
+              ^^^^^^^^^^^^^^^^^^
+  File "/Users/moondiab/opt/anaconda3/envs/venv/lib/python3.11/site-packages/jupyter_client/session.py", line 108, in json_packer
+    ).encode("utf8", errors="surrogateescape")
+      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+UnicodeEncodeError: 'utf-8' codec can't encode characters in position 709-710: surrogates not allowed
+11-16 19:32:35 data_name: Battery_inconsistent
+11-16 19:32:35 data_dir: ./my_datasets/Battery
+11-16 19:32:35 csv: ./my_datasets/Battery/battery_cycles_labeled.csv
+11-16 19:32:35 normlizetype: mean-std
+11-16 19:32:35 method: sngp
+11-16 19:32:35 gp_hidden_dim: 2048
+11-16 19:32:35 spectral_norm_bound: 0.95
+11-16 19:32:35 n_power_iterations: 1
+11-16 19:32:35 nesterov: True
+11-16 19:32:35 print_freq: 10
+11-16 19:32:35 layers: 16
+11-16 19:32:35 widen_factor: 1
+11-16 19:32:35 droprate: 0.3
+11-16 19:32:35 cuda_device: 0
+11-16 19:32:35 checkpoint_dir: ./checkpoint
+11-16 19:32:35 pretrained: True
+11-16 19:32:35 batch_size: 64
+11-16 19:32:35 num_workers: 0
+11-16 19:32:35 bottleneck: True
+11-16 19:32:35 bottleneck_num: 128
+11-16 19:32:35 last_batch: False
+11-16 19:32:35 hidden_size: 1024
+11-16 19:32:35 trade_off_adversarial: Step
+11-16 19:32:35 lam_adversarial: 1
+11-16 19:32:35 opt: adam
+11-16 19:32:35 lr: 0.001
+11-16 19:32:35 momentum: 0.9
+11-16 19:32:35 weight_decay: 1e-05
+11-16 19:32:35 lr_scheduler: step
+11-16 19:32:35 gamma: 0.1
+11-16 19:32:35 steps: 150, 250
+11-16 19:32:35 middle_epoch: 15
+11-16 19:32:35 max_epoch: 50
+11-16 19:32:35 print_step: 25
+11-16 19:32:35 inconsistent: UAN
+11-16 19:32:35 model_name: WideResNet_sa
+11-16 19:32:35 th: 0.5
+11-16 19:32:35 input_channels: 7
+11-16 19:32:35 classification_label: eol_class
+11-16 19:32:35 sequence_length: 32
+11-16 19:32:35 cycles_per_file: 20
+11-16 19:32:35 sample_random_state: 42
+11-16 19:32:35 transfer_task: [[0], [1]]
+11-16 19:32:35 source_cathode: ['5Vspinel']
+11-16 19:32:35 target_cathode: ['HE5050', 'NMC111', 'NMC532', 'NMC622', 'NMC811']
+11-16 19:32:35 num_classes: None
+11-16 19:32:35 domain_temperature: 1.0
+11-16 19:32:35 class_temperature: 10.0
+11-16 19:32:35 lambda_src: 0.0
+11-16 19:32:35 lambda_src_decay_patience: 5
+11-16 19:32:35 lambda_src_decay_factor: 0.5
+11-16 19:32:35 lambda_src_min: 0.0
+11-16 19:32:35 lambda_src_warmup: 0
+11-16 19:32:35 improvement_metric: common
+11-16 19:32:35 auto_select: True
+11-16 19:32:35 llm_compare: True
+11-16 19:32:35 llm_backend: openai
+11-16 19:32:35 llm_model: None
+11-16 19:32:35 llm_context: 
+11-16 19:32:35 llm_cfg_inputs: {'text_context': "Dataset: Argonne National Laboratory battery aging time-series with partial cycle windows.\nSource cathodes: (all available); target cathodes: (none specified).\nLabel column 'eol_class' with ~None classes; sequence length 32; 7 channels covering cycle_number, energy_charge, capacity_charge, energy_discharge, capacity_discharge, cycle_start, cycle_duration.", 'numeric_summary': {'dataset': 'Battery_inconsistent', 'sequence_length_requested': 32, 'notes': 'label_inconsistent', 'lr_hint': 0.001, 'dropout_hint': 0.3, 'num_classes_hint': None, 'splits': {}, 'dataset_variant': 'argonne_battery', 'feature_names': ['cycle_number', 'energy_charge', 'capacity_charge', 'energy_discharge', 'capacity_discharge', 'cycle_start', 'cycle_duration'], 'source_cathodes': [], 'target_cathodes': [], 'label_column': 'eol_class'}}
+11-16 19:32:35 llm_cfg: {'architecture': 'cnn_1d_sa', 'model_name': 'cnn_features_1d_sa', 'self_attention': True, 'sngp': True, 'openmax': False, 'use_unknown_head': False, 'bottleneck': 128, 'dropout': 0.3, 'learning_rate': 0.001, 'batch_size': 64, 'lambda_src': 0.0, 'rationale': 'The dataset has short sequences (32 steps) and 7 channels, making a lightweight CNN with self-attention ideal to capture local features and some long-range dependencies. Label inconsistency suggests avoiding openmax or unknown heads to reduce complexity. Dropout at 0.3 balances overfitting risk from attention layers on a small dataset. Batch size 64 and learning rate 0.001 align with hints and ensure stable training. Label inconsistency flagged → calibrated heads (SNGP/OpenMax) stay enabled for open-set robustness. Enabled SNGP to stabilise open-set transfer risk detected in metadata.', '_provider': 'openai', '_raw': '{\n  "model_name": "cnn_features_1d_sa",\n  "self_attention": true,\n  "sngp": false,\n  "openmax": false,\n  "use_unknown_head": false,\n  "bottleneck": 128,\n  "dropout": 0.3,\n  "learning_rate": 0.001,\n  "batch_size": 64,\n  "lambda_src": 0.0,\n  "rationale": "The dataset has short sequences (32 steps) and 7 channels, making a lightweight CNN with self-attention ideal to capture local features and some long-range dependencies. Label inconsistency suggests avoiding openmax or unknown heads to reduce complexity. Dropout at 0.3 balances overfitting risk from attention layers on a small dataset. Batch size 64 and learning rate 0.001 align with hints and ensure stable training."\n}'}
+11-16 19:32:35 llm_cfg_stamp: 20251116_192719
+11-16 19:32:35 tag: sngp_wrn_sa_20251116_192719
+11-16 19:32:35 pretrained_model_path: ./checkpoint/pretrain_WideResNet_sa_spinel5v_1116/best_model.pth
+11-16 19:32:35 using 1 cpu
+11-16 19:32:35 Exception in callback functools.partial(<bound method OutStream._flush of <spyder_kernels.console.outstream.TTYOutStream object at 0x172cdca90>>)
+Traceback (most recent call last):
+  File "/Users/moondiab/opt/anaconda3/envs/venv/lib/python3.11/site-packages/jupyter_client/session.py", line 100, in json_packer
+    ).encode("utf8", errors="surrogateescape")
+      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+UnicodeEncodeError: 'utf-8' codec can't encode characters in position 709-710: surrogates not allowed
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/Users/moondiab/opt/anaconda3/envs/venv/lib/python3.11/site-packages/tornado/ioloop.py", line 750, in _run_callback
+    ret = callback()
+          ^^^^^^^^^^
+  File "/Users/moondiab/opt/anaconda3/envs/venv/lib/python3.11/site-packages/ipykernel/iostream.py", line 649, in _flush
+    self.session.send(
+  File "/Users/moondiab/opt/anaconda3/envs/venv/lib/python3.11/site-packages/jupyter_client/session.py", line 852, in send
+    to_send = self.serialize(msg, ident)
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/moondiab/opt/anaconda3/envs/venv/lib/python3.11/site-packages/jupyter_client/session.py", line 721, in serialize
+    content = self.pack(content)
+              ^^^^^^^^^^^^^^^^^^
+  File "/Users/moondiab/opt/anaconda3/envs/venv/lib/python3.11/site-packages/jupyter_client/session.py", line 108, in json_packer
+    ).encode("utf8", errors="surrogateescape")
+      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+UnicodeEncodeError: 'utf-8' codec can't encode characters in position 709-710: surrogates not allowed
+11-16 20:27:49 data_name: Battery_inconsistent
+11-16 20:27:49 data_dir: ./my_datasets/Battery
+11-16 20:27:49 csv: ./my_datasets/Battery/battery_cycles_labeled.csv
+11-16 20:27:49 normlizetype: mean-std
+11-16 20:27:49 method: sngp
+11-16 20:27:49 gp_hidden_dim: 2048
+11-16 20:27:49 spectral_norm_bound: 0.95
+11-16 20:27:49 n_power_iterations: 1
+11-16 20:27:49 nesterov: True
+11-16 20:27:49 print_freq: 10
+11-16 20:27:49 layers: 16
+11-16 20:27:49 widen_factor: 1
+11-16 20:27:49 droprate: 0.3
+11-16 20:27:49 cuda_device: 0
+11-16 20:27:49 checkpoint_dir: ./checkpoint
+11-16 20:27:49 pretrained: True
+11-16 20:27:49 batch_size: 64
+11-16 20:27:49 num_workers: 0
+11-16 20:27:49 bottleneck: True
+11-16 20:27:49 bottleneck_num: 128
+11-16 20:27:49 last_batch: False
+11-16 20:27:49 hidden_size: 1024
+11-16 20:27:49 trade_off_adversarial: Step
+11-16 20:27:49 lam_adversarial: 1
+11-16 20:27:49 opt: adam
+11-16 20:27:49 lr: 0.001
+11-16 20:27:49 momentum: 0.9
+11-16 20:27:49 weight_decay: 1e-05
+11-16 20:27:49 lr_scheduler: step
+11-16 20:27:49 gamma: 0.1
+11-16 20:27:49 steps: 150, 250
+11-16 20:27:49 middle_epoch: 15
+11-16 20:27:49 max_epoch: 50
+11-16 20:27:49 print_step: 25
+11-16 20:27:49 inconsistent: UAN
+11-16 20:27:49 model_name: WideResNet_sa
+11-16 20:27:49 th: 0.5
+11-16 20:27:49 input_channels: 7
+11-16 20:27:49 classification_label: eol_class
+11-16 20:27:49 sequence_length: 32
+11-16 20:27:49 cycles_per_file: 5
+11-16 20:27:49 sample_random_state: 42
+11-16 20:27:49 transfer_task: [[0], [1]]
+11-16 20:27:49 source_cathode: ['5Vspinel']
+11-16 20:27:49 target_cathode: ['HE5050', 'NMC111', 'NMC532', 'NMC622', 'NMC811']
+11-16 20:27:49 num_classes: None
+11-16 20:27:49 domain_temperature: 1.0
+11-16 20:27:49 class_temperature: 10.0
+11-16 20:27:49 lambda_src: 0.0
+11-16 20:27:49 lambda_src_decay_patience: 5
+11-16 20:27:49 lambda_src_decay_factor: 0.5
+11-16 20:27:49 lambda_src_min: 0.0
+11-16 20:27:49 lambda_src_warmup: 0
+11-16 20:27:49 improvement_metric: common
+11-16 20:27:49 auto_select: True
+11-16 20:27:49 llm_compare: True
+11-16 20:27:49 llm_backend: openai
+11-16 20:27:49 llm_model: None
+11-16 20:27:49 llm_context: 
+11-16 20:27:49 llm_cfg_inputs: {'text_context': "Dataset: Argonne National Laboratory battery aging time-series with partial cycle windows.\nSource cathodes: (all available); target cathodes: (none specified).\nLabel column 'eol_class' with ~None classes; sequence length 32; 7 channels covering cycle_number, energy_charge, capacity_charge, energy_discharge, capacity_discharge, cycle_start, cycle_duration.", 'numeric_summary': {'dataset': 'Battery_inconsistent', 'sequence_length_requested': 32, 'notes': 'label_inconsistent', 'lr_hint': 0.001, 'dropout_hint': 0.3, 'num_classes_hint': None, 'splits': {}, 'dataset_variant': 'argonne_battery', 'feature_names': ['cycle_number', 'energy_charge', 'capacity_charge', 'energy_discharge', 'capacity_discharge', 'cycle_start', 'cycle_duration'], 'source_cathodes': [], 'target_cathodes': [], 'label_column': 'eol_class'}}
+11-16 20:27:49 llm_cfg: {'architecture': 'cnn_1d_sa', 'model_name': 'cnn_features_1d_sa', 'self_attention': True, 'sngp': True, 'openmax': False, 'use_unknown_head': False, 'bottleneck': 128, 'dropout': 0.3, 'learning_rate': 0.001, 'batch_size': 64, 'lambda_src': 0.0, 'rationale': 'The dataset has short sequences (32 steps) and 7 channels, making a 1-D CNN with self-attention ideal to capture local features and some long-range dependencies. Label inconsistency suggests avoiding openmax or unknown heads to reduce complexity and overfitting risk. Moderate bottleneck and dropout balance capacity and regularization. The learning rate and batch size align with hints for stable training on this battery dataset. Label inconsistency flagged → calibrated heads (SNGP/OpenMax) stay enabled for open-set robustness. Enabled SNGP to stabilise open-set transfer risk detected in metadata.', '_provider': 'openai', '_raw': '{\n  "model_name": "cnn_features_1d_sa",\n  "self_attention": true,\n  "sngp": false,\n  "openmax": false,\n  "use_unknown_head": false,\n  "bottleneck": 128,\n  "dropout": 0.3,\n  "learning_rate": 0.001,\n  "batch_size": 64,\n  "lambda_src": 0.0,\n  "rationale": "The dataset has short sequences (32 steps) and 7 channels, making a 1-D CNN with self-attention ideal to capture local features and some long-range dependencies. Label inconsistency suggests avoiding openmax or unknown heads to reduce complexity and overfitting risk. Moderate bottleneck and dropout balance capacity and regularization. The learning rate and batch size align with hints for stable training on this battery dataset."\n}'}
+11-16 20:27:49 llm_cfg_stamp: 20251116_202238
+11-16 20:27:49 tag: sngp_wrn_sa_20251116_202238
+11-16 20:27:49 pretrained_model_path: ./checkpoint/pretrain_WideResNet_sa_spinel5v_1116/best_model.pth
+11-16 20:27:49 using 1 cpu
+11-16 20:27:49 Exception in callback functools.partial(<bound method OutStream._flush of <spyder_kernels.console.outstream.TTYOutStream object at 0x172cdca90>>)
+Traceback (most recent call last):
+  File "/Users/moondiab/opt/anaconda3/envs/venv/lib/python3.11/site-packages/jupyter_client/session.py", line 100, in json_packer
+    ).encode("utf8", errors="surrogateescape")
+      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+UnicodeEncodeError: 'utf-8' codec can't encode characters in position 709-710: surrogates not allowed
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/Users/moondiab/opt/anaconda3/envs/venv/lib/python3.11/site-packages/tornado/ioloop.py", line 750, in _run_callback
+    ret = callback()
+          ^^^^^^^^^^
+  File "/Users/moondiab/opt/anaconda3/envs/venv/lib/python3.11/site-packages/ipykernel/iostream.py", line 649, in _flush
+    self.session.send(
+  File "/Users/moondiab/opt/anaconda3/envs/venv/lib/python3.11/site-packages/jupyter_client/session.py", line 852, in send
+    to_send = self.serialize(msg, ident)
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/moondiab/opt/anaconda3/envs/venv/lib/python3.11/site-packages/jupyter_client/session.py", line 721, in serialize
+    content = self.pack(content)
+              ^^^^^^^^^^^^^^^^^^
+  File "/Users/moondiab/opt/anaconda3/envs/venv/lib/python3.11/site-packages/jupyter_client/session.py", line 108, in json_packer
+    ).encode("utf8", errors="surrogateescape")
+      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+UnicodeEncodeError: 'utf-8' codec can't encode characters in position 709-710: surrogates not allowed
+11-16 21:37:58 data_name: Battery_inconsistent
+11-16 21:37:58 data_dir: ./my_datasets/Battery
+11-16 21:37:58 csv: ./my_datasets/Battery/battery_cycles_labeled.csv
+11-16 21:37:58 normlizetype: mean-std
+11-16 21:37:58 method: sngp
+11-16 21:37:58 gp_hidden_dim: 2048
+11-16 21:37:58 spectral_norm_bound: 0.95
+11-16 21:37:58 n_power_iterations: 1
+11-16 21:37:58 nesterov: True
+11-16 21:37:58 print_freq: 10
+11-16 21:37:58 layers: 16
+11-16 21:37:58 widen_factor: 1
+11-16 21:37:58 droprate: 0.3
+11-16 21:37:58 cuda_device: 0
+11-16 21:37:58 checkpoint_dir: ./checkpoint
+11-16 21:37:58 pretrained: True
+11-16 21:37:58 batch_size: 64
+11-16 21:37:58 num_workers: 0
+11-16 21:37:58 bottleneck: True
+11-16 21:37:58 bottleneck_num: 128
+11-16 21:37:58 last_batch: False
+11-16 21:37:58 hidden_size: 1024
+11-16 21:37:58 trade_off_adversarial: Step
+11-16 21:37:58 lam_adversarial: 1
+11-16 21:37:58 opt: adam
+11-16 21:37:58 lr: 0.001
+11-16 21:37:58 momentum: 0.9
+11-16 21:37:58 weight_decay: 1e-05
+11-16 21:37:58 lr_scheduler: step
+11-16 21:37:58 gamma: 0.1
+11-16 21:37:58 steps: 150, 250
+11-16 21:37:58 middle_epoch: 15
+11-16 21:37:58 max_epoch: 50
+11-16 21:37:58 print_step: 25
+11-16 21:37:58 inconsistent: UAN
+11-16 21:37:58 model_name: WideResNet_sa
+11-16 21:37:58 th: 0.5
+11-16 21:37:58 input_channels: 7
+11-16 21:37:58 classification_label: eol_class
+11-16 21:37:58 sequence_length: 32
+11-16 21:37:58 cycles_per_file: 5
+11-16 21:37:58 sample_random_state: 42
+11-16 21:37:58 transfer_task: [[0], [1]]
+11-16 21:37:58 source_cathode: ['5Vspinel']
+11-16 21:37:58 target_cathode: ['HE5050', 'NMC111', 'NMC532', 'NMC622', 'NMC811']
+11-16 21:37:58 num_classes: None
+11-16 21:37:58 domain_temperature: 1.0
+11-16 21:37:58 class_temperature: 10.0
+11-16 21:37:58 lambda_src: 0.0
+11-16 21:37:58 lambda_src_decay_patience: 5
+11-16 21:37:58 lambda_src_decay_factor: 0.5
+11-16 21:37:58 lambda_src_min: 0.0
+11-16 21:37:58 lambda_src_warmup: 0
+11-16 21:37:58 improvement_metric: common
+11-16 21:37:58 auto_select: True
+11-16 21:37:58 llm_compare: True
+11-16 21:37:58 llm_backend: openai
+11-16 21:37:58 llm_model: None
+11-16 21:37:58 llm_context: 
+11-16 21:37:58 llm_cfg_inputs: {'text_context': "Dataset: Argonne National Laboratory battery aging time-series with partial cycle windows.\nSource cathodes: (all available); target cathodes: (none specified).\nLabel column 'eol_class' with ~None classes; sequence length 32; 7 channels covering cycle_number, energy_charge, capacity_charge, energy_discharge, capacity_discharge, cycle_start, cycle_duration.", 'numeric_summary': {'dataset': 'Battery_inconsistent', 'sequence_length_requested': 32, 'notes': 'label_inconsistent', 'lr_hint': 0.001, 'dropout_hint': 0.3, 'num_classes_hint': None, 'splits': {}, 'dataset_variant': 'argonne_battery', 'feature_names': ['cycle_number', 'energy_charge', 'capacity_charge', 'energy_discharge', 'capacity_discharge', 'cycle_start', 'cycle_duration'], 'source_cathodes': [], 'target_cathodes': [], 'label_column': 'eol_class'}}
+11-16 21:37:58 llm_cfg: {'architecture': 'cnn_1d_sa', 'model_name': 'cnn_features_1d_sa', 'self_attention': True, 'sngp': True, 'openmax': False, 'use_unknown_head': False, 'bottleneck': 128, 'dropout': 0.3, 'learning_rate': 0.001, 'batch_size': 64, 'lambda_src': 0.0, 'rationale': 'The dataset has short sequences (32 steps) and 7 channels, suitable for a 1-D CNN with self-attention to capture local and some longer-range dependencies. Label inconsistency suggests avoiding openmax or unknown heads to reduce complexity and tuning overhead. Dropout at 0.3 balances overfitting risk given the small sequence length and label noise. Batch size 64 and learning rate 0.001 align with typical stable training for this domain. Label inconsistency flagged → calibrated heads (SNGP/OpenMax) stay enabled for open-set robustness. Enabled SNGP to stabilise open-set transfer risk detected in metadata.', '_provider': 'openai', '_raw': '{\n  "model_name": "cnn_features_1d_sa",\n  "self_attention": true,\n  "sngp": false,\n  "openmax": false,\n  "use_unknown_head": false,\n  "bottleneck": 128,\n  "dropout": 0.3,\n  "learning_rate": 0.001,\n  "batch_size": 64,\n  "lambda_src": 0.0,\n  "rationale": "The dataset has short sequences (32 steps) and 7 channels, suitable for a 1-D CNN with self-attention to capture local and some longer-range dependencies. Label inconsistency suggests avoiding openmax or unknown heads to reduce complexity and tuning overhead. Dropout at 0.3 balances overfitting risk given the small sequence length and label noise. Batch size 64 and learning rate 0.001 align with typical stable training for this domain."\n}'}
+11-16 21:37:58 llm_cfg_stamp: 20251116_213306
+11-16 21:37:58 tag: sngp_wrn_sa_20251116_213306
+11-16 21:37:58 pretrained_model_path: ./checkpoint/pretrain_WideResNet_sa_spinel5v_1116/best_model.pth
+11-16 21:37:58 using 1 cpu
+11-16 21:37:58 Uncaught exception in ZMQStream callback
+Traceback (most recent call last):
+  File "/Users/moondiab/opt/anaconda3/envs/venv/lib/python3.11/site-packages/jupyter_client/session.py", line 100, in json_packer
+    ).encode("utf8", errors="surrogateescape")
+      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+UnicodeEncodeError: 'utf-8' codec can't encode characters in position 871-872: surrogates not allowed
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/Users/moondiab/opt/anaconda3/envs/venv/lib/python3.11/site-packages/zmq/eventloop/zmqstream.py", line 560, in _run_callback
+    f = callback(*args, **kwargs)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/moondiab/opt/anaconda3/envs/venv/lib/python3.11/site-packages/ipykernel/iostream.py", line 170, in _handle_event
+    event_f()
+  File "/Users/moondiab/opt/anaconda3/envs/venv/lib/python3.11/site-packages/ipykernel/iostream.py", line 649, in _flush
+    self.session.send(
+  File "/Users/moondiab/opt/anaconda3/envs/venv/lib/python3.11/site-packages/jupyter_client/session.py", line 852, in send
+    to_send = self.serialize(msg, ident)
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/moondiab/opt/anaconda3/envs/venv/lib/python3.11/site-packages/jupyter_client/session.py", line 721, in serialize
+    content = self.pack(content)
+              ^^^^^^^^^^^^^^^^^^
+  File "/Users/moondiab/opt/anaconda3/envs/venv/lib/python3.11/site-packages/jupyter_client/session.py", line 108, in json_packer
+    ).encode("utf8", errors="surrogateescape")
+      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+UnicodeEncodeError: 'utf-8' codec can't encode characters in position 871-872: surrogates not allowed
+11-16 21:37:58 Uncaught exception in zmqstream callback
+Traceback (most recent call last):
+  File "/Users/moondiab/opt/anaconda3/envs/venv/lib/python3.11/site-packages/jupyter_client/session.py", line 100, in json_packer
+    ).encode("utf8", errors="surrogateescape")
+      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+UnicodeEncodeError: 'utf-8' codec can't encode characters in position 871-872: surrogates not allowed
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/Users/moondiab/opt/anaconda3/envs/venv/lib/python3.11/site-packages/zmq/eventloop/zmqstream.py", line 610, in _handle_events
+    self._handle_recv()
+  File "/Users/moondiab/opt/anaconda3/envs/venv/lib/python3.11/site-packages/zmq/eventloop/zmqstream.py", line 639, in _handle_recv
+    self._run_callback(callback, msg)
+  File "/Users/moondiab/opt/anaconda3/envs/venv/lib/python3.11/site-packages/zmq/eventloop/zmqstream.py", line 560, in _run_callback
+    f = callback(*args, **kwargs)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/moondiab/opt/anaconda3/envs/venv/lib/python3.11/site-packages/ipykernel/iostream.py", line 170, in _handle_event
+    event_f()
+  File "/Users/moondiab/opt/anaconda3/envs/venv/lib/python3.11/site-packages/ipykernel/iostream.py", line 649, in _flush
+    self.session.send(
+  File "/Users/moondiab/opt/anaconda3/envs/venv/lib/python3.11/site-packages/jupyter_client/session.py", line 852, in send
+    to_send = self.serialize(msg, ident)
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/moondiab/opt/anaconda3/envs/venv/lib/python3.11/site-packages/jupyter_client/session.py", line 721, in serialize
+    content = self.pack(content)
+              ^^^^^^^^^^^^^^^^^^
+  File "/Users/moondiab/opt/anaconda3/envs/venv/lib/python3.11/site-packages/jupyter_client/session.py", line 108, in json_packer
+    ).encode("utf8", errors="surrogateescape")
+      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+UnicodeEncodeError: 'utf-8' codec can't encode characters in position 871-872: surrogates not allowed
+11-16 21:37:58 Exception in callback BaseAsyncIOLoop._handle_events(43, 1)
+handle: <Handle BaseAsyncIOLoop._handle_events(43, 1)>
+Traceback (most recent call last):
+  File "/Users/moondiab/opt/anaconda3/envs/venv/lib/python3.11/site-packages/jupyter_client/session.py", line 100, in json_packer
+    ).encode("utf8", errors="surrogateescape")
+      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+UnicodeEncodeError: 'utf-8' codec can't encode characters in position 871-872: surrogates not allowed
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/Users/moondiab/opt/anaconda3/envs/venv/lib/python3.11/asyncio/events.py", line 84, in _run
+    self._context.run(self._callback, *self._args)
+  File "/Users/moondiab/opt/anaconda3/envs/venv/lib/python3.11/site-packages/tornado/platform/asyncio.py", line 202, in _handle_events
+    handler_func(fileobj, events)
+  File "/Users/moondiab/opt/anaconda3/envs/venv/lib/python3.11/site-packages/zmq/eventloop/zmqstream.py", line 610, in _handle_events
+    self._handle_recv()
+  File "/Users/moondiab/opt/anaconda3/envs/venv/lib/python3.11/site-packages/zmq/eventloop/zmqstream.py", line 639, in _handle_recv
+    self._run_callback(callback, msg)
+  File "/Users/moondiab/opt/anaconda3/envs/venv/lib/python3.11/site-packages/zmq/eventloop/zmqstream.py", line 560, in _run_callback
+    f = callback(*args, **kwargs)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/moondiab/opt/anaconda3/envs/venv/lib/python3.11/site-packages/ipykernel/iostream.py", line 170, in _handle_event
+    event_f()
+  File "/Users/moondiab/opt/anaconda3/envs/venv/lib/python3.11/site-packages/ipykernel/iostream.py", line 649, in _flush
+    self.session.send(
+  File "/Users/moondiab/opt/anaconda3/envs/venv/lib/python3.11/site-packages/jupyter_client/session.py", line 852, in send
+    to_send = self.serialize(msg, ident)
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/moondiab/opt/anaconda3/envs/venv/lib/python3.11/site-packages/jupyter_client/session.py", line 721, in serialize
+    content = self.pack(content)
+              ^^^^^^^^^^^^^^^^^^
+  File "/Users/moondiab/opt/anaconda3/envs/venv/lib/python3.11/site-packages/jupyter_client/session.py", line 108, in json_packer
+    ).encode("utf8", errors="surrogateescape")
+      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+UnicodeEncodeError: 'utf-8' codec can't encode characters in position 871-872: surrogates not allowed
+11-16 22:25:35 data_name: Battery_inconsistent
+11-16 22:25:35 data_dir: ./my_datasets/Battery
+11-16 22:25:35 csv: ./my_datasets/Battery/battery_cycles_labeled.csv
+11-16 22:25:35 normlizetype: mean-std
+11-16 22:25:35 method: sngp
+11-16 22:25:35 gp_hidden_dim: 2048
+11-16 22:25:35 spectral_norm_bound: 0.95
+11-16 22:25:35 n_power_iterations: 1
+11-16 22:25:35 nesterov: True
+11-16 22:25:35 print_freq: 10
+11-16 22:25:35 layers: 16
+11-16 22:25:35 widen_factor: 1
+11-16 22:25:35 droprate: 0.3
+11-16 22:25:35 cuda_device: 0
+11-16 22:25:35 checkpoint_dir: ./checkpoint
+11-16 22:25:35 pretrained: True
+11-16 22:25:35 batch_size: 64
+11-16 22:25:35 num_workers: 0
+11-16 22:25:35 bottleneck: True
+11-16 22:25:35 bottleneck_num: 128
+11-16 22:25:35 last_batch: False
+11-16 22:25:35 hidden_size: 1024
+11-16 22:25:35 trade_off_adversarial: Step
+11-16 22:25:35 lam_adversarial: 1
+11-16 22:25:35 opt: adam
+11-16 22:25:35 lr: 0.001
+11-16 22:25:35 momentum: 0.9
+11-16 22:25:35 weight_decay: 1e-05
+11-16 22:25:35 lr_scheduler: step
+11-16 22:25:35 gamma: 0.1
+11-16 22:25:35 steps: 150, 250
+11-16 22:25:35 middle_epoch: 15
+11-16 22:25:35 max_epoch: 50
+11-16 22:25:35 print_step: 25
+11-16 22:25:35 inconsistent: UAN
+11-16 22:25:35 model_name: WideResNet_sa
+11-16 22:25:35 th: 0.5
+11-16 22:25:35 input_channels: 7
+11-16 22:25:35 classification_label: eol_class
+11-16 22:25:35 sequence_length: 32
+11-16 22:25:35 cycles_per_file: 5
+11-16 22:25:35 sample_random_state: 42
+11-16 22:25:35 transfer_task: [[0], [1]]
+11-16 22:25:35 source_cathode: ['5Vspinel']
+11-16 22:25:35 target_cathode: ['HE5050', 'NMC111', 'NMC532', 'NMC622', 'NMC811']
+11-16 22:25:35 num_classes: None
+11-16 22:25:35 domain_temperature: 1.0
+11-16 22:25:35 class_temperature: 10.0
+11-16 22:25:35 lambda_src: 0.0
+11-16 22:25:35 lambda_src_decay_patience: 5
+11-16 22:25:35 lambda_src_decay_factor: 0.5
+11-16 22:25:35 lambda_src_min: 0.0
+11-16 22:25:35 lambda_src_warmup: 0
+11-16 22:25:35 improvement_metric: common
+11-16 22:25:35 auto_select: True
+11-16 22:25:35 llm_compare: True
+11-16 22:25:35 llm_backend: openai
+11-16 22:25:35 llm_model: None
+11-16 22:25:35 llm_context: 
+11-16 22:25:35 llm_cfg_inputs: {'text_context': "Dataset: Argonne National Laboratory battery aging time-series with partial cycle windows.\nSource cathodes: (all available); target cathodes: (none specified).\nLabel column 'eol_class' with ~None classes; sequence length 32; 7 channels covering cycle_number, energy_charge, capacity_charge, energy_discharge, capacity_discharge, cycle_start, cycle_duration.", 'numeric_summary': {'dataset': 'Battery_inconsistent', 'sequence_length_requested': 32, 'notes': 'label_inconsistent', 'lr_hint': 0.001, 'dropout_hint': 0.3, 'num_classes_hint': None, 'splits': {}, 'dataset_variant': 'argonne_battery', 'feature_names': ['cycle_number', 'energy_charge', 'capacity_charge', 'energy_discharge', 'capacity_discharge', 'cycle_start', 'cycle_duration'], 'source_cathodes': [], 'target_cathodes': [], 'label_column': 'eol_class'}}
+11-16 22:25:35 llm_cfg: {'architecture': 'cnn_1d_sa', 'model_name': 'cnn_features_1d_sa', 'self_attention': True, 'sngp': True, 'openmax': False, 'use_unknown_head': False, 'bottleneck': 128, 'dropout': 0.3, 'learning_rate': 0.001, 'batch_size': 64, 'lambda_src': 0.0, 'rationale': 'The dataset has short sequences (32 steps) and 7 channels, making a 1-D CNN with self-attention suitable to capture local and some longer-range dependencies without excessive compute. Label inconsistency suggests avoiding openmax or unknown heads to reduce tuning complexity. Dropout at 0.3 balances overfitting risk due to label noise. Batch size 64 and learning rate 0.001 align with hints and stable training. Label inconsistency flagged → calibrated heads (SNGP/OpenMax) stay enabled for open-set robustness. Enabled SNGP to stabilise open-set transfer risk detected in metadata.', '_provider': 'openai', '_raw': '{\n  "model_name": "cnn_features_1d_sa",\n  "self_attention": true,\n  "sngp": false,\n  "openmax": false,\n  "use_unknown_head": false,\n  "bottleneck": 128,\n  "dropout": 0.3,\n  "learning_rate": 0.001,\n  "batch_size": 64,\n  "lambda_src": 0.0,\n  "rationale": "The dataset has short sequences (32 steps) and 7 channels, making a 1-D CNN with self-attention suitable to capture local and some longer-range dependencies without excessive compute. Label inconsistency suggests avoiding openmax or unknown heads to reduce tuning complexity. Dropout at 0.3 balances overfitting risk due to label noise. Batch size 64 and learning rate 0.001 align with hints and stable training."\n}'}
+11-16 22:25:35 llm_cfg_stamp: 20251116_222040
+11-16 22:25:35 tag: sngp_wrn_sa_20251116_222040
+11-16 22:25:35 pretrained_model_path: ./checkpoint/pretrain_WideResNet_sa_spinel5v_1116/best_model.pth
+11-16 22:25:35 using 1 cpu
+11-16 22:25:35 Uncaught exception in ZMQStream callback
+Traceback (most recent call last):
+  File "/Users/moondiab/opt/anaconda3/envs/venv/lib/python3.11/site-packages/jupyter_client/session.py", line 100, in json_packer
+    ).encode("utf8", errors="surrogateescape")
+      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+UnicodeEncodeError: 'utf-8' codec can't encode characters in position 871-872: surrogates not allowed
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/Users/moondiab/opt/anaconda3/envs/venv/lib/python3.11/site-packages/zmq/eventloop/zmqstream.py", line 560, in _run_callback
+    f = callback(*args, **kwargs)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/moondiab/opt/anaconda3/envs/venv/lib/python3.11/site-packages/ipykernel/iostream.py", line 170, in _handle_event
+    event_f()
+  File "/Users/moondiab/opt/anaconda3/envs/venv/lib/python3.11/site-packages/ipykernel/iostream.py", line 649, in _flush
+    self.session.send(
+  File "/Users/moondiab/opt/anaconda3/envs/venv/lib/python3.11/site-packages/jupyter_client/session.py", line 852, in send
+    to_send = self.serialize(msg, ident)
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/moondiab/opt/anaconda3/envs/venv/lib/python3.11/site-packages/jupyter_client/session.py", line 721, in serialize
+    content = self.pack(content)
+              ^^^^^^^^^^^^^^^^^^
+  File "/Users/moondiab/opt/anaconda3/envs/venv/lib/python3.11/site-packages/jupyter_client/session.py", line 108, in json_packer
+    ).encode("utf8", errors="surrogateescape")
+      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+UnicodeEncodeError: 'utf-8' codec can't encode characters in position 871-872: surrogates not allowed
+11-16 22:25:35 Uncaught exception in zmqstream callback
+Traceback (most recent call last):
+  File "/Users/moondiab/opt/anaconda3/envs/venv/lib/python3.11/site-packages/jupyter_client/session.py", line 100, in json_packer
+    ).encode("utf8", errors="surrogateescape")
+      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+UnicodeEncodeError: 'utf-8' codec can't encode characters in position 871-872: surrogates not allowed
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/Users/moondiab/opt/anaconda3/envs/venv/lib/python3.11/site-packages/zmq/eventloop/zmqstream.py", line 610, in _handle_events
+    self._handle_recv()
+  File "/Users/moondiab/opt/anaconda3/envs/venv/lib/python3.11/site-packages/zmq/eventloop/zmqstream.py", line 639, in _handle_recv
+    self._run_callback(callback, msg)
+  File "/Users/moondiab/opt/anaconda3/envs/venv/lib/python3.11/site-packages/zmq/eventloop/zmqstream.py", line 560, in _run_callback
+    f = callback(*args, **kwargs)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/moondiab/opt/anaconda3/envs/venv/lib/python3.11/site-packages/ipykernel/iostream.py", line 170, in _handle_event
+    event_f()
+  File "/Users/moondiab/opt/anaconda3/envs/venv/lib/python3.11/site-packages/ipykernel/iostream.py", line 649, in _flush
+    self.session.send(
+  File "/Users/moondiab/opt/anaconda3/envs/venv/lib/python3.11/site-packages/jupyter_client/session.py", line 852, in send
+    to_send = self.serialize(msg, ident)
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/moondiab/opt/anaconda3/envs/venv/lib/python3.11/site-packages/jupyter_client/session.py", line 721, in serialize
+    content = self.pack(content)
+              ^^^^^^^^^^^^^^^^^^
+  File "/Users/moondiab/opt/anaconda3/envs/venv/lib/python3.11/site-packages/jupyter_client/session.py", line 108, in json_packer
+    ).encode("utf8", errors="surrogateescape")
+      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+UnicodeEncodeError: 'utf-8' codec can't encode characters in position 871-872: surrogates not allowed
+11-16 22:25:35 Exception in callback BaseAsyncIOLoop._handle_events(43, 1)
+handle: <Handle BaseAsyncIOLoop._handle_events(43, 1)>
+Traceback (most recent call last):
+  File "/Users/moondiab/opt/anaconda3/envs/venv/lib/python3.11/site-packages/jupyter_client/session.py", line 100, in json_packer
+    ).encode("utf8", errors="surrogateescape")
+      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+UnicodeEncodeError: 'utf-8' codec can't encode characters in position 871-872: surrogates not allowed
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/Users/moondiab/opt/anaconda3/envs/venv/lib/python3.11/asyncio/events.py", line 84, in _run
+    self._context.run(self._callback, *self._args)
+  File "/Users/moondiab/opt/anaconda3/envs/venv/lib/python3.11/site-packages/tornado/platform/asyncio.py", line 202, in _handle_events
+    handler_func(fileobj, events)
+  File "/Users/moondiab/opt/anaconda3/envs/venv/lib/python3.11/site-packages/zmq/eventloop/zmqstream.py", line 610, in _handle_events
+    self._handle_recv()
+  File "/Users/moondiab/opt/anaconda3/envs/venv/lib/python3.11/site-packages/zmq/eventloop/zmqstream.py", line 639, in _handle_recv
+    self._run_callback(callback, msg)
+  File "/Users/moondiab/opt/anaconda3/envs/venv/lib/python3.11/site-packages/zmq/eventloop/zmqstream.py", line 560, in _run_callback
+    f = callback(*args, **kwargs)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/moondiab/opt/anaconda3/envs/venv/lib/python3.11/site-packages/ipykernel/iostream.py", line 170, in _handle_event
+    event_f()
+  File "/Users/moondiab/opt/anaconda3/envs/venv/lib/python3.11/site-packages/ipykernel/iostream.py", line 649, in _flush
+    self.session.send(
+  File "/Users/moondiab/opt/anaconda3/envs/venv/lib/python3.11/site-packages/jupyter_client/session.py", line 852, in send
+    to_send = self.serialize(msg, ident)
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/moondiab/opt/anaconda3/envs/venv/lib/python3.11/site-packages/jupyter_client/session.py", line 721, in serialize
+    content = self.pack(content)
+              ^^^^^^^^^^^^^^^^^^
+  File "/Users/moondiab/opt/anaconda3/envs/venv/lib/python3.11/site-packages/jupyter_client/session.py", line 108, in json_packer
+    ).encode("utf8", errors="surrogateescape")
+      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+UnicodeEncodeError: 'utf-8' codec can't encode characters in position 871-872: surrogates not allowed
+11-16 22:59:54 data_name: Battery_inconsistent
+11-16 22:59:54 data_dir: ./my_datasets/Battery
+11-16 22:59:54 csv: ./my_datasets/Battery/battery_cycles_labeled.csv
+11-16 22:59:54 normlizetype: mean-std
+11-16 22:59:54 method: sngp
+11-16 22:59:54 gp_hidden_dim: 2048
+11-16 22:59:54 spectral_norm_bound: 0.95
+11-16 22:59:54 n_power_iterations: 1
+11-16 22:59:54 nesterov: True
+11-16 22:59:54 print_freq: 10
+11-16 22:59:54 layers: 16
+11-16 22:59:54 widen_factor: 1
+11-16 22:59:54 droprate: 0.3
+11-16 22:59:54 cuda_device: 0
+11-16 22:59:54 checkpoint_dir: ./checkpoint
+11-16 22:59:54 pretrained: True
+11-16 22:59:54 batch_size: 64
+11-16 22:59:54 num_workers: 0
+11-16 22:59:54 bottleneck: True
+11-16 22:59:54 bottleneck_num: 128
+11-16 22:59:54 last_batch: False
+11-16 22:59:54 hidden_size: 1024
+11-16 22:59:54 trade_off_adversarial: Step
+11-16 22:59:54 lam_adversarial: 1
+11-16 22:59:54 opt: adam
+11-16 22:59:54 lr: 0.001
+11-16 22:59:54 momentum: 0.9
+11-16 22:59:54 weight_decay: 1e-05
+11-16 22:59:54 lr_scheduler: step
+11-16 22:59:54 gamma: 0.1
+11-16 22:59:54 steps: 150, 250
+11-16 22:59:54 middle_epoch: 15
+11-16 22:59:54 max_epoch: 50
+11-16 22:59:54 print_step: 25
+11-16 22:59:54 inconsistent: UAN
+11-16 22:59:54 model_name: WideResNet_sa
+11-16 22:59:54 th: 0.5
+11-16 22:59:54 input_channels: 7
+11-16 22:59:54 classification_label: eol_class
+11-16 22:59:54 sequence_length: 32
+11-16 22:59:54 cycles_per_file: 30
+11-16 22:59:54 sample_random_state: 42
+11-16 22:59:54 transfer_task: [[0], [1]]
+11-16 22:59:54 source_cathode: ['5Vspinel']
+11-16 22:59:54 target_cathode: ['HE5050', 'NMC111', 'NMC532', 'NMC622', 'NMC811']
+11-16 22:59:54 num_classes: None
+11-16 22:59:54 domain_temperature: 1.0
+11-16 22:59:54 class_temperature: 10.0
+11-16 22:59:54 lambda_src: 0.0
+11-16 22:59:54 lambda_src_decay_patience: 5
+11-16 22:59:54 lambda_src_decay_factor: 0.5
+11-16 22:59:54 lambda_src_min: 0.0
+11-16 22:59:54 lambda_src_warmup: 0
+11-16 22:59:54 improvement_metric: common
+11-16 22:59:54 auto_select: True
+11-16 22:59:54 llm_compare: True
+11-16 22:59:54 llm_backend: openai
+11-16 22:59:54 llm_model: None
+11-16 22:59:54 llm_context: 
+11-16 22:59:54 llm_cfg_inputs: {'text_context': "Dataset: Argonne National Laboratory battery aging time-series with partial cycle windows.\nSource cathodes: (all available); target cathodes: (none specified).\nLabel column 'eol_class' with ~None classes; sequence length 32; 7 channels covering cycle_number, energy_charge, capacity_charge, energy_discharge, capacity_discharge, cycle_start, cycle_duration.", 'numeric_summary': {'dataset': 'Battery_inconsistent', 'sequence_length_requested': 32, 'notes': 'label_inconsistent', 'lr_hint': 0.001, 'dropout_hint': 0.3, 'num_classes_hint': None, 'splits': {}, 'dataset_variant': 'argonne_battery', 'feature_names': ['cycle_number', 'energy_charge', 'capacity_charge', 'energy_discharge', 'capacity_discharge', 'cycle_start', 'cycle_duration'], 'source_cathodes': [], 'target_cathodes': [], 'label_column': 'eol_class'}}
+11-16 22:59:54 llm_cfg: {'architecture': 'cnn_1d_sa', 'model_name': 'cnn_features_1d_sa', 'self_attention': True, 'sngp': True, 'openmax': False, 'use_unknown_head': False, 'bottleneck': 128, 'dropout': 0.3, 'learning_rate': 0.001, 'batch_size': 64, 'lambda_src': 0.0, 'rationale': 'The dataset has short sequences (32) and 7 channels, making a lightweight CNN with self-attention ideal to capture local features and some longer-range dependencies. The label inconsistency suggests avoiding openmax or unknown heads to reduce complexity and tuning overhead. Dropout at 0.3 balances overfitting risk due to label noise. Batch size 64 fits memory and training stability. This config should outperform the baseline deterministic CNN by leveraging attention without excessive capacity or open-set complexity. Label inconsistency flagged → calibrated heads (SNGP/OpenMax) stay enabled for open-set robustness. Enabled SNGP to stabilise open-set transfer risk detected in metadata.', '_provider': 'openai', '_raw': '{\n  "model_name": "cnn_features_1d_sa",\n  "self_attention": true,\n  "sngp": false,\n  "openmax": false,\n  "use_unknown_head": false,\n  "bottleneck": 128,\n  "dropout": 0.3,\n  "learning_rate": 0.001,\n  "batch_size": 64,\n  "lambda_src": 0.0,\n  "rationale": "The dataset has short sequences (32) and 7 channels, making a lightweight CNN with self-attention ideal to capture local features and some longer-range dependencies. The label inconsistency suggests avoiding openmax or unknown heads to reduce complexity and tuning overhead. Dropout at 0.3 balances overfitting risk due to label noise. Batch size 64 fits memory and training stability. This config should outperform the baseline deterministic CNN by leveraging attention without excessive capacity or open-set complexity."\n}'}
+11-16 22:59:54 llm_cfg_stamp: 20251116_225503
+11-16 22:59:54 tag: sngp_wrn_sa_20251116_225503
+11-16 22:59:54 pretrained_model_path: ./checkpoint/pretrain_WideResNet_sa_spinel5v_1116/best_model.pth
+11-16 22:59:54 using 1 cpu
+11-16 22:59:54 Exception in callback functools.partial(<bound method OutStream._flush of <spyder_kernels.console.outstream.TTYOutStream object at 0x172cdca90>>)
+Traceback (most recent call last):
+  File "/Users/moondiab/opt/anaconda3/envs/venv/lib/python3.11/site-packages/jupyter_client/session.py", line 100, in json_packer
+    ).encode("utf8", errors="surrogateescape")
+      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+UnicodeEncodeError: 'utf-8' codec can't encode characters in position 872-873: surrogates not allowed
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/Users/moondiab/opt/anaconda3/envs/venv/lib/python3.11/site-packages/tornado/ioloop.py", line 750, in _run_callback
+    ret = callback()
+          ^^^^^^^^^^
+  File "/Users/moondiab/opt/anaconda3/envs/venv/lib/python3.11/site-packages/ipykernel/iostream.py", line 649, in _flush
+    self.session.send(
+  File "/Users/moondiab/opt/anaconda3/envs/venv/lib/python3.11/site-packages/jupyter_client/session.py", line 852, in send
+    to_send = self.serialize(msg, ident)
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/moondiab/opt/anaconda3/envs/venv/lib/python3.11/site-packages/jupyter_client/session.py", line 721, in serialize
+    content = self.pack(content)
+              ^^^^^^^^^^^^^^^^^^
+  File "/Users/moondiab/opt/anaconda3/envs/venv/lib/python3.11/site-packages/jupyter_client/session.py", line 108, in json_packer
+    ).encode("utf8", errors="surrogateescape")
+      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+UnicodeEncodeError: 'utf-8' codec can't encode characters in position 872-873: surrogates not allowed

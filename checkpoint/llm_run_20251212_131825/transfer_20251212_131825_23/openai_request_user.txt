@@ -1,0 +1,107 @@
+TRANSFER CONTEXT
+----------------
+Target cathode: HE5050 (high-energy experimental blend). Source cathodes: 5Vspinel (high-voltage spinel (manganese rich)). Source/target chemistries differ → expect domain shift.
+
+
+DATASET CONTEXT
+---------------
+Dataset: Argonne National Laboratory battery aging time-series with partial cycle windows. Source cathodes: 5Vspinel; target cathodes: HE5050, NMC111, NMC532, NMC622, NMC811. Label column 'eol_class' with ~None classes; sequence length 32; 21 channels covering cycle_number, energy_charge, capacity_charge, energy_discharge, capacity_discharge, cycle_start, cycle_duration. Literature cues (Joule S2542-4351(22)00409-3, chemistry-sensitive ablations): Joule 2022 (S2542-4351(22)00409-3) key cues for chemistry-aware ablation: - Early-cycle capacity fade slopes and coulombic-efficiency stabilization highlight whether aging is lithium-inventory loss (graphite/anode-electrolyte limited) versus cathode structural decay (e.g., Ni-rich NMC cathodes with electrolyte oxidation risk). - High initial impedance growth, thick SEI signatures, or electrolyte oxidation markers flag chemistries that benefit from uncertainty-aware heads (SNGP/OpenMax) to avoid overconfident extrapolation on outlier cycles. - LFP/graphite pairs tend to show flatter voltage plateaus and slower early fade; Ni-rich NMC chemistries degrade faster under aggressive cycling and need stronger regularization or shorter cycle horizons in ablations. - Transfer between mismatched chemistries (e.g., NMC → LFP) should down-weight source loss and favor architectures that adapt quickly with self-attention or wider bottlenecks; closely matched chemistries can rely more on convolutional baselines. source_train: class counts 0:19, 1:18, 2:2, 3:1, 4:1 (example label 1). source_train sample window (first 3 ch × 12 steps): [[-1.6202000379562378, -1.388700008392334, -1.1572999954223633, -0.9258000254631042, -0.6944000124931335, -0.4629000127315521, -0.23149999976158142, 0.0, 0.23149999976158142, 0.4629000127315521, 0.6944000124931335, 0.9258000254631042], [-1.1741000413894653, -0.016899999231100082, 0.0012000000569969416, -0.030400000512599945, -0.03880000114440918, -0.04360000044107437, -0.05829999968409538,...
+
+MODEL REFERENCE
+---------------
+cnn_1d — Lightweight 1-D temporal CNN Best for: Short-to-mid sequences (<256 steps) with <=8 channels, fast iteration, or when GPU memory is limited. Strengths: Low latency and easy to regularize; Works well on CWRU bearings with narrow frequency bands; Stable baseline when data is mostly closed-set Watch-outs: May underfit long-horizon battery curves; Less expressive for high-channel sensor arrays cnn_1d_sa — CNN with lightweight self-attention tail Best for: Sequences needing local feature extraction plus some long-range mixing (Argonne battery cycle slices, multi-axis sensors). Strengths: Keeps CNN efficiency while capturing multi-cycle correlations; Balances between latency and expressivity Watch-outs: Slightly higher memory than pure CNN; Attention layer can overfit tiny datasets without dropout cnn_openmax — CNN with OpenMax calibrated tail Best for: Closed-set CNN workloads where explicit unknown rejection is mandatory (e.g., CWRU with novel fault types). Strengths: Adds open-set calibration to the fast CNN backbone; Pairs well with label-inconsistent or anomaly-heavy splits Watch-outs: Assumes CNN-appropriate sequence lengths; Requires tuning OpenMax thresholds for noisy labels wideresnet — WideResNet 1-D (high capacity) Best for: Longer sequences (>=256 steps) or >8 channel inputs needing stronger representation power (battery chemo-mechanical signals). Strengths: Deep residual blocks capture rich frequency structure; Handles transfer tasks with large domain gap Watch-outs: Higher compute/memory footprint; Can overfit small CWRU subsets without augmentation wideresnet_sa — WideResNet with attention head Best for: Hybrid scenarios: long multi-channel sequences where global context matters (battery degradation trajectories). Strengths: Residual depth + attention for regime shifts; Works well when label inconsistency requires context Watch-outs: Largest memory use; ensure batch size is feasible; Needs dropout to avoid memorizing small source domains wideresnet_edited — WideResNet variant tuned for battery Best for: Argonne battery cycles with physics-inspired feature edits (e.g., state-of-health regression buckets). Strengths: Pre-activation blocks favor smooth degradation patterns; Often strongest when transfer source ≠ target chemistry Watch-outs: Less validated on vibration data; Expect longer warm-up and sensitivity to learning rate Toggles and...
+
+
+NUMERIC SUMMARY
+---------------
+batch_size_seen: 8
+channels: 21
+dataset: Battery_inconsistent
+dataset_variant: argonne_battery
+dropout_hint: 0.35
+feature_names: [cycle_number, energy_charge, capacity_charge, energy_discharge, … (+3)]
+label_column: eol_class
+lr_hint: 0.0005
+notes: label_inconsistent
+num_classes_hint: None
+seq_len: 32
+sequence_length_requested: 32
+source_cathodes: [5Vspinel]
+split_used: source_train
+splits: {source_train: {batch_shape: [8, 21, 32], channels: 21, seq_len: 32, example_label: 1, preview: {channels: 3, timesteps: 12, values: [[-1.6202000379562378, -1.388700008392334, -1.1572999954223633, -0.9258000254631042, … (+8)], [-1.1741000413894653, -0.016899999231100082, 0.0012000000569969416, -0.030400000512599945, … (+8)], [-1.13100004196167, -0.17839999496936798, -0.15639999508857727, -0.18359999358654022, … (+8)]]}, batch_channel_mean: [0.8607000112533569, -0.19619999825954437, -0.3012000024318695, -0.15970000624656677, … (+4)], … (+5 more)}, target_train: {batch_shape: [8, 21, 32], channels: 21, seq_len: 32, example_label: 1, preview: {channels: 3, timesteps: 12, values: [[-1.6202000379562378, -1.388700008392334, -1.1572999954223633, -0.9258000254631042, … (+8)], [-1.1741000413894653, 0.3743000030517578, 0.37630000710487366, 0.3709999918937683, … (+8)], [-1.13100004196167, 0.4562999904155731, 0.46230000257492065, 0.45500001311302185, … (+8)]]}, batch_channel_mean: [0.8607000112533569, -0.04560000076889992, -0.01269999984651804, -0.06199999898672104, … (+4)], … (+5 more)}, source_val: {batch_shape: [8, 21, 32], channels: 21, seq_len: 32, example_label: 0, preview: {channels: 3, timesteps: 12, values: [[-1.6202000379562378, -1.388700008392334, -1.1572999954223633, -0.9258000254631042, … (+8)], [-1.1741000413894653, -0.04390000179409981, -0.06509999930858612, -0.11779999732971191, … (+8)], [-1.13100004196167, -0.19740000367164612, -0.21279999613761902, -0.25780001282691956, … (+8)]]}, batch_channel_mean: [0.8607000112533569, -0.21899999678134918, -0.3481999933719635, -0.1915999948978424, … (+4)], … (+5 more)}, target_val: {batch_shape: [8, 21, 32], channels: 21, seq_len: 32, example_label: 3, preview: {channels: 3, timesteps: 12, values: [[-1.6202000379562378, -1.388700008392334, -1.1572999954223633, -0.9258000254631042, … (+8)], [-1.1741000413894653, -1.1741000413894653, -1.1741000413894653, -1.1741000413894653, … (+8)], [-1.13100004196167, -1.13100004196167, -1.13100004196167, -1.13100004196167, … (+8)]]}, batch_channel_mean: [0.8607000112533569, 0.27559998631477356, 0.2630000114440918, 0.1655000001192093, … (+4)], … (+5 more)}}
+target_cathodes: [HE5050, NMC111, NMC532, NMC622, … (+1)]
+
+REQUIRED JSON SCHEMA
+--------------------
+{
+  "type": "object",
+  "properties": {
+    "model_name": {
+      "type": "string",
+      "enum": [
+        "CNN_1d",
+        "WideResNet",
+        "WideResNet_edited",
+        "WideResNet_mh",
+        "WideResNet_sa",
+        "cnn_features_1d",
+        "cnn_features_1d_hyperparstudy",
+        "cnn_features_1d_sa",
+        "cnn_openmax",
+        "resnet_1d",
+        "resnet_features_1d"
+      ]
+    },
+    "self_attention": {
+      "type": "boolean"
+    },
+    "sngp": {
+      "type": "boolean"
+    },
+    "openmax": {
+      "type": "boolean"
+    },
+    "use_unknown_head": {
+      "type": "boolean"
+    },
+    "bottleneck": {
+      "type": "integer",
+      "minimum": 16,
+      "maximum": 1024
+    },
+    "dropout": {
+      "type": "number",
+      "minimum": 0.0,
+      "maximum": 0.8
+    },
+    "learning_rate": {
+      "type": "number",
+      "minimum": 1e-05,
+      "maximum": 0.01
+    },
+    "batch_size": {
+      "type": "integer",
+      "minimum": 4,
+      "maximum": 256
+    },
+    "lambda_src": {
+      "type": "number",
+      "minimum": 0.0,
+      "maximum": 5.0
+    },
+    "warmup_epochs": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 20
+    },
+    "rationale": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "model_name"
+  ],
+  "additionalProperties": false
+}
+
+Return ONLY a JSON object that matches the schema.

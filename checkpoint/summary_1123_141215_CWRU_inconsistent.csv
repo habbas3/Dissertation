@@ -1,0 +1,2 @@
+model,source,target,comparison_metric,baseline_score,transfer_score,improvement,baseline_common_acc,transfer_common_acc,baseline_outlier_acc,transfer_outlier_acc,baseline_hscore,transfer_hscore,final_model,note
+cnn_features_1d,0,1,common,0.9096385542168675,0.9698795180722891,0.06024096385542166,0.9096385542168675,0.9698795180722891,0.0,0.0,0.0,0.0,transfer,

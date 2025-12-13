@@ -1,0 +1,6 @@
+tag,model_name,method,droprate,lr,batch_size,lambda_src,summary_csv,avg_improvement,cycle_limit
+llm_pick,cnn_features_1d_sa,sngp,0.35,0.0005,16,0.6,checkpoint/llm_run_20251212_131825/compare/llm_pick_summary_1212_141551_Battery_inconsistent.csv,0.02027027027027025,
+ablate_sa_off,cnn_features_1d_sa,sngp,0.35,0.0005,16,0.6,checkpoint/llm_run_20251212_131825/compare/ablate_sa_off_summary_1212_143417_Battery_inconsistent.csv,0.02027027027027025,
+ablate_sngp_off,cnn_features_1d_sa,sngp,0.35,0.0005,16,0.6,checkpoint/llm_run_20251212_131825/compare/ablate_sngp_off_summary_1212_151826_Battery_inconsistent.csv,0.00675675675675675,
+deterministic_cnn,cnn_features_1d,sngp,0.35,0.0005,8,0.6,checkpoint/llm_run_20251212_131825/compare/deterministic_cnn_summary_1212_155940_Battery_inconsistent.csv,0.0135135135135135,
+sngp_wrn_sa,cnn_features_1d_sa,sngp,0.35,0.0005,8,0.6,checkpoint/llm_run_20251212_131825/compare/sngp_wrn_sa_summary_1212_164837_Battery_inconsistent.csv,0.002252252252252233,

@@ -1,0 +1,7 @@
+model,source,target,comparison_metric,baseline_score,transfer_score,improvement,baseline_accuracy,transfer_accuracy,baseline_common_acc,transfer_common_acc,baseline_outlier_acc,transfer_outlier_acc,baseline_hscore,transfer_hscore,transfer_uncertainty_mean_entropy,final_model,note
+WideResNet_sa,nmc,spinel5v,accuracy,0.8333333333333334,0.8333333333333334,0.0,0.8333333333333334,0.8333333333333334,0.8333333333333334,0.8333333333333334,0.0,0.0,0.0,0.0,0.9546640962362289,baseline,baseline_kept
+WideResNet_sa,nmc,fcg,accuracy,1.0,1.0,0.0,1.0,1.0,1.0,1.0,0.0,0.0,0.0,0.0,0.9191493391990662,baseline,baseline_kept
+WideResNet_sa,lirich,spinel5v,accuracy,0.75,0.75,0.0,0.75,0.75,0.75,0.75,0.0,0.0,0.0,0.0,1.6069216628869374,baseline,baseline_kept
+WideResNet_sa,spinel5v,nmc,accuracy,0.6216216216216216,0.6216216216216216,0.0,0.6216216216216216,0.6216216216216216,0.6216216216216216,0.6216216216216216,0.0,0.0,0.0,0.0,1.4684013804873906,baseline,baseline_kept
+WideResNet_sa,spinel5v,lirich,accuracy,1.0,1.0,0.0,1.0,1.0,1.0,1.0,0.0,0.0,0.0,0.0,1.599932223558426,baseline,baseline_kept
+WideResNet_sa,fcg,nmc,accuracy,0.6756756756756757,0.6756756756756757,0.0,0.6756756756756757,0.6756756756756757,0.6756756756756757,0.6756756756756757,0.0,0.0,0.0,0.0,1.5466752567806759,baseline,baseline_kept

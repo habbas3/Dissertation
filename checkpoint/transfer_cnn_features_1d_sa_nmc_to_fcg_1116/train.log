@@ -1,0 +1,546 @@
+11-16 14:51:54 data_name: Battery_inconsistent
+11-16 14:51:54 data_dir: ./my_datasets/Battery
+11-16 14:51:54 csv: ./my_datasets/Battery/battery_cycles_labeled.csv
+11-16 14:51:54 normlizetype: mean-std
+11-16 14:51:54 method: sngp
+11-16 14:51:54 gp_hidden_dim: 2048
+11-16 14:51:54 spectral_norm_bound: 0.95
+11-16 14:51:54 n_power_iterations: 1
+11-16 14:51:54 nesterov: True
+11-16 14:51:54 print_freq: 10
+11-16 14:51:54 layers: 16
+11-16 14:51:54 widen_factor: 1
+11-16 14:51:54 droprate: 0.3
+11-16 14:51:54 cuda_device: 0
+11-16 14:51:54 checkpoint_dir: ./checkpoint
+11-16 14:51:54 pretrained: True
+11-16 14:51:54 batch_size: 64
+11-16 14:51:54 num_workers: 0
+11-16 14:51:54 bottleneck: True
+11-16 14:51:54 bottleneck_num: 128
+11-16 14:51:54 last_batch: False
+11-16 14:51:54 hidden_size: 1024
+11-16 14:51:54 trade_off_adversarial: Step
+11-16 14:51:54 lam_adversarial: 1
+11-16 14:51:54 opt: adam
+11-16 14:51:54 lr: 0.001
+11-16 14:51:54 momentum: 0.9
+11-16 14:51:54 weight_decay: 1e-05
+11-16 14:51:54 lr_scheduler: step
+11-16 14:51:54 gamma: 0.1
+11-16 14:51:54 steps: 150, 250
+11-16 14:51:54 middle_epoch: 15
+11-16 14:51:54 max_epoch: 50
+11-16 14:51:54 print_step: 25
+11-16 14:51:54 inconsistent: UAN
+11-16 14:51:54 model_name: cnn_features_1d_sa
+11-16 14:51:54 th: 0.5
+11-16 14:51:54 input_channels: 7
+11-16 14:51:54 classification_label: eol_class
+11-16 14:51:54 sequence_length: 32
+11-16 14:51:54 cycles_per_file: 50
+11-16 14:51:54 sample_random_state: 42
+11-16 14:51:54 transfer_task: [[0], [1]]
+11-16 14:51:54 source_cathode: ['HE5050', 'NMC111', 'NMC532', 'NMC622', 'NMC811']
+11-16 14:51:54 target_cathode: ['FCG']
+11-16 14:51:54 num_classes: None
+11-16 14:51:54 domain_temperature: 1.0
+11-16 14:51:54 class_temperature: 10.0
+11-16 14:51:54 lambda_src: 0.0
+11-16 14:51:54 lambda_src_decay_patience: 5
+11-16 14:51:54 lambda_src_decay_factor: 0.5
+11-16 14:51:54 lambda_src_min: 0.0
+11-16 14:51:54 lambda_src_warmup: 0
+11-16 14:51:54 improvement_metric: common
+11-16 14:51:54 auto_select: True
+11-16 14:51:54 llm_compare: True
+11-16 14:51:54 llm_backend: openai
+11-16 14:51:54 llm_model: None
+11-16 14:51:54 llm_context: 
+11-16 14:51:54 llm_cfg_inputs: {'text_context': "Dataset: Argonne National Laboratory battery aging time-series with partial cycle windows.\nSource cathodes: (all available); target cathodes: (none specified).\nLabel column 'eol_class' with ~None classes; sequence length 32; 7 channels covering cycle_number, energy_charge, capacity_charge, energy_discharge, capacity_discharge, cycle_start, cycle_duration.", 'numeric_summary': {'dataset': 'Battery_inconsistent', 'sequence_length_requested': 32, 'notes': 'label_inconsistent', 'lr_hint': 0.001, 'dropout_hint': 0.3, 'num_classes_hint': None, 'splits': {}, 'dataset_variant': 'argonne_battery', 'feature_names': ['cycle_number', 'energy_charge', 'capacity_charge', 'energy_discharge', 'capacity_discharge', 'cycle_start', 'cycle_duration'], 'source_cathodes': [], 'target_cathodes': [], 'label_column': 'eol_class'}}
+11-16 14:51:54 llm_cfg: {'architecture': 'cnn_1d_sa', 'model_name': 'cnn_features_1d_sa', 'self_attention': True, 'sngp': True, 'openmax': False, 'use_unknown_head': False, 'bottleneck': 128, 'dropout': 0.3, 'learning_rate': 0.001, 'batch_size': 64, 'lambda_src': 0.0, 'rationale': 'The dataset has short sequences (32 steps) and 7 channels, making a 1-D CNN with self-attention ideal to capture local and some longer-range dependencies without excessive memory use. Label inconsistency suggests avoiding openmax or unknown heads to reduce tuning complexity. Moderate dropout (0.3) helps prevent overfitting given small data and attention. Batch size 64 balances GPU efficiency and stable training. Label inconsistency flagged → calibrated heads (SNGP/OpenMax) stay enabled for open-set robustness. Enabled SNGP to stabilise open-set transfer risk detected in metadata.', '_provider': 'openai', '_raw': '{\n  "model_name": "cnn_features_1d_sa",\n  "self_attention": true,\n  "sngp": false,\n  "openmax": false,\n  "use_unknown_head": false,\n  "bottleneck": 128,\n  "dropout": 0.3,\n  "learning_rate": 0.001,\n  "batch_size": 64,\n  "lambda_src": 0.0,\n  "rationale": "The dataset has short sequences (32 steps) and 7 channels, making a 1-D CNN with self-attention ideal to capture local and some longer-range dependencies without excessive memory use. Label inconsistency suggests avoiding openmax or unknown heads to reduce tuning complexity. Moderate dropout (0.3) helps prevent overfitting given small data and attention. Batch size 64 balances GPU efficiency and stable training."\n}'}
+11-16 14:51:54 llm_cfg_stamp: 20251116_144741
+11-16 14:51:54 pretrained_model_path: ./checkpoint/pretrain_cnn_features_1d_sa_nmc_1116/best_model.pth
+11-16 14:51:54 using 1 cpu
+11-16 14:51:54 Reducing learning rate to 0.0001 for 95 target samples
+11-16 14:51:54 Freezing early layers of backbone for 95 target samples
+11-16 14:51:54 Exception in callback functools.partial(<bound method OutStream._flush of <spyder_kernels.console.outstream.TTYOutStream object at 0x172cdca90>>)
+Traceback (most recent call last):
+  File "/Users/moondiab/opt/anaconda3/envs/venv/lib/python3.11/site-packages/jupyter_client/session.py", line 100, in json_packer
+    ).encode("utf8", errors="surrogateescape")
+      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+UnicodeEncodeError: 'utf-8' codec can't encode characters in position 882-883: surrogates not allowed
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/Users/moondiab/opt/anaconda3/envs/venv/lib/python3.11/site-packages/tornado/ioloop.py", line 750, in _run_callback
+    ret = callback()
+          ^^^^^^^^^^
+  File "/Users/moondiab/opt/anaconda3/envs/venv/lib/python3.11/site-packages/ipykernel/iostream.py", line 649, in _flush
+    self.session.send(
+  File "/Users/moondiab/opt/anaconda3/envs/venv/lib/python3.11/site-packages/jupyter_client/session.py", line 852, in send
+    to_send = self.serialize(msg, ident)
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/moondiab/opt/anaconda3/envs/venv/lib/python3.11/site-packages/jupyter_client/session.py", line 721, in serialize
+    content = self.pack(content)
+              ^^^^^^^^^^^^^^^^^^
+  File "/Users/moondiab/opt/anaconda3/envs/venv/lib/python3.11/site-packages/jupyter_client/session.py", line 108, in json_packer
+    ).encode("utf8", errors="surrogateescape")
+      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+UnicodeEncodeError: 'utf-8' codec can't encode characters in position 882-883: surrogates not allowed
+11-16 19:28:06 data_name: Battery_inconsistent
+11-16 19:28:06 data_dir: ./my_datasets/Battery
+11-16 19:28:06 csv: ./my_datasets/Battery/battery_cycles_labeled.csv
+11-16 19:28:06 normlizetype: mean-std
+11-16 19:28:06 method: sngp
+11-16 19:28:06 gp_hidden_dim: 2048
+11-16 19:28:06 spectral_norm_bound: 0.95
+11-16 19:28:06 n_power_iterations: 1
+11-16 19:28:06 nesterov: True
+11-16 19:28:06 print_freq: 10
+11-16 19:28:06 layers: 16
+11-16 19:28:06 widen_factor: 1
+11-16 19:28:06 droprate: 0.3
+11-16 19:28:06 cuda_device: 0
+11-16 19:28:06 checkpoint_dir: ./checkpoint
+11-16 19:28:06 pretrained: True
+11-16 19:28:06 batch_size: 64
+11-16 19:28:06 num_workers: 0
+11-16 19:28:06 bottleneck: True
+11-16 19:28:06 bottleneck_num: 128
+11-16 19:28:06 last_batch: False
+11-16 19:28:06 hidden_size: 1024
+11-16 19:28:06 trade_off_adversarial: Step
+11-16 19:28:06 lam_adversarial: 1
+11-16 19:28:06 opt: adam
+11-16 19:28:06 lr: 0.001
+11-16 19:28:06 momentum: 0.9
+11-16 19:28:06 weight_decay: 1e-05
+11-16 19:28:06 lr_scheduler: step
+11-16 19:28:06 gamma: 0.1
+11-16 19:28:06 steps: 150, 250
+11-16 19:28:06 middle_epoch: 15
+11-16 19:28:06 max_epoch: 50
+11-16 19:28:06 print_step: 25
+11-16 19:28:06 inconsistent: UAN
+11-16 19:28:06 model_name: cnn_features_1d_sa
+11-16 19:28:06 th: 0.5
+11-16 19:28:06 input_channels: 7
+11-16 19:28:06 classification_label: eol_class
+11-16 19:28:06 sequence_length: 32
+11-16 19:28:06 cycles_per_file: 20
+11-16 19:28:06 sample_random_state: 42
+11-16 19:28:06 transfer_task: [[0], [1]]
+11-16 19:28:06 source_cathode: ['HE5050', 'NMC111', 'NMC532', 'NMC622', 'NMC811']
+11-16 19:28:06 target_cathode: ['FCG']
+11-16 19:28:06 num_classes: None
+11-16 19:28:06 domain_temperature: 1.0
+11-16 19:28:06 class_temperature: 10.0
+11-16 19:28:06 lambda_src: 0.0
+11-16 19:28:06 lambda_src_decay_patience: 5
+11-16 19:28:06 lambda_src_decay_factor: 0.5
+11-16 19:28:06 lambda_src_min: 0.0
+11-16 19:28:06 lambda_src_warmup: 0
+11-16 19:28:06 improvement_metric: common
+11-16 19:28:06 auto_select: True
+11-16 19:28:06 llm_compare: True
+11-16 19:28:06 llm_backend: openai
+11-16 19:28:06 llm_model: None
+11-16 19:28:06 llm_context: 
+11-16 19:28:06 llm_cfg_inputs: {'text_context': "Dataset: Argonne National Laboratory battery aging time-series with partial cycle windows.\nSource cathodes: (all available); target cathodes: (none specified).\nLabel column 'eol_class' with ~None classes; sequence length 32; 7 channels covering cycle_number, energy_charge, capacity_charge, energy_discharge, capacity_discharge, cycle_start, cycle_duration.", 'numeric_summary': {'dataset': 'Battery_inconsistent', 'sequence_length_requested': 32, 'notes': 'label_inconsistent', 'lr_hint': 0.001, 'dropout_hint': 0.3, 'num_classes_hint': None, 'splits': {}, 'dataset_variant': 'argonne_battery', 'feature_names': ['cycle_number', 'energy_charge', 'capacity_charge', 'energy_discharge', 'capacity_discharge', 'cycle_start', 'cycle_duration'], 'source_cathodes': [], 'target_cathodes': [], 'label_column': 'eol_class'}}
+11-16 19:28:06 llm_cfg: {'architecture': 'cnn_1d_sa', 'model_name': 'cnn_features_1d_sa', 'self_attention': True, 'sngp': True, 'openmax': False, 'use_unknown_head': False, 'bottleneck': 128, 'dropout': 0.3, 'learning_rate': 0.001, 'batch_size': 64, 'lambda_src': 0.0, 'rationale': 'The dataset has short sequences (32 steps) and 7 channels, making a lightweight CNN with self-attention ideal to capture local features and some long-range dependencies. Label inconsistency suggests avoiding openmax or unknown heads to reduce complexity. Dropout at 0.3 balances overfitting risk from attention layers on a small dataset. Batch size 64 and learning rate 0.001 align with hints and ensure stable training. Label inconsistency flagged → calibrated heads (SNGP/OpenMax) stay enabled for open-set robustness. Enabled SNGP to stabilise open-set transfer risk detected in metadata.', '_provider': 'openai', '_raw': '{\n  "model_name": "cnn_features_1d_sa",\n  "self_attention": true,\n  "sngp": false,\n  "openmax": false,\n  "use_unknown_head": false,\n  "bottleneck": 128,\n  "dropout": 0.3,\n  "learning_rate": 0.001,\n  "batch_size": 64,\n  "lambda_src": 0.0,\n  "rationale": "The dataset has short sequences (32 steps) and 7 channels, making a lightweight CNN with self-attention ideal to capture local features and some long-range dependencies. Label inconsistency suggests avoiding openmax or unknown heads to reduce complexity. Dropout at 0.3 balances overfitting risk from attention layers on a small dataset. Batch size 64 and learning rate 0.001 align with hints and ensure stable training."\n}'}
+11-16 19:28:06 llm_cfg_stamp: 20251116_192719
+11-16 19:28:06 pretrained_model_path: ./checkpoint/pretrain_cnn_features_1d_sa_nmc_1116/best_model.pth
+11-16 19:28:06 using 1 cpu
+11-16 19:28:06 Reducing learning rate to 0.0001 for 5 target samples
+11-16 19:28:06 Freezing early layers of backbone for 5 target samples
+11-16 19:28:06 Exception in callback functools.partial(<bound method OutStream._flush of <spyder_kernels.console.outstream.TTYOutStream object at 0x172cdca90>>)
+Traceback (most recent call last):
+  File "/Users/moondiab/opt/anaconda3/envs/venv/lib/python3.11/site-packages/jupyter_client/session.py", line 100, in json_packer
+    ).encode("utf8", errors="surrogateescape")
+      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+UnicodeEncodeError: 'utf-8' codec can't encode characters in position 715-716: surrogates not allowed
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/Users/moondiab/opt/anaconda3/envs/venv/lib/python3.11/site-packages/tornado/ioloop.py", line 750, in _run_callback
+    ret = callback()
+          ^^^^^^^^^^
+  File "/Users/moondiab/opt/anaconda3/envs/venv/lib/python3.11/site-packages/ipykernel/iostream.py", line 649, in _flush
+    self.session.send(
+  File "/Users/moondiab/opt/anaconda3/envs/venv/lib/python3.11/site-packages/jupyter_client/session.py", line 852, in send
+    to_send = self.serialize(msg, ident)
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/moondiab/opt/anaconda3/envs/venv/lib/python3.11/site-packages/jupyter_client/session.py", line 721, in serialize
+    content = self.pack(content)
+              ^^^^^^^^^^^^^^^^^^
+  File "/Users/moondiab/opt/anaconda3/envs/venv/lib/python3.11/site-packages/jupyter_client/session.py", line 108, in json_packer
+    ).encode("utf8", errors="surrogateescape")
+      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+UnicodeEncodeError: 'utf-8' codec can't encode characters in position 715-716: surrogates not allowed
+11-16 20:23:25 data_name: Battery_inconsistent
+11-16 20:23:25 data_dir: ./my_datasets/Battery
+11-16 20:23:25 csv: ./my_datasets/Battery/battery_cycles_labeled.csv
+11-16 20:23:25 normlizetype: mean-std
+11-16 20:23:25 method: sngp
+11-16 20:23:25 gp_hidden_dim: 2048
+11-16 20:23:25 spectral_norm_bound: 0.95
+11-16 20:23:25 n_power_iterations: 1
+11-16 20:23:25 nesterov: True
+11-16 20:23:25 print_freq: 10
+11-16 20:23:25 layers: 16
+11-16 20:23:25 widen_factor: 1
+11-16 20:23:25 droprate: 0.3
+11-16 20:23:25 cuda_device: 0
+11-16 20:23:25 checkpoint_dir: ./checkpoint
+11-16 20:23:25 pretrained: True
+11-16 20:23:25 batch_size: 64
+11-16 20:23:25 num_workers: 0
+11-16 20:23:25 bottleneck: True
+11-16 20:23:25 bottleneck_num: 128
+11-16 20:23:25 last_batch: False
+11-16 20:23:25 hidden_size: 1024
+11-16 20:23:25 trade_off_adversarial: Step
+11-16 20:23:25 lam_adversarial: 1
+11-16 20:23:25 opt: adam
+11-16 20:23:25 lr: 0.001
+11-16 20:23:25 momentum: 0.9
+11-16 20:23:25 weight_decay: 1e-05
+11-16 20:23:25 lr_scheduler: step
+11-16 20:23:25 gamma: 0.1
+11-16 20:23:25 steps: 150, 250
+11-16 20:23:25 middle_epoch: 15
+11-16 20:23:25 max_epoch: 50
+11-16 20:23:25 print_step: 25
+11-16 20:23:25 inconsistent: UAN
+11-16 20:23:25 model_name: cnn_features_1d_sa
+11-16 20:23:25 th: 0.5
+11-16 20:23:25 input_channels: 7
+11-16 20:23:25 classification_label: eol_class
+11-16 20:23:25 sequence_length: 32
+11-16 20:23:25 cycles_per_file: 5
+11-16 20:23:25 sample_random_state: 42
+11-16 20:23:25 transfer_task: [[0], [1]]
+11-16 20:23:25 source_cathode: ['HE5050', 'NMC111', 'NMC532', 'NMC622', 'NMC811']
+11-16 20:23:25 target_cathode: ['FCG']
+11-16 20:23:25 num_classes: None
+11-16 20:23:25 domain_temperature: 1.0
+11-16 20:23:25 class_temperature: 10.0
+11-16 20:23:25 lambda_src: 0.0
+11-16 20:23:25 lambda_src_decay_patience: 5
+11-16 20:23:25 lambda_src_decay_factor: 0.5
+11-16 20:23:25 lambda_src_min: 0.0
+11-16 20:23:25 lambda_src_warmup: 0
+11-16 20:23:25 improvement_metric: common
+11-16 20:23:25 auto_select: True
+11-16 20:23:25 llm_compare: True
+11-16 20:23:25 llm_backend: openai
+11-16 20:23:25 llm_model: None
+11-16 20:23:25 llm_context: 
+11-16 20:23:25 llm_cfg_inputs: {'text_context': "Dataset: Argonne National Laboratory battery aging time-series with partial cycle windows.\nSource cathodes: (all available); target cathodes: (none specified).\nLabel column 'eol_class' with ~None classes; sequence length 32; 7 channels covering cycle_number, energy_charge, capacity_charge, energy_discharge, capacity_discharge, cycle_start, cycle_duration.", 'numeric_summary': {'dataset': 'Battery_inconsistent', 'sequence_length_requested': 32, 'notes': 'label_inconsistent', 'lr_hint': 0.001, 'dropout_hint': 0.3, 'num_classes_hint': None, 'splits': {}, 'dataset_variant': 'argonne_battery', 'feature_names': ['cycle_number', 'energy_charge', 'capacity_charge', 'energy_discharge', 'capacity_discharge', 'cycle_start', 'cycle_duration'], 'source_cathodes': [], 'target_cathodes': [], 'label_column': 'eol_class'}}
+11-16 20:23:25 llm_cfg: {'architecture': 'cnn_1d_sa', 'model_name': 'cnn_features_1d_sa', 'self_attention': True, 'sngp': True, 'openmax': False, 'use_unknown_head': False, 'bottleneck': 128, 'dropout': 0.3, 'learning_rate': 0.001, 'batch_size': 64, 'lambda_src': 0.0, 'rationale': 'The dataset has short sequences (32 steps) and 7 channels, making a 1-D CNN with self-attention ideal to capture local features and some long-range dependencies. Label inconsistency suggests avoiding openmax or unknown heads to reduce complexity and overfitting risk. Moderate bottleneck and dropout balance capacity and regularization. The learning rate and batch size align with hints for stable training on this battery dataset. Label inconsistency flagged → calibrated heads (SNGP/OpenMax) stay enabled for open-set robustness. Enabled SNGP to stabilise open-set transfer risk detected in metadata.', '_provider': 'openai', '_raw': '{\n  "model_name": "cnn_features_1d_sa",\n  "self_attention": true,\n  "sngp": false,\n  "openmax": false,\n  "use_unknown_head": false,\n  "bottleneck": 128,\n  "dropout": 0.3,\n  "learning_rate": 0.001,\n  "batch_size": 64,\n  "lambda_src": 0.0,\n  "rationale": "The dataset has short sequences (32 steps) and 7 channels, making a 1-D CNN with self-attention ideal to capture local features and some long-range dependencies. Label inconsistency suggests avoiding openmax or unknown heads to reduce complexity and overfitting risk. Moderate bottleneck and dropout balance capacity and regularization. The learning rate and batch size align with hints for stable training on this battery dataset."\n}'}
+11-16 20:23:25 llm_cfg_stamp: 20251116_202238
+11-16 20:23:25 pretrained_model_path: ./checkpoint/pretrain_cnn_features_1d_sa_nmc_1116/best_model.pth
+11-16 20:23:25 using 1 cpu
+11-16 20:23:25 Reducing learning rate to 0.0001 for 5 target samples
+11-16 20:23:25 Freezing early layers of backbone for 5 target samples
+11-16 20:23:25 Exception in callback functools.partial(<bound method OutStream._flush of <spyder_kernels.console.outstream.TTYOutStream object at 0x172cdca90>>)
+Traceback (most recent call last):
+  File "/Users/moondiab/opt/anaconda3/envs/venv/lib/python3.11/site-packages/jupyter_client/session.py", line 100, in json_packer
+    ).encode("utf8", errors="surrogateescape")
+      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+UnicodeEncodeError: 'utf-8' codec can't encode characters in position 881-882: surrogates not allowed
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/Users/moondiab/opt/anaconda3/envs/venv/lib/python3.11/site-packages/tornado/ioloop.py", line 750, in _run_callback
+    ret = callback()
+          ^^^^^^^^^^
+  File "/Users/moondiab/opt/anaconda3/envs/venv/lib/python3.11/site-packages/ipykernel/iostream.py", line 649, in _flush
+    self.session.send(
+  File "/Users/moondiab/opt/anaconda3/envs/venv/lib/python3.11/site-packages/jupyter_client/session.py", line 852, in send
+    to_send = self.serialize(msg, ident)
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/moondiab/opt/anaconda3/envs/venv/lib/python3.11/site-packages/jupyter_client/session.py", line 721, in serialize
+    content = self.pack(content)
+              ^^^^^^^^^^^^^^^^^^
+  File "/Users/moondiab/opt/anaconda3/envs/venv/lib/python3.11/site-packages/jupyter_client/session.py", line 108, in json_packer
+    ).encode("utf8", errors="surrogateescape")
+      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+UnicodeEncodeError: 'utf-8' codec can't encode characters in position 881-882: surrogates not allowed
+11-16 21:33:50 data_name: Battery_inconsistent
+11-16 21:33:50 data_dir: ./my_datasets/Battery
+11-16 21:33:50 csv: ./my_datasets/Battery/battery_cycles_labeled.csv
+11-16 21:33:50 normlizetype: mean-std
+11-16 21:33:50 method: sngp
+11-16 21:33:50 gp_hidden_dim: 2048
+11-16 21:33:50 spectral_norm_bound: 0.95
+11-16 21:33:50 n_power_iterations: 1
+11-16 21:33:50 nesterov: True
+11-16 21:33:50 print_freq: 10
+11-16 21:33:50 layers: 16
+11-16 21:33:50 widen_factor: 1
+11-16 21:33:50 droprate: 0.3
+11-16 21:33:50 cuda_device: 0
+11-16 21:33:50 checkpoint_dir: ./checkpoint
+11-16 21:33:50 pretrained: True
+11-16 21:33:50 batch_size: 64
+11-16 21:33:50 num_workers: 0
+11-16 21:33:50 bottleneck: True
+11-16 21:33:50 bottleneck_num: 128
+11-16 21:33:50 last_batch: False
+11-16 21:33:50 hidden_size: 1024
+11-16 21:33:50 trade_off_adversarial: Step
+11-16 21:33:50 lam_adversarial: 1
+11-16 21:33:50 opt: adam
+11-16 21:33:50 lr: 0.001
+11-16 21:33:50 momentum: 0.9
+11-16 21:33:50 weight_decay: 1e-05
+11-16 21:33:50 lr_scheduler: step
+11-16 21:33:50 gamma: 0.1
+11-16 21:33:50 steps: 150, 250
+11-16 21:33:50 middle_epoch: 15
+11-16 21:33:50 max_epoch: 50
+11-16 21:33:50 print_step: 25
+11-16 21:33:50 inconsistent: UAN
+11-16 21:33:50 model_name: cnn_features_1d_sa
+11-16 21:33:50 th: 0.5
+11-16 21:33:50 input_channels: 7
+11-16 21:33:50 classification_label: eol_class
+11-16 21:33:50 sequence_length: 32
+11-16 21:33:50 cycles_per_file: 5
+11-16 21:33:50 sample_random_state: 42
+11-16 21:33:50 transfer_task: [[0], [1]]
+11-16 21:33:50 source_cathode: ['HE5050', 'NMC111', 'NMC532', 'NMC622', 'NMC811']
+11-16 21:33:50 target_cathode: ['FCG']
+11-16 21:33:50 num_classes: None
+11-16 21:33:50 domain_temperature: 1.0
+11-16 21:33:50 class_temperature: 10.0
+11-16 21:33:50 lambda_src: 0.0
+11-16 21:33:50 lambda_src_decay_patience: 5
+11-16 21:33:50 lambda_src_decay_factor: 0.5
+11-16 21:33:50 lambda_src_min: 0.0
+11-16 21:33:50 lambda_src_warmup: 0
+11-16 21:33:50 improvement_metric: common
+11-16 21:33:50 auto_select: True
+11-16 21:33:50 llm_compare: True
+11-16 21:33:50 llm_backend: openai
+11-16 21:33:50 llm_model: None
+11-16 21:33:50 llm_context: 
+11-16 21:33:50 llm_cfg_inputs: {'text_context': "Dataset: Argonne National Laboratory battery aging time-series with partial cycle windows.\nSource cathodes: (all available); target cathodes: (none specified).\nLabel column 'eol_class' with ~None classes; sequence length 32; 7 channels covering cycle_number, energy_charge, capacity_charge, energy_discharge, capacity_discharge, cycle_start, cycle_duration.", 'numeric_summary': {'dataset': 'Battery_inconsistent', 'sequence_length_requested': 32, 'notes': 'label_inconsistent', 'lr_hint': 0.001, 'dropout_hint': 0.3, 'num_classes_hint': None, 'splits': {}, 'dataset_variant': 'argonne_battery', 'feature_names': ['cycle_number', 'energy_charge', 'capacity_charge', 'energy_discharge', 'capacity_discharge', 'cycle_start', 'cycle_duration'], 'source_cathodes': [], 'target_cathodes': [], 'label_column': 'eol_class'}}
+11-16 21:33:50 llm_cfg: {'architecture': 'cnn_1d_sa', 'model_name': 'cnn_features_1d_sa', 'self_attention': True, 'sngp': True, 'openmax': False, 'use_unknown_head': False, 'bottleneck': 128, 'dropout': 0.3, 'learning_rate': 0.001, 'batch_size': 64, 'lambda_src': 0.0, 'rationale': 'The dataset has short sequences (32 steps) and 7 channels, suitable for a 1-D CNN with self-attention to capture local and some longer-range dependencies. Label inconsistency suggests avoiding openmax or unknown heads to reduce complexity and tuning overhead. Dropout at 0.3 balances overfitting risk given the small sequence length and label noise. Batch size 64 and learning rate 0.001 align with typical stable training for this domain. Label inconsistency flagged → calibrated heads (SNGP/OpenMax) stay enabled for open-set robustness. Enabled SNGP to stabilise open-set transfer risk detected in metadata.', '_provider': 'openai', '_raw': '{\n  "model_name": "cnn_features_1d_sa",\n  "self_attention": true,\n  "sngp": false,\n  "openmax": false,\n  "use_unknown_head": false,\n  "bottleneck": 128,\n  "dropout": 0.3,\n  "learning_rate": 0.001,\n  "batch_size": 64,\n  "lambda_src": 0.0,\n  "rationale": "The dataset has short sequences (32 steps) and 7 channels, suitable for a 1-D CNN with self-attention to capture local and some longer-range dependencies. Label inconsistency suggests avoiding openmax or unknown heads to reduce complexity and tuning overhead. Dropout at 0.3 balances overfitting risk given the small sequence length and label noise. Batch size 64 and learning rate 0.001 align with typical stable training for this domain."\n}'}
+11-16 21:33:50 llm_cfg_stamp: 20251116_213306
+11-16 21:33:50 pretrained_model_path: ./checkpoint/pretrain_cnn_features_1d_sa_nmc_1116/best_model.pth
+11-16 21:33:50 using 1 cpu
+11-16 21:33:50 Reducing learning rate to 0.0001 for 5 target samples
+11-16 21:33:50 Freezing early layers of backbone for 5 target samples
+11-16 21:33:50 Exception in callback functools.partial(<bound method OutStream._flush of <spyder_kernels.console.outstream.TTYOutStream object at 0x172cdca90>>)
+Traceback (most recent call last):
+  File "/Users/moondiab/opt/anaconda3/envs/venv/lib/python3.11/site-packages/jupyter_client/session.py", line 100, in json_packer
+    ).encode("utf8", errors="surrogateescape")
+      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+UnicodeEncodeError: 'utf-8' codec can't encode characters in position 881-882: surrogates not allowed
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/Users/moondiab/opt/anaconda3/envs/venv/lib/python3.11/site-packages/tornado/ioloop.py", line 750, in _run_callback
+    ret = callback()
+          ^^^^^^^^^^
+  File "/Users/moondiab/opt/anaconda3/envs/venv/lib/python3.11/site-packages/ipykernel/iostream.py", line 649, in _flush
+    self.session.send(
+  File "/Users/moondiab/opt/anaconda3/envs/venv/lib/python3.11/site-packages/jupyter_client/session.py", line 852, in send
+    to_send = self.serialize(msg, ident)
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/moondiab/opt/anaconda3/envs/venv/lib/python3.11/site-packages/jupyter_client/session.py", line 721, in serialize
+    content = self.pack(content)
+              ^^^^^^^^^^^^^^^^^^
+  File "/Users/moondiab/opt/anaconda3/envs/venv/lib/python3.11/site-packages/jupyter_client/session.py", line 108, in json_packer
+    ).encode("utf8", errors="surrogateescape")
+      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+UnicodeEncodeError: 'utf-8' codec can't encode characters in position 881-882: surrogates not allowed
+11-16 22:21:25 data_name: Battery_inconsistent
+11-16 22:21:25 data_dir: ./my_datasets/Battery
+11-16 22:21:25 csv: ./my_datasets/Battery/battery_cycles_labeled.csv
+11-16 22:21:25 normlizetype: mean-std
+11-16 22:21:25 method: sngp
+11-16 22:21:25 gp_hidden_dim: 2048
+11-16 22:21:25 spectral_norm_bound: 0.95
+11-16 22:21:25 n_power_iterations: 1
+11-16 22:21:25 nesterov: True
+11-16 22:21:25 print_freq: 10
+11-16 22:21:25 layers: 16
+11-16 22:21:25 widen_factor: 1
+11-16 22:21:25 droprate: 0.3
+11-16 22:21:25 cuda_device: 0
+11-16 22:21:25 checkpoint_dir: ./checkpoint
+11-16 22:21:25 pretrained: True
+11-16 22:21:25 batch_size: 64
+11-16 22:21:25 num_workers: 0
+11-16 22:21:25 bottleneck: True
+11-16 22:21:25 bottleneck_num: 128
+11-16 22:21:25 last_batch: False
+11-16 22:21:25 hidden_size: 1024
+11-16 22:21:25 trade_off_adversarial: Step
+11-16 22:21:25 lam_adversarial: 1
+11-16 22:21:25 opt: adam
+11-16 22:21:25 lr: 0.001
+11-16 22:21:25 momentum: 0.9
+11-16 22:21:25 weight_decay: 1e-05
+11-16 22:21:25 lr_scheduler: step
+11-16 22:21:25 gamma: 0.1
+11-16 22:21:25 steps: 150, 250
+11-16 22:21:25 middle_epoch: 15
+11-16 22:21:25 max_epoch: 50
+11-16 22:21:25 print_step: 25
+11-16 22:21:25 inconsistent: UAN
+11-16 22:21:25 model_name: cnn_features_1d_sa
+11-16 22:21:25 th: 0.5
+11-16 22:21:25 input_channels: 7
+11-16 22:21:25 classification_label: eol_class
+11-16 22:21:25 sequence_length: 32
+11-16 22:21:25 cycles_per_file: 5
+11-16 22:21:25 sample_random_state: 42
+11-16 22:21:25 transfer_task: [[0], [1]]
+11-16 22:21:25 source_cathode: ['HE5050', 'NMC111', 'NMC532', 'NMC622', 'NMC811']
+11-16 22:21:25 target_cathode: ['FCG']
+11-16 22:21:25 num_classes: None
+11-16 22:21:25 domain_temperature: 1.0
+11-16 22:21:25 class_temperature: 10.0
+11-16 22:21:25 lambda_src: 0.0
+11-16 22:21:25 lambda_src_decay_patience: 5
+11-16 22:21:25 lambda_src_decay_factor: 0.5
+11-16 22:21:25 lambda_src_min: 0.0
+11-16 22:21:25 lambda_src_warmup: 0
+11-16 22:21:25 improvement_metric: common
+11-16 22:21:25 auto_select: True
+11-16 22:21:25 llm_compare: True
+11-16 22:21:25 llm_backend: openai
+11-16 22:21:25 llm_model: None
+11-16 22:21:25 llm_context: 
+11-16 22:21:25 llm_cfg_inputs: {'text_context': "Dataset: Argonne National Laboratory battery aging time-series with partial cycle windows.\nSource cathodes: (all available); target cathodes: (none specified).\nLabel column 'eol_class' with ~None classes; sequence length 32; 7 channels covering cycle_number, energy_charge, capacity_charge, energy_discharge, capacity_discharge, cycle_start, cycle_duration.", 'numeric_summary': {'dataset': 'Battery_inconsistent', 'sequence_length_requested': 32, 'notes': 'label_inconsistent', 'lr_hint': 0.001, 'dropout_hint': 0.3, 'num_classes_hint': None, 'splits': {}, 'dataset_variant': 'argonne_battery', 'feature_names': ['cycle_number', 'energy_charge', 'capacity_charge', 'energy_discharge', 'capacity_discharge', 'cycle_start', 'cycle_duration'], 'source_cathodes': [], 'target_cathodes': [], 'label_column': 'eol_class'}}
+11-16 22:21:25 llm_cfg: {'architecture': 'cnn_1d_sa', 'model_name': 'cnn_features_1d_sa', 'self_attention': True, 'sngp': True, 'openmax': False, 'use_unknown_head': False, 'bottleneck': 128, 'dropout': 0.3, 'learning_rate': 0.001, 'batch_size': 64, 'lambda_src': 0.0, 'rationale': 'The dataset has short sequences (32 steps) and 7 channels, making a 1-D CNN with self-attention suitable to capture local and some longer-range dependencies without excessive compute. Label inconsistency suggests avoiding openmax or unknown heads to reduce tuning complexity. Dropout at 0.3 balances overfitting risk due to label noise. Batch size 64 and learning rate 0.001 align with hints and stable training. Label inconsistency flagged → calibrated heads (SNGP/OpenMax) stay enabled for open-set robustness. Enabled SNGP to stabilise open-set transfer risk detected in metadata.', '_provider': 'openai', '_raw': '{\n  "model_name": "cnn_features_1d_sa",\n  "self_attention": true,\n  "sngp": false,\n  "openmax": false,\n  "use_unknown_head": false,\n  "bottleneck": 128,\n  "dropout": 0.3,\n  "learning_rate": 0.001,\n  "batch_size": 64,\n  "lambda_src": 0.0,\n  "rationale": "The dataset has short sequences (32 steps) and 7 channels, making a 1-D CNN with self-attention suitable to capture local and some longer-range dependencies without excessive compute. Label inconsistency suggests avoiding openmax or unknown heads to reduce tuning complexity. Dropout at 0.3 balances overfitting risk due to label noise. Batch size 64 and learning rate 0.001 align with hints and stable training."\n}'}
+11-16 22:21:25 llm_cfg_stamp: 20251116_222040
+11-16 22:21:25 pretrained_model_path: ./checkpoint/pretrain_cnn_features_1d_sa_nmc_1116/best_model.pth
+11-16 22:21:25 using 1 cpu
+11-16 22:21:25 Reducing learning rate to 0.0001 for 5 target samples
+11-16 22:21:25 Freezing early layers of backbone for 5 target samples
+11-16 22:21:25 Exception in callback functools.partial(<bound method OutStream._flush of <spyder_kernels.console.outstream.TTYOutStream object at 0x172cdca90>>)
+Traceback (most recent call last):
+  File "/Users/moondiab/opt/anaconda3/envs/venv/lib/python3.11/site-packages/jupyter_client/session.py", line 100, in json_packer
+    ).encode("utf8", errors="surrogateescape")
+      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+UnicodeEncodeError: 'utf-8' codec can't encode characters in position 881-882: surrogates not allowed
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/Users/moondiab/opt/anaconda3/envs/venv/lib/python3.11/site-packages/tornado/ioloop.py", line 750, in _run_callback
+    ret = callback()
+          ^^^^^^^^^^
+  File "/Users/moondiab/opt/anaconda3/envs/venv/lib/python3.11/site-packages/ipykernel/iostream.py", line 649, in _flush
+    self.session.send(
+  File "/Users/moondiab/opt/anaconda3/envs/venv/lib/python3.11/site-packages/jupyter_client/session.py", line 852, in send
+    to_send = self.serialize(msg, ident)
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/moondiab/opt/anaconda3/envs/venv/lib/python3.11/site-packages/jupyter_client/session.py", line 721, in serialize
+    content = self.pack(content)
+              ^^^^^^^^^^^^^^^^^^
+  File "/Users/moondiab/opt/anaconda3/envs/venv/lib/python3.11/site-packages/jupyter_client/session.py", line 108, in json_packer
+    ).encode("utf8", errors="surrogateescape")
+      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+UnicodeEncodeError: 'utf-8' codec can't encode characters in position 881-882: surrogates not allowed
+11-16 22:55:47 data_name: Battery_inconsistent
+11-16 22:55:47 data_dir: ./my_datasets/Battery
+11-16 22:55:47 csv: ./my_datasets/Battery/battery_cycles_labeled.csv
+11-16 22:55:47 normlizetype: mean-std
+11-16 22:55:47 method: sngp
+11-16 22:55:47 gp_hidden_dim: 2048
+11-16 22:55:47 spectral_norm_bound: 0.95
+11-16 22:55:47 n_power_iterations: 1
+11-16 22:55:47 nesterov: True
+11-16 22:55:47 print_freq: 10
+11-16 22:55:47 layers: 16
+11-16 22:55:47 widen_factor: 1
+11-16 22:55:47 droprate: 0.3
+11-16 22:55:47 cuda_device: 0
+11-16 22:55:47 checkpoint_dir: ./checkpoint
+11-16 22:55:47 pretrained: True
+11-16 22:55:47 batch_size: 64
+11-16 22:55:47 num_workers: 0
+11-16 22:55:47 bottleneck: True
+11-16 22:55:47 bottleneck_num: 128
+11-16 22:55:47 last_batch: False
+11-16 22:55:47 hidden_size: 1024
+11-16 22:55:47 trade_off_adversarial: Step
+11-16 22:55:47 lam_adversarial: 1
+11-16 22:55:47 opt: adam
+11-16 22:55:47 lr: 0.001
+11-16 22:55:47 momentum: 0.9
+11-16 22:55:47 weight_decay: 1e-05
+11-16 22:55:47 lr_scheduler: step
+11-16 22:55:47 gamma: 0.1
+11-16 22:55:47 steps: 150, 250
+11-16 22:55:47 middle_epoch: 15
+11-16 22:55:47 max_epoch: 50
+11-16 22:55:47 print_step: 25
+11-16 22:55:47 inconsistent: UAN
+11-16 22:55:47 model_name: cnn_features_1d_sa
+11-16 22:55:47 th: 0.5
+11-16 22:55:47 input_channels: 7
+11-16 22:55:47 classification_label: eol_class
+11-16 22:55:47 sequence_length: 32
+11-16 22:55:47 cycles_per_file: 30
+11-16 22:55:47 sample_random_state: 42
+11-16 22:55:47 transfer_task: [[0], [1]]
+11-16 22:55:47 source_cathode: ['HE5050', 'NMC111', 'NMC532', 'NMC622', 'NMC811']
+11-16 22:55:47 target_cathode: ['FCG']
+11-16 22:55:47 num_classes: None
+11-16 22:55:47 domain_temperature: 1.0
+11-16 22:55:47 class_temperature: 10.0
+11-16 22:55:47 lambda_src: 0.0
+11-16 22:55:47 lambda_src_decay_patience: 5
+11-16 22:55:47 lambda_src_decay_factor: 0.5
+11-16 22:55:47 lambda_src_min: 0.0
+11-16 22:55:47 lambda_src_warmup: 0
+11-16 22:55:47 improvement_metric: common
+11-16 22:55:47 auto_select: True
+11-16 22:55:47 llm_compare: True
+11-16 22:55:47 llm_backend: openai
+11-16 22:55:47 llm_model: None
+11-16 22:55:47 llm_context: 
+11-16 22:55:47 llm_cfg_inputs: {'text_context': "Dataset: Argonne National Laboratory battery aging time-series with partial cycle windows.\nSource cathodes: (all available); target cathodes: (none specified).\nLabel column 'eol_class' with ~None classes; sequence length 32; 7 channels covering cycle_number, energy_charge, capacity_charge, energy_discharge, capacity_discharge, cycle_start, cycle_duration.", 'numeric_summary': {'dataset': 'Battery_inconsistent', 'sequence_length_requested': 32, 'notes': 'label_inconsistent', 'lr_hint': 0.001, 'dropout_hint': 0.3, 'num_classes_hint': None, 'splits': {}, 'dataset_variant': 'argonne_battery', 'feature_names': ['cycle_number', 'energy_charge', 'capacity_charge', 'energy_discharge', 'capacity_discharge', 'cycle_start', 'cycle_duration'], 'source_cathodes': [], 'target_cathodes': [], 'label_column': 'eol_class'}}
+11-16 22:55:47 llm_cfg: {'architecture': 'cnn_1d_sa', 'model_name': 'cnn_features_1d_sa', 'self_attention': True, 'sngp': True, 'openmax': False, 'use_unknown_head': False, 'bottleneck': 128, 'dropout': 0.3, 'learning_rate': 0.001, 'batch_size': 64, 'lambda_src': 0.0, 'rationale': 'The dataset has short sequences (32) and 7 channels, making a lightweight CNN with self-attention ideal to capture local features and some longer-range dependencies. The label inconsistency suggests avoiding openmax or unknown heads to reduce complexity and tuning overhead. Dropout at 0.3 balances overfitting risk due to label noise. Batch size 64 fits memory and training stability. This config should outperform the baseline deterministic CNN by leveraging attention without excessive capacity or open-set complexity. Label inconsistency flagged → calibrated heads (SNGP/OpenMax) stay enabled for open-set robustness. Enabled SNGP to stabilise open-set transfer risk detected in metadata.', '_provider': 'openai', '_raw': '{\n  "model_name": "cnn_features_1d_sa",\n  "self_attention": true,\n  "sngp": false,\n  "openmax": false,\n  "use_unknown_head": false,\n  "bottleneck": 128,\n  "dropout": 0.3,\n  "learning_rate": 0.001,\n  "batch_size": 64,\n  "lambda_src": 0.0,\n  "rationale": "The dataset has short sequences (32) and 7 channels, making a lightweight CNN with self-attention ideal to capture local features and some longer-range dependencies. The label inconsistency suggests avoiding openmax or unknown heads to reduce complexity and tuning overhead. Dropout at 0.3 balances overfitting risk due to label noise. Batch size 64 fits memory and training stability. This config should outperform the baseline deterministic CNN by leveraging attention without excessive capacity or open-set complexity."\n}'}
+11-16 22:55:47 llm_cfg_stamp: 20251116_225503
+11-16 22:55:47 pretrained_model_path: ./checkpoint/pretrain_cnn_features_1d_sa_nmc_1116/best_model.pth
+11-16 22:55:47 using 1 cpu
+11-16 22:55:47 Reducing learning rate to 0.0001 for 5 target samples
+11-16 22:55:47 Freezing early layers of backbone for 5 target samples
+11-16 22:55:47 Exception in callback functools.partial(<bound method OutStream._flush of <spyder_kernels.console.outstream.TTYOutStream object at 0x172cdca90>>)
+Traceback (most recent call last):
+  File "/Users/moondiab/opt/anaconda3/envs/venv/lib/python3.11/site-packages/jupyter_client/session.py", line 100, in json_packer
+    ).encode("utf8", errors="surrogateescape")
+      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+UnicodeEncodeError: 'utf-8' codec can't encode characters in position 882-883: surrogates not allowed
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/Users/moondiab/opt/anaconda3/envs/venv/lib/python3.11/site-packages/tornado/ioloop.py", line 750, in _run_callback
+    ret = callback()
+          ^^^^^^^^^^
+  File "/Users/moondiab/opt/anaconda3/envs/venv/lib/python3.11/site-packages/ipykernel/iostream.py", line 649, in _flush
+    self.session.send(
+  File "/Users/moondiab/opt/anaconda3/envs/venv/lib/python3.11/site-packages/jupyter_client/session.py", line 852, in send
+    to_send = self.serialize(msg, ident)
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/moondiab/opt/anaconda3/envs/venv/lib/python3.11/site-packages/jupyter_client/session.py", line 721, in serialize
+    content = self.pack(content)
+              ^^^^^^^^^^^^^^^^^^
+  File "/Users/moondiab/opt/anaconda3/envs/venv/lib/python3.11/site-packages/jupyter_client/session.py", line 108, in json_packer
+    ).encode("utf8", errors="surrogateescape")
+      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+UnicodeEncodeError: 'utf-8' codec can't encode characters in position 882-883: surrogates not allowed

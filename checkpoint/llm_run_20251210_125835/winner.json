@@ -1,0 +1,12 @@
+{
+  "tag": "ablate_sngp_off",
+  "model_name": "cnn_openmax",
+  "method": "deterministic",
+  "droprate": 0.3,
+  "lr": 0.001,
+  "batch_size": 64,
+  "lambda_src": 1.0,
+  "summary_csv": "checkpoint/llm_run_20251210_125835/compare/ablate_sngp_off_summary_1210_211731_CWRU_inconsistent.csv",
+  "avg_improvement": 0.016783334091137674,
+  "cycle_limit": null
+}

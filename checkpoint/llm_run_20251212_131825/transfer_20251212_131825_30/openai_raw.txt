@@ -1,0 +1,14 @@
+{
+  "model_name": "WideResNet_edited",
+  "self_attention": false,
+  "sngp": false,
+  "openmax": false,
+  "use_unknown_head": false,
+  "bottleneck": 256,
+  "dropout": 0.35,
+  "learning_rate": 0.0005,
+  "batch_size": 8,
+  "lambda_src": 1.0,
+  "warmup_epochs": 10,
+  "rationale": "The dataset has 21 channels and short sequence length (32), with significant domain shift between source and target chemistries. WideResNet_edited is tailored for Argonne battery data with physics-inspired feature edits, making it well suited for transfer learning across chemistries. The bottleneck of 256 balances capacity and regularization, while dropout at 0.35 mitigates overfitting given label inconsistency. Self-attention is avoided to reduce overfitting risk on a small source domain, and openmax/SNGP are not prioritized since the label inconsistency is moderate and unknown rejection is less critical than transfer adaptation."
+}

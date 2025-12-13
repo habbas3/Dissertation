@@ -1,0 +1,65 @@
+11-14 17:32:16 data_name: Battery_inconsistent
+11-14 17:32:16 data_dir: ./my_datasets/Battery
+11-14 17:32:16 csv: ./my_datasets/Battery/battery_cycles_labeled.csv
+11-14 17:32:16 normlizetype: mean-std
+11-14 17:32:16 method: sngp
+11-14 17:32:16 gp_hidden_dim: 2048
+11-14 17:32:16 spectral_norm_bound: 0.95
+11-14 17:32:16 n_power_iterations: 1
+11-14 17:32:16 nesterov: True
+11-14 17:32:16 print_freq: 10
+11-14 17:32:16 layers: 16
+11-14 17:32:16 widen_factor: 1
+11-14 17:32:16 droprate: 0.3
+11-14 17:32:16 cuda_device: 0
+11-14 17:32:16 checkpoint_dir: ./checkpoint
+11-14 17:32:16 pretrained: False
+11-14 17:32:16 batch_size: 64
+11-14 17:32:16 num_workers: 0
+11-14 17:32:16 bottleneck: True
+11-14 17:32:16 bottleneck_num: 128
+11-14 17:32:16 last_batch: False
+11-14 17:32:16 hidden_size: 1024
+11-14 17:32:16 trade_off_adversarial: Step
+11-14 17:32:16 lam_adversarial: 1
+11-14 17:32:16 opt: adam
+11-14 17:32:16 lr: 0.001
+11-14 17:32:16 momentum: 0.9
+11-14 17:32:16 weight_decay: 1e-05
+11-14 17:32:16 lr_scheduler: step
+11-14 17:32:16 gamma: 0.1
+11-14 17:32:16 steps: 150, 250
+11-14 17:32:16 middle_epoch: 15
+11-14 17:32:16 max_epoch: 50
+11-14 17:32:16 print_step: 25
+11-14 17:32:16 inconsistent: UAN
+11-14 17:32:16 model_name: WideResNet_sa
+11-14 17:32:16 th: 0.5
+11-14 17:32:16 input_channels: 7
+11-14 17:32:16 classification_label: eol_class
+11-14 17:32:16 sequence_length: 32
+11-14 17:32:16 cycles_per_file: 50
+11-14 17:32:16 sample_random_state: 42
+11-14 17:32:16 transfer_task: [[0], [1]]
+11-14 17:32:16 source_cathode: ['Li1.2Ni0.3Mn0.6O2', 'Li1.35Ni0.33Mn0.67O2.35']
+11-14 17:32:16 target_cathode: []
+11-14 17:32:16 num_classes: None
+11-14 17:32:16 domain_temperature: 1.0
+11-14 17:32:16 class_temperature: 10.0
+11-14 17:32:16 lambda_src: 0.0
+11-14 17:32:16 lambda_src_decay_patience: 5
+11-14 17:32:16 lambda_src_decay_factor: 0.5
+11-14 17:32:16 lambda_src_min: 0.0
+11-14 17:32:16 lambda_src_warmup: 0
+11-14 17:32:16 improvement_metric: common
+11-14 17:32:16 auto_select: True
+11-14 17:32:16 llm_compare: True
+11-14 17:32:16 llm_backend: openai
+11-14 17:32:16 llm_model: None
+11-14 17:32:16 llm_context: 
+11-14 17:32:16 llm_cfg_inputs: {'text_context': "Dataset: Argonne National Laboratory battery aging time-series with partial cycle windows.\nSource cathodes: (all available); target cathodes: (none specified).\nLabel column 'eol_class' with ~None classes; sequence length 32; 7 channels covering cycle_number, energy_charge, capacity_charge, energy_discharge, capacity_discharge, cycle_start, cycle_duration.", 'numeric_summary': {'dataset': 'Battery_inconsistent', 'sequence_length_requested': 32, 'notes': 'label_inconsistent', 'lr_hint': 0.001, 'dropout_hint': 0.3, 'num_classes_hint': None, 'splits': {}, 'dataset_variant': 'argonne_battery', 'feature_names': ['cycle_number', 'energy_charge', 'capacity_charge', 'energy_discharge', 'capacity_discharge', 'cycle_start', 'cycle_duration'], 'source_cathodes': [], 'target_cathodes': [], 'label_column': 'eol_class'}}
+11-14 17:32:16 llm_cfg: {'architecture': 'cnn_1d_sa', 'model_name': 'cnn_features_1d_sa', 'self_attention': True, 'sngp': True, 'openmax': False, 'use_unknown_head': False, 'bottleneck': 128, 'dropout': 0.3, 'learning_rate': 0.001, 'batch_size': 64, 'lambda_src': 0.0, 'rationale': 'The dataset has short sequences (length 32) and 7 channels, suitable for a CNN with self-attention to capture local and some longer-range dependencies without excessive memory use. Label inconsistency suggests avoiding openmax or unknown heads to reduce complexity. Dropout 0.3 balances overfitting risk due to label noise. The learning rate 0.001 and moderate batch size 64 support stable training with this architecture. Label inconsistency flagged → calibrated heads (SNGP/OpenMax) stay enabled for open-set robustness. Enabled SNGP to stabilise open-set transfer risk detected in metadata.', '_provider': 'openai', '_raw': '{\n  "model_name": "cnn_features_1d_sa",\n  "self_attention": true,\n  "sngp": false,\n  "openmax": false,\n  "use_unknown_head": false,\n  "bottleneck": 128,\n  "dropout": 0.3,\n  "learning_rate": 0.001,\n  "batch_size": 64,\n  "lambda_src": 0.0,\n  "rationale": "The dataset has short sequences (length 32) and 7 channels, suitable for a CNN with self-attention to capture local and some longer-range dependencies without excessive memory use. Label inconsistency suggests avoiding openmax or unknown heads to reduce complexity. Dropout 0.3 balances overfitting risk due to label noise. The learning rate 0.001 and moderate batch size 64 support stable training with this architecture."\n}'}
+11-14 17:32:16 llm_cfg_stamp: 20251114_170607
+11-14 17:32:16 tag: sngp_wrn_sa_20251114_170607
+11-14 17:32:16 pretrained_model_path: None
+11-14 17:32:19 using 1 cpu

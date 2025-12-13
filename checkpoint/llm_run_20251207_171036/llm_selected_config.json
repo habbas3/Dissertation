@@ -1,0 +1,131 @@
+{
+  "llm_choice": {
+    "architecture": "cnn_openmax",
+    "model_name": "cnn_openmax",
+    "self_attention": false,
+    "sngp": true,
+    "openmax": true,
+    "use_unknown_head": true,
+    "bottleneck": 128,
+    "dropout": 0.3,
+    "learning_rate": 0.001,
+    "batch_size": 64,
+    "lambda_src": 1.0,
+    "warmup_epochs": 10,
+    "rationale": "The dataset has short sequences (32 steps) and 7 channels, suitable for CNN-based models. Label inconsistency and open-set conditions favor OpenMax for explicit unknown rejection. The lightweight CNN backbone balances capacity and efficiency, while dropout and moderate bottleneck prevent overfitting. Warmup and lambda_src support stable transfer learning across motor domains. Backbone frozen for 10 epoch(s) before full fine-tuning to stabilise feature reuse. Label inconsistency flagged \u2192 calibrated heads (SNGP/OpenMax) stay enabled for open-set robustness. Benchmarking against Zhao et al.'s CNN baseline to highlight transfer-aware gains.",
+    "_provider": "openai",
+    "_raw": "{\n  \"model_name\": \"cnn_openmax\",\n  \"self_attention\": false,\n  \"sngp\": false,\n  \"openmax\": true,\n  \"use_unknown_head\": true,\n  \"bottleneck\": 128,\n  \"dropout\": 0.3,\n  \"learning_rate\": 0.001,\n  \"batch_size\": 64,\n  \"lambda_src\": 1.0,\n  \"warmup_epochs\": 10,\n  \"rationale\": \"The dataset has short sequences (32 steps) and 7 channels, suitable for CNN-based models. Label inconsistency and open-set conditions favor OpenMax for explicit unknown rejection. The lightweight CNN backbone balances capacity and efficiency, while dropout and moderate bottleneck prevent overfitting. Warmup and lambda_src support stable transfer learning across motor domains.\"\n}"
+  },
+  "inputs": {
+    "text_context": "Dataset: Case Western Reserve University bearing vibration transfer benchmark with label inconsistency handling.\nTransfer from motors [0],[1] to [0],[2]; inconsistency setting UAN.\nWindows are length 32 with 7 vibration channels; task uses None classes.",
+    "numeric_summary": {
+      "dataset": "CWRU_inconsistent",
+      "sequence_length_requested": 32,
+      "notes": "label_inconsistent",
+      "lr_hint": 0.001,
+      "dropout_hint": 0.3,
+      "num_classes_hint": null,
+      "splits": {},
+      "dataset_variant": "cwru_bearing",
+      "transfer_task": [
+        [
+          [
+            0
+          ],
+          [
+            1
+          ]
+        ],
+        [
+          [
+            0
+          ],
+          [
+            2
+          ]
+        ],
+        [
+          [
+            0
+          ],
+          [
+            3
+          ]
+        ],
+        [
+          [
+            1
+          ],
+          [
+            0
+          ]
+        ],
+        [
+          [
+            1
+          ],
+          [
+            2
+          ]
+        ],
+        [
+          [
+            1
+          ],
+          [
+            3
+          ]
+        ],
+        [
+          [
+            2
+          ],
+          [
+            0
+          ]
+        ],
+        [
+          [
+            2
+          ],
+          [
+            1
+          ]
+        ],
+        [
+          [
+            2
+          ],
+          [
+            3
+          ]
+        ],
+        [
+          [
+            3
+          ],
+          [
+            0
+          ]
+        ],
+        [
+          [
+            3
+          ],
+          [
+            1
+          ]
+        ],
+        [
+          [
+            3
+          ],
+          [
+            2
+          ]
+        ]
+      ]
+    }
+  },
+  "timestamp": "20251207_171036"
+}

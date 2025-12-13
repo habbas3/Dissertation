@@ -1,0 +1,4 @@
+tag,model_name,method,droprate,lr,batch_size,lambda_src,summary_csv,avg_improvement
+llm_pick,cnn_openmax,sngp,0.3,0.001,64,1.0,checkpoint/llm_run_20251114_143747/compare/llm_pick_summary_1114_CWRU_inconsistent.csv,0.0
+deterministic_cnn,cnn_features_1d,deterministic,0.3,0.001,64,1.0,checkpoint/llm_run_20251114_143747/compare/deterministic_cnn_summary_1114_CWRU_inconsistent.csv,0.0120481927710842
+sngp_wrn_sa,WideResNet_sa,sngp,0.3,0.001,64,1.0,checkpoint/llm_run_20251114_143747/compare/sngp_wrn_sa_summary_1114_CWRU_inconsistent.csv,0.0602409638554217

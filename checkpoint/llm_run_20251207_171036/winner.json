@@ -1,0 +1,11 @@
+{
+  "tag": "llm_pick",
+  "model_name": "cnn_openmax",
+  "method": "sngp",
+  "droprate": 0.3,
+  "lr": 0.001,
+  "batch_size": 64,
+  "lambda_src": 1.0,
+  "summary_csv": "checkpoint/llm_run_20251207_171036/compare/llm_pick_summary_1207_194131_CWRU_inconsistent.csv",
+  "avg_improvement": 0.016433194035115267
+}

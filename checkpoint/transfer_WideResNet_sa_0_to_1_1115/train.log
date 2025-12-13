@@ -1,0 +1,91 @@
+11-15 22:43:41 data_name: CWRU_inconsistent
+11-15 22:43:41 data_dir: ./my_datasets/CWRU_dataset
+11-15 22:43:41 csv: ./my_datasets/Battery/battery_cycles_labeled.csv
+11-15 22:43:41 normlizetype: mean-std
+11-15 22:43:41 method: sngp
+11-15 22:43:41 gp_hidden_dim: 2048
+11-15 22:43:41 spectral_norm_bound: 0.95
+11-15 22:43:41 n_power_iterations: 1
+11-15 22:43:41 nesterov: True
+11-15 22:43:41 print_freq: 10
+11-15 22:43:41 layers: 16
+11-15 22:43:41 widen_factor: 1
+11-15 22:43:41 droprate: 0.3
+11-15 22:43:41 cuda_device: 0
+11-15 22:43:41 checkpoint_dir: ./checkpoint
+11-15 22:43:41 pretrained: True
+11-15 22:43:41 batch_size: 64
+11-15 22:43:41 num_workers: 0
+11-15 22:43:41 bottleneck: True
+11-15 22:43:41 bottleneck_num: 128
+11-15 22:43:41 last_batch: False
+11-15 22:43:41 hidden_size: 1024
+11-15 22:43:41 trade_off_adversarial: Step
+11-15 22:43:41 lam_adversarial: 1
+11-15 22:43:41 opt: adam
+11-15 22:43:41 lr: 0.001
+11-15 22:43:41 momentum: 0.9
+11-15 22:43:41 weight_decay: 1e-05
+11-15 22:43:41 lr_scheduler: step
+11-15 22:43:41 gamma: 0.1
+11-15 22:43:41 steps: 150, 250
+11-15 22:43:41 middle_epoch: 15
+11-15 22:43:41 max_epoch: 50
+11-15 22:43:41 print_step: 25
+11-15 22:43:41 inconsistent: UAN
+11-15 22:43:41 model_name: WideResNet_sa
+11-15 22:43:41 th: 0.5
+11-15 22:43:41 input_channels: 7
+11-15 22:43:41 classification_label: eol_class
+11-15 22:43:41 sequence_length: 32
+11-15 22:43:41 cycles_per_file: 50
+11-15 22:43:41 sample_random_state: 42
+11-15 22:43:41 transfer_task: [[0], [1]]
+11-15 22:43:41 source_cathode: []
+11-15 22:43:41 target_cathode: []
+11-15 22:43:41 num_classes: 9
+11-15 22:43:41 domain_temperature: 1.0
+11-15 22:43:41 class_temperature: 10.0
+11-15 22:43:41 lambda_src: 1.0
+11-15 22:43:41 lambda_src_decay_patience: 5
+11-15 22:43:41 lambda_src_decay_factor: 0.5
+11-15 22:43:41 lambda_src_min: 0.0
+11-15 22:43:41 lambda_src_warmup: 0
+11-15 22:43:41 improvement_metric: common
+11-15 22:43:41 auto_select: True
+11-15 22:43:41 llm_compare: True
+11-15 22:43:41 llm_backend: openai
+11-15 22:43:41 llm_model: None
+11-15 22:43:41 llm_context: 
+11-15 22:43:41 llm_cfg_inputs: {'text_context': 'Dataset: Case Western Reserve University bearing vibration transfer benchmark with label inconsistency handling.\nTransfer from motors 0 to 1; inconsistency setting UAN.\nWindows are length 32 with 7 vibration channels; task uses None classes.', 'numeric_summary': {'dataset': 'CWRU_inconsistent', 'sequence_length_requested': 32, 'notes': 'label_inconsistent', 'lr_hint': 0.001, 'dropout_hint': 0.3, 'num_classes_hint': None, 'splits': {}, 'dataset_variant': 'cwru_bearing', 'transfer_task': [[0], [1]]}}
+11-15 22:43:41 llm_cfg: {'architecture': 'cnn_openmax', 'model_name': 'cnn_openmax', 'self_attention': False, 'sngp': True, 'openmax': True, 'use_unknown_head': True, 'bottleneck': 128, 'dropout': 0.3, 'learning_rate': 0.001, 'batch_size': 64, 'lambda_src': 1.0, 'rationale': "The dataset has short sequences (32 steps) and 7 channels, suitable for a 1-D CNN backbone. Label inconsistency and unknown classes motivate using OpenMax for explicit unknown rejection. The dropout of 0.3 balances overfitting risk due to label noise. Batch size 64 offers stable training without excessive memory use. Lambda_src at 1.0 encourages domain adaptation for transfer from motor 0 to 1. Label inconsistency flagged → calibrated heads (SNGP/OpenMax) stay enabled for open-set robustness. Benchmarking against Zhao et al.'s CNN baseline to highlight transfer-aware gains. CWRU bearings rewarded wideresnet capacity and SNGP calibration over the Zhao CNN baseline.", '_provider': 'openai', '_raw': '{\n  "model_name": "cnn_openmax",\n  "self_attention": false,\n  "sngp": false,\n  "openmax": true,\n  "use_unknown_head": true,\n  "bottleneck": 128,\n  "dropout": 0.3,\n  "learning_rate": 0.001,\n  "batch_size": 64,\n  "lambda_src": 1.0,\n  "rationale": "The dataset has short sequences (32 steps) and 7 channels, suitable for a 1-D CNN backbone. Label inconsistency and unknown classes motivate using OpenMax for explicit unknown rejection. The dropout of 0.3 balances overfitting risk due to label noise. Batch size 64 offers stable training without excessive memory use. Lambda_src at 1.0 encourages domain adaptation for transfer from motor 0 to 1."\n}'}
+11-15 22:43:41 llm_cfg_stamp: 20251115_222238
+11-15 22:43:41 tag: sngp_wrn_sa_20251115_222238
+11-15 22:43:41 pretrained_model_path: ./checkpoint/pretrain_WideResNet_sa_0_1115/best_model.pth
+11-15 22:43:41 using 1 cpu
+11-15 22:43:41 Exception in callback functools.partial(<bound method OutStream._flush of <spyder_kernels.console.outstream.TTYOutStream object at 0x172cdca90>>)
+Traceback (most recent call last):
+  File "/Users/moondiab/opt/anaconda3/envs/venv/lib/python3.11/site-packages/jupyter_client/session.py", line 100, in json_packer
+    ).encode("utf8", errors="surrogateescape")
+      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+UnicodeEncodeError: 'utf-8' codec can't encode characters in position 28-29: surrogates not allowed
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/Users/moondiab/opt/anaconda3/envs/venv/lib/python3.11/site-packages/tornado/ioloop.py", line 750, in _run_callback
+    ret = callback()
+          ^^^^^^^^^^
+  File "/Users/moondiab/opt/anaconda3/envs/venv/lib/python3.11/site-packages/ipykernel/iostream.py", line 649, in _flush
+    self.session.send(
+  File "/Users/moondiab/opt/anaconda3/envs/venv/lib/python3.11/site-packages/jupyter_client/session.py", line 852, in send
+    to_send = self.serialize(msg, ident)
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/moondiab/opt/anaconda3/envs/venv/lib/python3.11/site-packages/jupyter_client/session.py", line 721, in serialize
+    content = self.pack(content)
+              ^^^^^^^^^^^^^^^^^^
+  File "/Users/moondiab/opt/anaconda3/envs/venv/lib/python3.11/site-packages/jupyter_client/session.py", line 108, in json_packer
+    ).encode("utf8", errors="surrogateescape")
+      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+UnicodeEncodeError: 'utf-8' codec can't encode characters in position 28-29: surrogates not allowed
+11-16 14:47:16 HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"

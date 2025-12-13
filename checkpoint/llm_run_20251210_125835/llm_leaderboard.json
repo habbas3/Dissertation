@@ -1,0 +1,62 @@
+[
+  {
+    "tag": "llm_pick",
+    "model_name": "cnn_openmax",
+    "method": "sngp",
+    "droprate": 0.3,
+    "lr": 0.001,
+    "batch_size": 64,
+    "lambda_src": 1.0,
+    "summary_csv": "checkpoint/llm_run_20251210_125835/compare/llm_pick_summary_1210_161139_CWRU_inconsistent.csv",
+    "avg_improvement": 0.016433194035115267,
+    "cycle_limit": null
+  },
+  {
+    "tag": "ablate_openmax_off",
+    "model_name": "cnn_features_1d",
+    "method": "sngp",
+    "droprate": 0.3,
+    "lr": 0.001,
+    "batch_size": 64,
+    "lambda_src": 1.0,
+    "summary_csv": "checkpoint/llm_run_20251210_125835/compare/ablate_openmax_off_summary_1210_184601_CWRU_inconsistent.csv",
+    "avg_improvement": 0.0,
+    "cycle_limit": null
+  },
+  {
+    "tag": "ablate_sngp_off",
+    "model_name": "cnn_openmax",
+    "method": "deterministic",
+    "droprate": 0.3,
+    "lr": 0.001,
+    "batch_size": 64,
+    "lambda_src": 1.0,
+    "summary_csv": "checkpoint/llm_run_20251210_125835/compare/ablate_sngp_off_summary_1210_211731_CWRU_inconsistent.csv",
+    "avg_improvement": 0.016783334091137674,
+    "cycle_limit": null
+  },
+  {
+    "tag": "deterministic_cnn",
+    "model_name": "cnn_features_1d",
+    "method": "deterministic",
+    "droprate": 0.3,
+    "lr": 0.001,
+    "batch_size": 64,
+    "lambda_src": 1.0,
+    "summary_csv": "checkpoint/llm_run_20251210_125835/compare/deterministic_cnn_summary_1210_222659_CWRU_inconsistent.csv",
+    "avg_improvement": 0.005874981571575975,
+    "cycle_limit": null
+  },
+  {
+    "tag": "sngp_wrn_sa",
+    "model_name": "WideResNet_sa",
+    "method": "sngp",
+    "droprate": 0.3,
+    "lr": 0.001,
+    "batch_size": 64,
+    "lambda_src": 1.0,
+    "summary_csv": "checkpoint/llm_run_20251210_125835/compare/sngp_wrn_sa_summary_1211_142533_CWRU_inconsistent.csv",
+    "avg_improvement": 0.011715563418349792,
+    "cycle_limit": null
+  }
+]

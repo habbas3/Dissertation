@@ -1,0 +1,44 @@
+{
+  "llm_choice": {
+    "architecture": "cnn_1d_sa",
+    "model_name": "cnn_features_1d_sa",
+    "self_attention": true,
+    "sngp": true,
+    "openmax": false,
+    "use_unknown_head": false,
+    "bottleneck": 256,
+    "dropout": 0.3,
+    "learning_rate": 0.001,
+    "batch_size": 64,
+    "lambda_src": 1.0,
+    "warmup_epochs": 10,
+    "rationale": "The dataset has short sequences (32 steps) and 7 channels, suitable for 1D CNN with self-attention to capture local and multi-cycle correlations. Label inconsistency and potential outliers suggest using SNGP and unknown head for uncertainty-aware predictions. Moderate bottleneck (256) balances capacity and overfitting risk. Dropout 0.3 prevents overfitting given label noise. Learning rate 0.001 and batch size 64 balance convergence and memory. Warmup epochs 10 help stabilize training with uncertainty modules. Backbone frozen for 10 epoch(s) before full fine-tuning to stabilise feature reuse. Label inconsistency flagged \u2192 calibrated heads (SNGP/OpenMax) stay enabled for open-set robustness.",
+    "_provider": "openai",
+    "_raw": "{\n  \"model_name\": \"cnn_features_1d_sa\",\n  \"self_attention\": true,\n  \"sngp\": true,\n  \"openmax\": false,\n  \"use_unknown_head\": true,\n  \"bottleneck\": 256,\n  \"dropout\": 0.3,\n  \"learning_rate\": 0.001,\n  \"batch_size\": 64,\n  \"lambda_src\": 1.0,\n  \"warmup_epochs\": 10,\n  \"rationale\": \"The dataset has short sequences (32 steps) and 7 channels, suitable for 1D CNN with self-attention to capture local and multi-cycle correlations. Label inconsistency and potential outliers suggest using SNGP and unknown head for uncertainty-aware predictions. Moderate bottleneck (256) balances capacity and overfitting risk. Dropout 0.3 prevents overfitting given label noise. Learning rate 0.001 and batch size 64 balance convergence and memory. Warmup epochs 10 help stabilize training with uncertainty modules.\"\n}"
+  },
+  "inputs": {
+    "text_context": "Dataset: Argonne National Laboratory battery aging time-series with partial cycle windows.\nSource cathodes: (all available); target cathodes: (none specified).\nLabel column 'eol_class' with ~None classes; sequence length 32; 7 channels covering cycle_number, energy_charge, capacity_charge, energy_discharge, capacity_discharge, cycle_start, cycle_duration.\nLiterature cues (Joule S2542-4351(22)00409-3, chemistry-sensitive ablations):\nJoule 2022 (S2542-4351(22)00409-3) key cues for chemistry-aware ablation:\n- Early-cycle capacity fade slopes and coulombic-efficiency stabilization highlight whether aging is lithium-inventory loss (graphite/anode-electrolyte limited) versus cathode structural decay (e.g., Ni-rich NMC cathodes with electrolyte oxidation risk).\n- High initial impedance growth, thick SEI signatures, or electrolyte oxidation markers flag chemistries that benefit from uncertainty-aware heads (SNGP/OpenMax) to avoid overconfident extrapolation on outlier cycles.\n- LFP/graphite pairs tend to show flatter voltage plateaus and slower early fade; Ni-rich NMC chemistries degrade faster under aggressive cycling and need stronger regularization or shorter cycle horizons in ablations.\n- Transfer between mismatched chemistries (e.g., NMC \u2192 LFP) should down-weight source loss and favor architectures that adapt quickly with self-attention or wider bottlenecks; closely matched chemistries can rely more on convolutional baselines.",
+    "numeric_summary": {
+      "dataset": "Battery_inconsistent",
+      "sequence_length_requested": 32,
+      "notes": "label_inconsistent",
+      "lr_hint": 0.001,
+      "dropout_hint": 0.3,
+      "num_classes_hint": null,
+      "splits": {},
+      "dataset_variant": "argonne_battery",
+      "feature_names": [
+        "cycle_number",
+        "energy_charge",
+        "capacity_charge",
+        "energy_discharge",
+        "capacity_discharge",
+        "cycle_start",
+        "cycle_duration"
+      ],
+      "source_cathodes": [],
+      "target_cathodes": [],
+      "label_column": "eol_class"
+    }
+  }
+}

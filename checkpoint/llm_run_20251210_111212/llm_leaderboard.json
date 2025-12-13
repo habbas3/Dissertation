@@ -1,0 +1,62 @@
+[
+  {
+    "tag": "llm_pick",
+    "model_name": "cnn_features_1d_sa",
+    "method": "sngp",
+    "droprate": 0.3,
+    "lr": 0.001,
+    "batch_size": 64,
+    "lambda_src": 1.0,
+    "summary_csv": "checkpoint/llm_run_20251210_111212/compare/llm_pick_summary_1210_112723_Battery_inconsistent.csv",
+    "avg_improvement": 0.031531531531531515,
+    "cycle_limit": null
+  },
+  {
+    "tag": "ablate_sa_off",
+    "model_name": "cnn_features_1d",
+    "method": "sngp",
+    "droprate": 0.3,
+    "lr": 0.001,
+    "batch_size": 64,
+    "lambda_src": 1.0,
+    "summary_csv": "checkpoint/llm_run_20251210_111212/compare/ablate_sa_off_summary_1210_115249_Battery_inconsistent.csv",
+    "avg_improvement": 0.0,
+    "cycle_limit": null
+  },
+  {
+    "tag": "ablate_sngp_off",
+    "model_name": "cnn_features_1d_sa",
+    "method": "deterministic",
+    "droprate": 0.3,
+    "lr": 0.001,
+    "batch_size": 64,
+    "lambda_src": 1.0,
+    "summary_csv": "checkpoint/llm_run_20251210_111212/compare/ablate_sngp_off_summary_1210_115554_Battery_inconsistent.csv",
+    "avg_improvement": 0.03378378378378378,
+    "cycle_limit": null
+  },
+  {
+    "tag": "deterministic_cnn",
+    "model_name": "cnn_features_1d",
+    "method": "deterministic",
+    "droprate": 0.3,
+    "lr": 0.001,
+    "batch_size": 64,
+    "lambda_src": 1.0,
+    "summary_csv": "checkpoint/llm_run_20251210_111212/compare/deterministic_cnn_summary_1210_115814_Battery_inconsistent.csv",
+    "avg_improvement": 0.013513513513513485,
+    "cycle_limit": null
+  },
+  {
+    "tag": "sngp_wrn_sa",
+    "model_name": "WideResNet_sa",
+    "method": "sngp",
+    "droprate": 0.3,
+    "lr": 0.001,
+    "batch_size": 64,
+    "lambda_src": 1.0,
+    "summary_csv": "checkpoint/llm_run_20251210_111212/compare/sngp_wrn_sa_summary_1210_120238_Battery_inconsistent.csv",
+    "avg_improvement": 0.0,
+    "cycle_limit": null
+  }
+]

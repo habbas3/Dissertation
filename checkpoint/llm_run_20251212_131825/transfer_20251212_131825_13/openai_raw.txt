@@ -1,0 +1,14 @@
+{
+  "model_name": "cnn_features_1d_sa",
+  "self_attention": true,
+  "sngp": true,
+  "openmax": false,
+  "use_unknown_head": true,
+  "bottleneck": 256,
+  "dropout": 0.35,
+  "learning_rate": 0.0005,
+  "batch_size": 16,
+  "lambda_src": 1.5,
+  "warmup_epochs": 10,
+  "rationale": "The dataset has 21 channels and short sequence length (32), favoring CNN with self-attention to capture multi-cycle correlations and chemistry-sensitive features. The domain shift between source and target cathodes suggests using SNGP and unknown heads to handle uncertainty and avoid overconfident extrapolation on outlier cycles. Dropout at 0.35 balances regularization given label inconsistency, and a moderate bottleneck of 256 provides sufficient capacity without overfitting. Batch size 16 balances memory and stable training, with warmup to adapt to transfer."
+}

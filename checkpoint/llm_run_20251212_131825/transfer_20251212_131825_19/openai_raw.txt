@@ -1,0 +1,14 @@
+{
+  "model_name": "cnn_features_1d_sa",
+  "self_attention": true,
+  "sngp": false,
+  "openmax": false,
+  "use_unknown_head": false,
+  "bottleneck": 256,
+  "dropout": 0.35,
+  "learning_rate": 0.0005,
+  "batch_size": 16,
+  "lambda_src": 1.0,
+  "warmup_epochs": 10,
+  "rationale": "The dataset has 21 channels and short sequence length (32), with label inconsistency and domain shift between source and target cathodes. A CNN with self-attention balances local feature extraction and long-range dependencies, aiding transfer across chemistries. The dropout of 0.35 mitigates overfitting given the small batch size and label noise. OpenMax and SNGP are avoided due to the partial cycle windows and label inconsistency, favoring stable feature extraction over explicit open-set calibration. A moderate bottleneck (256) supports capacity without overfitting, and a warmup of 10 epochs helps stabilize transfer learning."
+}

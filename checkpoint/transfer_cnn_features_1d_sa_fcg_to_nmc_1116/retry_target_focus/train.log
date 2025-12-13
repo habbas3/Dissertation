@@ -1,0 +1,161 @@
+11-16 19:29:26 data_name: Battery_inconsistent
+11-16 19:29:26 data_dir: ./my_datasets/Battery
+11-16 19:29:26 csv: ./my_datasets/Battery/battery_cycles_labeled.csv
+11-16 19:29:26 normlizetype: mean-std
+11-16 19:29:26 method: sngp
+11-16 19:29:26 gp_hidden_dim: 2048
+11-16 19:29:26 spectral_norm_bound: 0.95
+11-16 19:29:26 n_power_iterations: 1
+11-16 19:29:26 nesterov: True
+11-16 19:29:26 print_freq: 10
+11-16 19:29:26 layers: 16
+11-16 19:29:26 widen_factor: 1
+11-16 19:29:26 droprate: 0.3
+11-16 19:29:26 cuda_device: 0
+11-16 19:29:26 checkpoint_dir: ./checkpoint
+11-16 19:29:26 pretrained: True
+11-16 19:29:26 batch_size: 64
+11-16 19:29:26 num_workers: 0
+11-16 19:29:26 bottleneck: True
+11-16 19:29:26 bottleneck_num: 128
+11-16 19:29:26 last_batch: False
+11-16 19:29:26 hidden_size: 1024
+11-16 19:29:26 trade_off_adversarial: Step
+11-16 19:29:26 lam_adversarial: 1
+11-16 19:29:26 opt: adam
+11-16 19:29:26 lr: 0.0005
+11-16 19:29:26 momentum: 0.9
+11-16 19:29:26 weight_decay: 1e-05
+11-16 19:29:26 lr_scheduler: step
+11-16 19:29:26 gamma: 0.1
+11-16 19:29:26 steps: 150, 250
+11-16 19:29:26 middle_epoch: 15
+11-16 19:29:26 max_epoch: 62
+11-16 19:29:26 print_step: 25
+11-16 19:29:26 inconsistent: UAN
+11-16 19:29:26 model_name: cnn_features_1d_sa
+11-16 19:29:26 th: 0.5
+11-16 19:29:26 input_channels: 22
+11-16 19:29:26 classification_label: eol_class
+11-16 19:29:26 sequence_length: 32
+11-16 19:29:26 cycles_per_file: 20
+11-16 19:29:26 sample_random_state: 42
+11-16 19:29:26 transfer_task: [[0], [1]]
+11-16 19:29:26 source_cathode: ['FCG']
+11-16 19:29:26 target_cathode: ['HE5050', 'NMC111', 'NMC532', 'NMC622', 'NMC811']
+11-16 19:29:26 num_classes: 5
+11-16 19:29:26 domain_temperature: 1.0
+11-16 19:29:26 class_temperature: 10.0
+11-16 19:29:26 lambda_src: 0.0
+11-16 19:29:26 lambda_src_decay_patience: 2
+11-16 19:29:26 lambda_src_decay_factor: 0.5
+11-16 19:29:26 lambda_src_min: 0.0
+11-16 19:29:26 lambda_src_warmup: 0
+11-16 19:29:26 improvement_metric: common
+11-16 19:29:26 auto_select: True
+11-16 19:29:26 llm_compare: True
+11-16 19:29:26 llm_backend: openai
+11-16 19:29:26 llm_model: None
+11-16 19:29:26 llm_context: 
+11-16 19:29:26 llm_cfg_inputs: {'text_context': "Dataset: Argonne National Laboratory battery aging time-series with partial cycle windows.\nSource cathodes: (all available); target cathodes: (none specified).\nLabel column 'eol_class' with ~None classes; sequence length 32; 7 channels covering cycle_number, energy_charge, capacity_charge, energy_discharge, capacity_discharge, cycle_start, cycle_duration.", 'numeric_summary': {'dataset': 'Battery_inconsistent', 'sequence_length_requested': 32, 'notes': 'label_inconsistent', 'lr_hint': 0.001, 'dropout_hint': 0.3, 'num_classes_hint': None, 'splits': {}, 'dataset_variant': 'argonne_battery', 'feature_names': ['cycle_number', 'energy_charge', 'capacity_charge', 'energy_discharge', 'capacity_discharge', 'cycle_start', 'cycle_duration'], 'source_cathodes': [], 'target_cathodes': [], 'label_column': 'eol_class'}}
+11-16 19:29:26 llm_cfg: {'architecture': 'cnn_1d_sa', 'model_name': 'cnn_features_1d_sa', 'self_attention': True, 'sngp': True, 'openmax': False, 'use_unknown_head': False, 'bottleneck': 128, 'dropout': 0.3, 'learning_rate': 0.001, 'batch_size': 64, 'lambda_src': 0.0, 'rationale': 'The dataset has short sequences (32 steps) and 7 channels, making a lightweight CNN with self-attention ideal to capture local features and some long-range dependencies. Label inconsistency suggests avoiding openmax or unknown heads to reduce complexity. Dropout at 0.3 balances overfitting risk from attention layers on a small dataset. Batch size 64 and learning rate 0.001 align with hints and ensure stable training. Label inconsistency flagged → calibrated heads (SNGP/OpenMax) stay enabled for open-set robustness. Enabled SNGP to stabilise open-set transfer risk detected in metadata.', '_provider': 'openai', '_raw': '{\n  "model_name": "cnn_features_1d_sa",\n  "self_attention": true,\n  "sngp": false,\n  "openmax": false,\n  "use_unknown_head": false,\n  "bottleneck": 128,\n  "dropout": 0.3,\n  "learning_rate": 0.001,\n  "batch_size": 64,\n  "lambda_src": 0.0,\n  "rationale": "The dataset has short sequences (32 steps) and 7 channels, making a lightweight CNN with self-attention ideal to capture local features and some long-range dependencies. Label inconsistency suggests avoiding openmax or unknown heads to reduce complexity. Dropout at 0.3 balances overfitting risk from attention layers on a small dataset. Batch size 64 and learning rate 0.001 align with hints and ensure stable training."\n}'}
+11-16 19:29:26 llm_cfg_stamp: 20251116_192719
+11-16 19:29:26 pretrained_model_path: ./checkpoint/transfer_cnn_features_1d_sa_fcg_to_nmc_1116/best_model.pth
+11-16 19:29:26 dataset_cycle_stats: {'source_train_cycles': 120, 'source_val_cycles': 40, 'source_val_has_holdout': True, 'target_train_cycles': 3100, 'target_val_cycles': 1480, 'target_val_has_holdout': True, 'source_train_sequences': 6, 'source_val_sequences': 2, 'target_train_sequences': 155, 'target_val_sequences': 74, 'source_train_cells': 6, 'source_val_cells': 2, 'target_train_cells': 28, 'target_val_cells': 14, 'cycles_per_cell_per_cathode': {'source_train': {'FCG': [{'filename': 'batch_B19A_cell_1.h5', 'cycles': 20, 'total_cycles': 1026}, {'filename': 'batch_B19A_cell_11.h5', 'cycles': 20, 'total_cycles': 1028}, {'filename': 'batch_B19A_cell_12.h5', 'cycles': 20, 'total_cycles': 1026}, {'filename': 'batch_B19A_cell_13.h5', 'cycles': 20, 'total_cycles': 1026}, {'filename': 'batch_B19A_cell_2.h5', 'cycles': 20, 'total_cycles': 1026}, {'filename': 'batch_B19A_cell_7.h5', 'cycles': 20, 'total_cycles': 1026}]}, 'source_val': {'FCG': [{'filename': 'batch_B19A_cell_10.h5', 'cycles': 20, 'total_cycles': 1026}, {'filename': 'batch_B19A_cell_14.h5', 'cycles': 20, 'total_cycles': 1026}]}, 'target_train': {'HE5050': [{'filename': 'batch_B12A_cell_2.h5', 'cycles': 20, 'total_cycles': 1121}, {'filename': 'batch_B12A_cell_3.h5', 'cycles': 20, 'total_cycles': 1309}, {'filename': 'batch_B4A_cell_2.h5', 'cycles': 20, 'total_cycles': 516}, {'filename': 'batch_B4A_cell_3.h5', 'cycles': 20, 'total_cycles': 1021}, {'filename': 'batch_B4A_cell_6.h5', 'cycles': 20, 'total_cycles': 516}, {'filename': 'batch_B4A_cell_8.h5', 'cycles': 20, 'total_cycles': 852}, {'filename': 'batch_B4B_cell_2.h5', 'cycles': 20, 'total_cycles': 180}, {'filename': 'batch_B4B_cell_3.h5', 'cycles': 20, 'total_cycles': 180}, {'filename': 'batch_B4B_cell_4.h5', 'cycles': 20, 'total_cycles': 180}, {'filename': 'batch_B4B_cell_6.h5', 'cycles': 20, 'total_cycles': 180}, {'filename': 'batch_B4B_cell_8.h5', 'cycles': 20, 'total_cycles': 180}, {'filename': 'batch_B9A_cell_19.h5', 'cycles': 20, 'total_cycles': 235}, {'filename': 'batch_B9A_cell_2.h5', 'cycles': 20, 'total_cycles': 1528}, {'filename': 'batch_B9A_cell_20.h5', 'cycles': 20, 'total_cycles': 235}, {'filename': 'batch_B9A_cell_22.h5', 'cycles': 20, 'total_cycles': 216}, {'filename': 'batch_B9A_cell_3.h5', 'cycles': 20, 'total_cycles': 1415}, {'filename': 'batch_B9A_cell_4.h5', 'cycles': 20, 'total_cycles': 1493}, {'filename': 'batch_B9A_cell_6.h5', 'cycles': 20, 'total_cycles': 1221}, {'filename': 'batch_B9A_cell_8.h5', 'cycles': 20, 'total_cycles': 1222}, {'filename': 'batch_B9A_cell_9.h5', 'cycles': 20, 'total_cycles': 1318}, {'filename': 'batch_B9B_cell_2.h5', 'cycles': 20, 'total_cycles': 704}, {'filename': 'batch_B9B_cell_3.h5', 'cycles': 20, 'total_cycles': 710}, {'filename': 'batch_B9B_cell_4.h5', 'cycles': 20, 'total_cycles': 712}, {'filename': 'batch_B9B_cell_6.h5', 'cycles': 20, 'total_cycles': 235}, {'filename': 'batch_B9B_cell_8.h5', 'cycles': 20, 'total_cycles': 235}, {'filename': 'batch_B1A_cell_4.h5', 'cycles': 20, 'total_cycles': 168}, {'filename': 'batch_B14D_cell_8.h5', 'cycles': 20, 'total_cycles': 1424}, {'filename': 'batch_B14D_cell_6.h5', 'cycles': 20, 'total_cycles': 1424}, {'filename': 'batch_B14B_cell_3.h5', 'cycles': 20, 'total_cycles': 1022}, {'filename': 'batch_B12A_cell_4.h5', 'cycles': 20, 'total_cycles': 1121}, {'filename': 'batch_B12A_cell_6.h5', 'cycles': 20, 'total_cycles': 1123}, {'filename': 'batch_B12A_cell_8.h5', 'cycles': 20, 'total_cycles': 1080}, {'filename': 'batch_B12B_cell_3.h5', 'cycles': 20, 'total_cycles': 358}, {'filename': 'batch_B14A_cell_10.h5', 'cycles': 20, 'total_cycles': 1022}, {'filename': 'batch_B14A_cell_11.h5', 'cycles': 20, 'total_cycles': 1022}, {'filename': 'batch_B14A_cell_13.h5', 'cycles': 20, 'total_cycles': 1024}, {'filename': 'batch_B14B_cell_10.h5', 'cycles': 20, 'total_cycles': 1022}, {'filename': 'batch_B14B_cell_11.h5', 'cycles': 20, 'total_cycles': 1022}, {'filename': 'batch_B14B_cell_2.h5', 'cycles': 20, 'total_cycles': 1022}, {'filename': 'batch_B14B_cell_4.h5', 'cycles': 20, 'total_cycles': 1022}, {'filename': 'batch_B14D_cell_4.h5', 'cycles': 20, 'total_cycles': 1424}, {'filename': 'batch_B14B_cell_6.h5', 'cycles': 20, 'total_cycles': 1022}, {'filename': 'batch_B14B_cell_8.h5', 'cycles': 20, 'total_cycles': 1022}, {'filename': 'batch_B14B_cell_9.h5', 'cycles': 20, 'total_cycles': 1022}, {'filename': 'batch_B14C_cell_2.h5', 'cycles': 20, 'total_cycles': 1424}, {'filename': 'batch_B14C_cell_3.h5', 'cycles': 20, 'total_cycles': 1424}, {'filename': 'batch_B14C_cell_4.h5', 'cycles': 20, 'total_cycles': 1424}, {'filename': 'batch_B14C_cell_6.h5', 'cycles': 20, 'total_cycles': 1424}, {'filename': 'batch_B14C_cell_8.h5', 'cycles': 20, 'total_cycles': 1424}, {'filename': 'batch_B14D_cell_2.h5', 'cycles': 20, 'total_cycles': 1424}, {'filename': 'batch_B14D_cell_3.h5', 'cycles': 20, 'total_cycles': 1424}, {'filename': 'batch_B9C_cell_8.h5', 'cycles': 20, 'total_cycles': 235}], 'NMC111': [{'filename': 'batch_B21A_cell_10.h5', 'cycles': 20, 'total_cycles': 628}, {'filename': 'batch_B21A_cell_16.h5', 'cycles': 20, 'total_cycles': 628}, {'filename': 'batch_B21A_cell_2.h5', 'cycles': 20, 'total_cycles': 628}, {'filename': 'batch_B21A_cell_3.h5', 'cycles': 20, 'total_cycles': 628}, {'filename': 'batch_B27B_cell_4.h5', 'cycles': 20, 'total_cycles': 1556}, {'filename': 'batch_B27B_cell_6.h5', 'cycles': 20, 'total_cycles': 1556}, {'filename': 'batch_B27B_cell_8.h5', 'cycles': 20, 'total_cycles': 1556}, {'filename': 'batch_B6A_cell_28.h5', 'cycles': 20, 'total_cycles': 1946}, {'filename': 'batch_B6A_cell_42.h5', 'cycles': 20, 'total_cycles': 2148}, {'filename': 'batch_B6D_cell_3.h5', 'cycles': 20, 'total_cycles': 219}, {'filename': 'batch_B6D_cell_6.h5', 'cycles': 20, 'total_cycles': 219}], 'NMC532': [{'filename': 'batch_B10A_cell_3.h5', 'cycles': 20, 'total_cycles': 932}, {'filename': 'batch_B35G_cell_2.h5', 'cycles': 20, 'total_cycles': 788}, {'filename': 'batch_B28B_cell_6.h5', 'cycles': 20, 'total_cycles': 2324}, {'filename': 'batch_B28B_cell_8.h5', 'cycles': 20, 'total_cycles': 2324}, {'filename': 'batch_B28B_cell_9.h5', 'cycles': 20, 'total_cycles': 2324}, {'filename': 'batch_B30A_cell_2.h5', 'cycles': 20, 'total_cycles': 1044}, {'filename': 'batch_B30A_cell_3.h5', 'cycles': 20, 'total_cycles': 1044}, {'filename': 'batch_B30A_cell_4.h5', 'cycles': 20, 'total_cycles': 1044}, {'filename': 'batch_B30B_cell_2.h5', 'cycles': 20, 'total_cycles': 1044}, {'filename': 'batch_B30B_cell_4.h5', 'cycles': 20, 'total_cycles': 1044}, {'filename': 'batch_B35A_cell_2.h5', 'cycles': 20, 'total_cycles': 788}, {'filename': 'batch_B35B_cell_2.h5', 'cycles': 20, 'total_cycles': 788}, {'filename': 'batch_B35C_cell_2.h5', 'cycles': 20, 'total_cycles': 788}, {'filename': 'batch_B35D_cell_2.h5', 'cycles': 20, 'total_cycles': 788}, {'filename': 'batch_B35E_cell_2.h5', 'cycles': 20, 'total_cycles': 788}, {'filename': 'batch_B35F_cell_2.h5', 'cycles': 20, 'total_cycles': 788}, {'filename': 'batch_B35H_cell_2.h5', 'cycles': 20, 'total_cycles': 276}, {'filename': 'batch_B10A_cell_4.h5', 'cycles': 20, 'total_cycles': 946}, {'filename': 'batch_B7A_cell_17.h5', 'cycles': 20, 'total_cycles': 790}, {'filename': 'batch_B7A_cell_19.h5', 'cycles': 20, 'total_cycles': 790}, {'filename': 'batch_B7A_cell_2.h5', 'cycles': 20, 'total_cycles': 939}, {'filename': 'batch_B7A_cell_20.h5', 'cycles': 20, 'total_cycles': 788}, {'filename': 'batch_B7A_cell_22.h5', 'cycles': 20, 'total_cycles': 618}, {'filename': 'batch_B7A_cell_24.h5', 'cycles': 20, 'total_cycles': 619}, {'filename': 'batch_B7A_cell_3.h5', 'cycles': 20, 'total_cycles': 940}, {'filename': 'batch_B7A_cell_4.h5', 'cycles': 20, 'total_cycles': 939}, {'filename': 'batch_B7A_cell_6.h5', 'cycles': 20, 'total_cycles': 944}, {'filename': 'batch_B7A_cell_8.h5', 'cycles': 20, 'total_cycles': 939}, {'filename': 'batch_B7B_cell_2.h5', 'cycles': 20, 'total_cycles': 787}, {'filename': 'batch_B7B_cell_3.h5', 'cycles': 20, 'total_cycles': 787}, {'filename': 'batch_B7B_cell_4.h5', 'cycles': 20, 'total_cycles': 789}, {'filename': 'batch_B7B_cell_6.h5', 'cycles': 20, 'total_cycles': 621}, {'filename': 'batch_B28B_cell_4.h5', 'cycles': 20, 'total_cycles': 2324}, {'filename': 'batch_B28B_cell_3.h5', 'cycles': 20, 'total_cycles': 2324}, {'filename': 'batch_B28B_cell_2.h5', 'cycles': 20, 'total_cycles': 2325}, {'filename': 'batch_B28B_cell_16.h5', 'cycles': 20, 'total_cycles': 2324}, {'filename': 'batch_B16A_cell_10.h5', 'cycles': 20, 'total_cycles': 257}, {'filename': 'batch_B16A_cell_11.h5', 'cycles': 20, 'total_cycles': 251}, {'filename': 'batch_B16A_cell_2.h5', 'cycles': 20, 'total_cycles': 188}, {'filename': 'batch_B16A_cell_3.h5', 'cycles': 20, 'total_cycles': 195}, {'filename': 'batch_B16A_cell_4.h5', 'cycles': 20, 'total_cycles': 196}, {'filename': 'batch_B16A_cell_6.h5', 'cycles': 20, 'total_cycles': 169}, {'filename': 'batch_B16A_cell_8.h5', 'cycles': 20, 'total_cycles': 195}, {'filename': 'batch_B16A_cell_9.h5', 'cycles': 20, 'total_cycles': 251}, {'filename': 'batch_B17A_cell_2.h5', 'cycles': 20, 'total_cycles': 267}, {'filename': 'batch_B17A_cell_3.h5', 'cycles': 20, 'total_cycles': 267}, {'filename': 'batch_B17A_cell_4.h5', 'cycles': 20, 'total_cycles': 267}, {'filename': 'batch_B17A_cell_6.h5', 'cycles': 20, 'total_cycles': 250}, {'filename': 'batch_B17A_cell_8.h5', 'cycles': 20, 'total_cycles': 251}, {'filename': 'batch_B20B_cell_6.h5', 'cycles': 20, 'total_cycles': 1004}, {'filename': 'batch_B28A_cell_35.h5', 'cycles': 20, 'total_cycles': 603}, {'filename': 'batch_B28A_cell_36.h5', 'cycles': 20, 'total_cycles': 606}, {'filename': 'batch_B28A_cell_37.h5', 'cycles': 20, 'total_cycles': 603}, {'filename': 'batch_B28A_cell_39.h5', 'cycles': 20, 'total_cycles': 600}, {'filename': 'batch_B28A_cell_40.h5', 'cycles': 20, 'total_cycles': 635}, {'filename': 'batch_B28A_cell_42.h5', 'cycles': 20, 'total_cycles': 276}, {'filename': 'batch_B28A_cell_44.h5', 'cycles': 20, 'total_cycles': 276}, {'filename': 'batch_B28A_cell_46.h5', 'cycles': 20, 'total_cycles': 276}, {'filename': 'batch_B28A_cell_47.h5', 'cycles': 20, 'total_cycles': 276}, {'filename': 'batch_B28A_cell_48.h5', 'cycles': 20, 'total_cycles': 276}, {'filename': 'batch_B28A_cell_49.h5', 'cycles': 20, 'total_cycles': 276}, {'filename': 'batch_B28B_cell_10.h5', 'cycles': 20, 'total_cycles': 2324}, {'filename': 'batch_B28B_cell_11.h5', 'cycles': 20, 'total_cycles': 2324}, {'filename': 'batch_B28B_cell_13.h5', 'cycles': 20, 'total_cycles': 2325}, {'filename': 'batch_B28B_cell_14.h5', 'cycles': 20, 'total_cycles': 2324}, {'filename': 'batch_B7B_cell_8.h5', 'cycles': 20, 'total_cycles': 621}], 'NMC622': [{'filename': 'batch_B37B_cell_2.h5', 'cycles': 20, 'total_cycles': 198}, {'filename': 'batch_B37B_cell_3.h5', 'cycles': 20, 'total_cycles': 198}, {'filename': 'batch_B37B_cell_4.h5', 'cycles': 20, 'total_cycles': 198}, {'filename': 'batch_B38A_cell_2.h5', 'cycles': 20, 'total_cycles': 1494}, {'filename': 'batch_B38A_cell_3.h5', 'cycles': 20, 'total_cycles': 1494}, {'filename': 'batch_B38A_cell_4.h5', 'cycles': 20, 'total_cycles': 1494}, {'filename': 'batch_B38B_cell_2.h5', 'cycles': 20, 'total_cycles': 1495}, {'filename': 'batch_B38B_cell_4.h5', 'cycles': 20, 'total_cycles': 1494}, {'filename': 'batch_B38C_cell_2.h5', 'cycles': 20, 'total_cycles': 1494}, {'filename': 'batch_B38C_cell_3.h5', 'cycles': 20, 'total_cycles': 1494}, {'filename': 'batch_B38C_cell_4.h5', 'cycles': 20, 'total_cycles': 1494}, {'filename': 'batch_B38D_cell_2.h5', 'cycles': 20, 'total_cycles': 1494}, {'filename': 'batch_B38D_cell_3.h5', 'cycles': 20, 'total_cycles': 1557}, {'filename': 'batch_B38D_cell_4.h5', 'cycles': 20, 'total_cycles': 1608}], 'NMC811': [{'filename': 'batch_B34A_cell_2.h5', 'cycles': 20, 'total_cycles': 532}, {'filename': 'batch_B34A_cell_3.h5', 'cycles': 20, 'total_cycles': 532}, {'filename': 'batch_B34A_cell_4.h5', 'cycles': 20, 'total_cycles': 532}, {'filename': 'batch_B34B_cell_2.h5', 'cycles': 20, 'total_cycles': 788}, {'filename': 'batch_B34B_cell_3.h5', 'cycles': 20, 'total_cycles': 788}, {'filename': 'batch_B34B_cell_4.h5', 'cycles': 20, 'total_cycles': 788}, {'filename': 'batch_B34C_cell_2.h5', 'cycles': 20, 'total_cycles': 788}, {'filename': 'batch_B34C_cell_3.h5', 'cycles': 20, 'total_cycles': 788}, {'filename': 'batch_B34C_cell_4.h5', 'cycles': 20, 'total_cycles': 788}, {'filename': 'batch_B34D_cell_2.h5', 'cycles': 20, 'total_cycles': 788}, {'filename': 'batch_B34D_cell_3.h5', 'cycles': 20, 'total_cycles': 788}, {'filename': 'batch_B34D_cell_4.h5', 'cycles': 20, 'total_cycles': 788}]}, 'target_val': {'HE5050': [{'filename': 'batch_B12A_cell_1.h5', 'cycles': 20, 'total_cycles': 1109}, {'filename': 'batch_B12A_cell_5.h5', 'cycles': 20, 'total_cycles': 1122}, {'filename': 'batch_B9C_cell_5.h5', 'cycles': 20, 'total_cycles': 235}, {'filename': 'batch_B9B_cell_7.h5', 'cycles': 20, 'total_cycles': 235}, {'filename': 'batch_B9B_cell_5.h5', 'cycles': 20, 'total_cycles': 235}, {'filename': 'batch_B9B_cell_1.h5', 'cycles': 20, 'total_cycles': 716}, {'filename': 'batch_B9A_cell_5.h5', 'cycles': 20, 'total_cycles': 1273}, {'filename': 'batch_B9A_cell_21.h5', 'cycles': 20, 'total_cycles': 235}, {'filename': 'batch_B9A_cell_18.h5', 'cycles': 20, 'total_cycles': 235}, {'filename': 'batch_B9A_cell_1.h5', 'cycles': 20, 'total_cycles': 1766}, {'filename': 'batch_B4A_cell_7.h5', 'cycles': 20, 'total_cycles': 1020}, {'filename': 'batch_B4A_cell_5.h5', 'cycles': 20, 'total_cycles': 1020}, {'filename': 'batch_B4A_cell_1.h5', 'cycles': 20, 'total_cycles': 1147}, {'filename': 'batch_B14D_cell_7.h5', 'cycles': 20, 'total_cycles': 1424}, {'filename': 'batch_B14D_cell_5.h5', 'cycles': 20, 'total_cycles': 1424}, {'filename': 'batch_B14D_cell_1.h5', 'cycles': 20, 'total_cycles': 1425}, {'filename': 'batch_B14C_cell_5.h5', 'cycles': 20, 'total_cycles': 1424}, {'filename': 'batch_B14C_cell_1.h5', 'cycles': 20, 'total_cycles': 1424}, {'filename': 'batch_B14B_cell_7.h5', 'cycles': 20, 'total_cycles': 1022}, {'filename': 'batch_B14B_cell_5.h5', 'cycles': 20, 'total_cycles': 1022}, {'filename': 'batch_B14B_cell_12.h5', 'cycles': 20, 'total_cycles': 1023}, {'filename': 'batch_B14B_cell_1.h5', 'cycles': 20, 'total_cycles': 1022}, {'filename': 'batch_B14A_cell_12.h5', 'cycles': 20, 'total_cycles': 1022}, {'filename': 'batch_B12B_cell_1.h5', 'cycles': 20, 'total_cycles': 371}, {'filename': 'batch_B12A_cell_7.h5', 'cycles': 20, 'total_cycles': 1079}, {'filename': 'batch_B9C_cell_7.h5', 'cycles': 20, 'total_cycles': 235}], 'NMC111': [{'filename': 'batch_B21A_cell_15.h5', 'cycles': 20, 'total_cycles': 628}, {'filename': 'batch_B27B_cell_1.h5', 'cycles': 20, 'total_cycles': 1556}, {'filename': 'batch_B27B_cell_7.h5', 'cycles': 20, 'total_cycles': 1556}, {'filename': 'batch_B6A_cell_32.h5', 'cycles': 20, 'total_cycles': 2145}, {'filename': 'batch_B6A_cell_43.h5', 'cycles': 20, 'total_cycles': 2146}], 'NMC532': [{'filename': 'batch_B16A_cell_1.h5', 'cycles': 20, 'total_cycles': 171}, {'filename': 'batch_B7A_cell_1.h5', 'cycles': 20, 'total_cycles': 939}, {'filename': 'batch_B35C_cell_1.h5', 'cycles': 20, 'total_cycles': 788}, {'filename': 'batch_B35D_cell_1.h5', 'cycles': 20, 'total_cycles': 788}, {'filename': 'batch_B35E_cell_1.h5', 'cycles': 20, 'total_cycles': 788}, {'filename': 'batch_B35F_cell_1.h5', 'cycles': 20, 'total_cycles': 788}, {'filename': 'batch_B35G_cell_1.h5', 'cycles': 20, 'total_cycles': 788}, {'filename': 'batch_B35H_cell_1.h5', 'cycles': 20, 'total_cycles': 276}, {'filename': 'batch_B7A_cell_18.h5', 'cycles': 20, 'total_cycles': 788}, {'filename': 'batch_B16A_cell_12.h5', 'cycles': 20, 'total_cycles': 257}, {'filename': 'batch_B7A_cell_21.h5', 'cycles': 20, 'total_cycles': 621}, {'filename': 'batch_B7A_cell_23.h5', 'cycles': 20, 'total_cycles': 620}, {'filename': 'batch_B7A_cell_5.h5', 'cycles': 20, 'total_cycles': 942}, {'filename': 'batch_B7A_cell_7.h5', 'cycles': 20, 'total_cycles': 979}, {'filename': 'batch_B7B_cell_1.h5', 'cycles': 20, 'total_cycles': 789}, {'filename': 'batch_B7B_cell_5.h5', 'cycles': 20, 'total_cycles': 620}, {'filename': 'batch_B35B_cell_1.h5', 'cycles': 20, 'total_cycles': 788}, {'filename': 'batch_B35A_cell_1.h5', 'cycles': 20, 'total_cycles': 788}, {'filename': 'batch_B30B_cell_1.h5', 'cycles': 20, 'total_cycles': 1045}, {'filename': 'batch_B30A_cell_1.h5', 'cycles': 20, 'total_cycles': 1044}, {'filename': 'batch_B28B_cell_5.h5', 'cycles': 20, 'total_cycles': 2324}, {'filename': 'batch_B28B_cell_15.h5', 'cycles': 20, 'total_cycles': 2324}, {'filename': 'batch_B28B_cell_12.h5', 'cycles': 20, 'total_cycles': 2324}, {'filename': 'batch_B28B_cell_1.h5', 'cycles': 20, 'total_cycles': 2324}, {'filename': 'batch_B28A_cell_45.h5', 'cycles': 20, 'total_cycles': 276}, {'filename': 'batch_B28A_cell_43.h5', 'cycles': 20, 'total_cycles': 276}, {'filename': 'batch_B28A_cell_41.h5', 'cycles': 20, 'total_cycles': 602}, {'filename': 'batch_B28A_cell_38.h5', 'cycles': 20, 'total_cycles': 620}, {'filename': 'batch_B28A_cell_34.h5', 'cycles': 20, 'total_cycles': 606}, {'filename': 'batch_B17A_cell_7.h5', 'cycles': 20, 'total_cycles': 250}, {'filename': 'batch_B17A_cell_5.h5', 'cycles': 20, 'total_cycles': 251}, {'filename': 'batch_B17A_cell_1.h5', 'cycles': 20, 'total_cycles': 267}, {'filename': 'batch_B16A_cell_7.h5', 'cycles': 20, 'total_cycles': 195}, {'filename': 'batch_B7B_cell_7.h5', 'cycles': 20, 'total_cycles': 618}], 'NMC622': [{'filename': 'batch_B37B_cell_1.h5', 'cycles': 20, 'total_cycles': 198}, {'filename': 'batch_B38A_cell_1.h5', 'cycles': 20, 'total_cycles': 1495}, {'filename': 'batch_B38B_cell_1.h5', 'cycles': 20, 'total_cycles': 1495}, {'filename': 'batch_B38B_cell_5.h5', 'cycles': 20, 'total_cycles': 1494}, {'filename': 'batch_B38C_cell_1.h5', 'cycles': 20, 'total_cycles': 1494}, {'filename': 'batch_B38D_cell_1.h5', 'cycles': 20, 'total_cycles': 1494}], 'NMC811': [{'filename': 'batch_B34A_cell_1.h5', 'cycles': 20, 'total_cycles': 533}, {'filename': 'batch_B34B_cell_1.h5', 'cycles': 20, 'total_cycles': 788}, {'filename': 'batch_B34C_cell_1.h5', 'cycles': 20, 'total_cycles': 788}]}}}
+11-16 19:29:26 input_size: 32
+11-16 19:29:26 reinit_head: False
+11-16 19:29:26 using 1 cpu
+11-16 19:29:26 Uncaught exception in ZMQStream callback
+Traceback (most recent call last):
+  File "/Users/moondiab/opt/anaconda3/envs/venv/lib/python3.11/site-packages/jupyter_client/session.py", line 100, in json_packer
+    ).encode("utf8", errors="surrogateescape")
+      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+UnicodeEncodeError: 'utf-8' codec can't encode characters in position 657-658: surrogates not allowed
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/Users/moondiab/opt/anaconda3/envs/venv/lib/python3.11/site-packages/zmq/eventloop/zmqstream.py", line 560, in _run_callback
+    f = callback(*args, **kwargs)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/moondiab/opt/anaconda3/envs/venv/lib/python3.11/site-packages/ipykernel/iostream.py", line 170, in _handle_event
+    event_f()
+  File "/Users/moondiab/opt/anaconda3/envs/venv/lib/python3.11/site-packages/ipykernel/iostream.py", line 649, in _flush
+    self.session.send(
+  File "/Users/moondiab/opt/anaconda3/envs/venv/lib/python3.11/site-packages/jupyter_client/session.py", line 852, in send
+    to_send = self.serialize(msg, ident)
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/moondiab/opt/anaconda3/envs/venv/lib/python3.11/site-packages/jupyter_client/session.py", line 721, in serialize
+    content = self.pack(content)
+              ^^^^^^^^^^^^^^^^^^
+  File "/Users/moondiab/opt/anaconda3/envs/venv/lib/python3.11/site-packages/jupyter_client/session.py", line 108, in json_packer
+    ).encode("utf8", errors="surrogateescape")
+      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+UnicodeEncodeError: 'utf-8' codec can't encode characters in position 657-658: surrogates not allowed
+11-16 19:29:26 Uncaught exception in zmqstream callback
+Traceback (most recent call last):
+  File "/Users/moondiab/opt/anaconda3/envs/venv/lib/python3.11/site-packages/jupyter_client/session.py", line 100, in json_packer
+    ).encode("utf8", errors="surrogateescape")
+      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+UnicodeEncodeError: 'utf-8' codec can't encode characters in position 657-658: surrogates not allowed
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/Users/moondiab/opt/anaconda3/envs/venv/lib/python3.11/site-packages/zmq/eventloop/zmqstream.py", line 610, in _handle_events
+    self._handle_recv()
+  File "/Users/moondiab/opt/anaconda3/envs/venv/lib/python3.11/site-packages/zmq/eventloop/zmqstream.py", line 639, in _handle_recv
+    self._run_callback(callback, msg)
+  File "/Users/moondiab/opt/anaconda3/envs/venv/lib/python3.11/site-packages/zmq/eventloop/zmqstream.py", line 560, in _run_callback
+    f = callback(*args, **kwargs)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/moondiab/opt/anaconda3/envs/venv/lib/python3.11/site-packages/ipykernel/iostream.py", line 170, in _handle_event
+    event_f()
+  File "/Users/moondiab/opt/anaconda3/envs/venv/lib/python3.11/site-packages/ipykernel/iostream.py", line 649, in _flush
+    self.session.send(
+  File "/Users/moondiab/opt/anaconda3/envs/venv/lib/python3.11/site-packages/jupyter_client/session.py", line 852, in send
+    to_send = self.serialize(msg, ident)
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/moondiab/opt/anaconda3/envs/venv/lib/python3.11/site-packages/jupyter_client/session.py", line 721, in serialize
+    content = self.pack(content)
+              ^^^^^^^^^^^^^^^^^^
+  File "/Users/moondiab/opt/anaconda3/envs/venv/lib/python3.11/site-packages/jupyter_client/session.py", line 108, in json_packer
+    ).encode("utf8", errors="surrogateescape")
+      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+UnicodeEncodeError: 'utf-8' codec can't encode characters in position 657-658: surrogates not allowed
+11-16 19:29:26 Exception in callback BaseAsyncIOLoop._handle_events(43, 1)
+handle: <Handle BaseAsyncIOLoop._handle_events(43, 1)>
+Traceback (most recent call last):
+  File "/Users/moondiab/opt/anaconda3/envs/venv/lib/python3.11/site-packages/jupyter_client/session.py", line 100, in json_packer
+    ).encode("utf8", errors="surrogateescape")
+      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+UnicodeEncodeError: 'utf-8' codec can't encode characters in position 657-658: surrogates not allowed
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/Users/moondiab/opt/anaconda3/envs/venv/lib/python3.11/asyncio/events.py", line 84, in _run
+    self._context.run(self._callback, *self._args)
+  File "/Users/moondiab/opt/anaconda3/envs/venv/lib/python3.11/site-packages/tornado/platform/asyncio.py", line 202, in _handle_events
+    handler_func(fileobj, events)
+  File "/Users/moondiab/opt/anaconda3/envs/venv/lib/python3.11/site-packages/zmq/eventloop/zmqstream.py", line 610, in _handle_events
+    self._handle_recv()
+  File "/Users/moondiab/opt/anaconda3/envs/venv/lib/python3.11/site-packages/zmq/eventloop/zmqstream.py", line 639, in _handle_recv
+    self._run_callback(callback, msg)
+  File "/Users/moondiab/opt/anaconda3/envs/venv/lib/python3.11/site-packages/zmq/eventloop/zmqstream.py", line 560, in _run_callback
+    f = callback(*args, **kwargs)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/moondiab/opt/anaconda3/envs/venv/lib/python3.11/site-packages/ipykernel/iostream.py", line 170, in _handle_event
+    event_f()
+  File "/Users/moondiab/opt/anaconda3/envs/venv/lib/python3.11/site-packages/ipykernel/iostream.py", line 649, in _flush
+    self.session.send(
+  File "/Users/moondiab/opt/anaconda3/envs/venv/lib/python3.11/site-packages/jupyter_client/session.py", line 852, in send
+    to_send = self.serialize(msg, ident)
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/moondiab/opt/anaconda3/envs/venv/lib/python3.11/site-packages/jupyter_client/session.py", line 721, in serialize
+    content = self.pack(content)
+              ^^^^^^^^^^^^^^^^^^
+  File "/Users/moondiab/opt/anaconda3/envs/venv/lib/python3.11/site-packages/jupyter_client/session.py", line 108, in json_packer
+    ).encode("utf8", errors="surrogateescape")
+      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+UnicodeEncodeError: 'utf-8' codec can't encode characters in position 657-658: surrogates not allowed

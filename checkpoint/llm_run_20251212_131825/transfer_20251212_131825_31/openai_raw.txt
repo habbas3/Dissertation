@@ -1,0 +1,14 @@
+{
+  "model_name": "WideResNet_sa",
+  "self_attention": true,
+  "sngp": true,
+  "openmax": false,
+  "use_unknown_head": true,
+  "bottleneck": 256,
+  "dropout": 0.35,
+  "learning_rate": 0.0005,
+  "batch_size": 8,
+  "lambda_src": 1.5,
+  "warmup_epochs": 10,
+  "rationale": "The dataset has 21 channels and short sequences (32 steps) with label inconsistency and domain shift between source and target cathodes. WideResNet with self-attention balances strong representation for multi-channel inputs and captures global context needed for chemistry-aware aging patterns. Using SNGP and an unknown head addresses uncertainty and outlier detection due to domain shift and label inconsistency. Dropout at 0.35 prevents overfitting on small source data, and moderate bottleneck size (256) balances capacity and regularization. Batch size 8 fits memory constraints while enabling stable training. Warmup epochs and lambda_src help gradual adaptation to target domain."
+}

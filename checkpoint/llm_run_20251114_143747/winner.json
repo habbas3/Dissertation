@@ -1,0 +1,11 @@
+{
+  "tag": "sngp_wrn_sa",
+  "model_name": "WideResNet_sa",
+  "method": "sngp",
+  "droprate": 0.3,
+  "lr": 0.001,
+  "batch_size": 64,
+  "lambda_src": 1.0,
+  "summary_csv": "checkpoint/llm_run_20251114_143747/compare/sngp_wrn_sa_summary_1114_CWRU_inconsistent.csv",
+  "avg_improvement": 0.0602409638554217
+}

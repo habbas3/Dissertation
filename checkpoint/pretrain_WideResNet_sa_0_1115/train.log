@@ -1,0 +1,64 @@
+11-15 22:37:15 data_name: CWRU_inconsistent
+11-15 22:37:15 data_dir: ./my_datasets/CWRU_dataset
+11-15 22:37:15 csv: ./my_datasets/Battery/battery_cycles_labeled.csv
+11-15 22:37:15 normlizetype: mean-std
+11-15 22:37:15 method: sngp
+11-15 22:37:15 gp_hidden_dim: 2048
+11-15 22:37:15 spectral_norm_bound: 0.95
+11-15 22:37:15 n_power_iterations: 1
+11-15 22:37:15 nesterov: True
+11-15 22:37:15 print_freq: 10
+11-15 22:37:15 layers: 16
+11-15 22:37:15 widen_factor: 1
+11-15 22:37:15 droprate: 0.3
+11-15 22:37:15 cuda_device: 0
+11-15 22:37:15 checkpoint_dir: ./checkpoint
+11-15 22:37:15 pretrained: False
+11-15 22:37:15 batch_size: 64
+11-15 22:37:15 num_workers: 0
+11-15 22:37:15 bottleneck: True
+11-15 22:37:15 bottleneck_num: 128
+11-15 22:37:15 last_batch: False
+11-15 22:37:15 hidden_size: 1024
+11-15 22:37:15 trade_off_adversarial: Step
+11-15 22:37:15 lam_adversarial: 1
+11-15 22:37:15 opt: adam
+11-15 22:37:15 lr: 0.001
+11-15 22:37:15 momentum: 0.9
+11-15 22:37:15 weight_decay: 1e-05
+11-15 22:37:15 lr_scheduler: step
+11-15 22:37:15 gamma: 0.1
+11-15 22:37:15 steps: 150, 250
+11-15 22:37:15 middle_epoch: 15
+11-15 22:37:15 max_epoch: 50
+11-15 22:37:15 print_step: 25
+11-15 22:37:15 inconsistent: UAN
+11-15 22:37:15 model_name: WideResNet_sa
+11-15 22:37:15 th: 0.5
+11-15 22:37:15 input_channels: 7
+11-15 22:37:15 classification_label: eol_class
+11-15 22:37:15 sequence_length: 32
+11-15 22:37:15 cycles_per_file: 50
+11-15 22:37:15 sample_random_state: 42
+11-15 22:37:15 transfer_task: [[0], [1]]
+11-15 22:37:15 source_cathode: []
+11-15 22:37:15 target_cathode: []
+11-15 22:37:15 num_classes: 9
+11-15 22:37:15 domain_temperature: 1.0
+11-15 22:37:15 class_temperature: 10.0
+11-15 22:37:15 lambda_src: 1.0
+11-15 22:37:15 lambda_src_decay_patience: 5
+11-15 22:37:15 lambda_src_decay_factor: 0.5
+11-15 22:37:15 lambda_src_min: 0.0
+11-15 22:37:15 lambda_src_warmup: 0
+11-15 22:37:15 improvement_metric: common
+11-15 22:37:15 auto_select: True
+11-15 22:37:15 llm_compare: True
+11-15 22:37:15 llm_backend: openai
+11-15 22:37:15 llm_model: None
+11-15 22:37:15 llm_context: 
+11-15 22:37:15 llm_cfg_inputs: {'text_context': 'Dataset: Case Western Reserve University bearing vibration transfer benchmark with label inconsistency handling.\nTransfer from motors 0 to 1; inconsistency setting UAN.\nWindows are length 32 with 7 vibration channels; task uses None classes.', 'numeric_summary': {'dataset': 'CWRU_inconsistent', 'sequence_length_requested': 32, 'notes': 'label_inconsistent', 'lr_hint': 0.001, 'dropout_hint': 0.3, 'num_classes_hint': None, 'splits': {}, 'dataset_variant': 'cwru_bearing', 'transfer_task': [[0], [1]]}}
+11-15 22:37:15 llm_cfg: {'architecture': 'cnn_openmax', 'model_name': 'cnn_openmax', 'self_attention': False, 'sngp': True, 'openmax': True, 'use_unknown_head': True, 'bottleneck': 128, 'dropout': 0.3, 'learning_rate': 0.001, 'batch_size': 64, 'lambda_src': 1.0, 'rationale': "The dataset has short sequences (32 steps) and 7 channels, suitable for a 1-D CNN backbone. Label inconsistency and unknown classes motivate using OpenMax for explicit unknown rejection. The dropout of 0.3 balances overfitting risk due to label noise. Batch size 64 offers stable training without excessive memory use. Lambda_src at 1.0 encourages domain adaptation for transfer from motor 0 to 1. Label inconsistency flagged → calibrated heads (SNGP/OpenMax) stay enabled for open-set robustness. Benchmarking against Zhao et al.'s CNN baseline to highlight transfer-aware gains. CWRU bearings rewarded wideresnet capacity and SNGP calibration over the Zhao CNN baseline.", '_provider': 'openai', '_raw': '{\n  "model_name": "cnn_openmax",\n  "self_attention": false,\n  "sngp": false,\n  "openmax": true,\n  "use_unknown_head": true,\n  "bottleneck": 128,\n  "dropout": 0.3,\n  "learning_rate": 0.001,\n  "batch_size": 64,\n  "lambda_src": 1.0,\n  "rationale": "The dataset has short sequences (32 steps) and 7 channels, suitable for a 1-D CNN backbone. Label inconsistency and unknown classes motivate using OpenMax for explicit unknown rejection. The dropout of 0.3 balances overfitting risk due to label noise. Batch size 64 offers stable training without excessive memory use. Lambda_src at 1.0 encourages domain adaptation for transfer from motor 0 to 1."\n}'}
+11-15 22:37:15 llm_cfg_stamp: 20251115_222238
+11-15 22:37:15 tag: sngp_wrn_sa_20251115_222238
+11-15 22:37:15 using 1 cpu

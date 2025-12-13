@@ -1,0 +1,4 @@
+tag,model_name,method,droprate,lr,batch_size,lambda_src,summary_csv,avg_improvement
+llm_pick,cnn_features_1d_sa,sngp,0.3,0.001,64,0.0,checkpoint/llm_run_20251116_213306/compare/llm_pick_summary_1116_Battery_inconsistent.csv,0.006756756756756716
+deterministic_cnn,cnn_features_1d,deterministic,0.3,0.001,64,0.0,checkpoint/llm_run_20251116_213306/compare/deterministic_cnn_summary_1116_Battery_inconsistent.csv,0.002252252252252233
+sngp_wrn_sa,WideResNet_sa,sngp,0.3,0.001,64,0.0,checkpoint/llm_run_20251116_213306/compare/sngp_wrn_sa_summary_1116_Battery_inconsistent.csv,0.0

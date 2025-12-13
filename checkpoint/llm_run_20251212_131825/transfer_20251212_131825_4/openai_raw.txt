@@ -1,0 +1,14 @@
+{
+  "model_name": "WideResNet_edited",
+  "self_attention": false,
+  "sngp": false,
+  "openmax": false,
+  "use_unknown_head": false,
+  "bottleneck": 256,
+  "dropout": 0.35,
+  "learning_rate": 0.0005,
+  "batch_size": 8,
+  "lambda_src": 1.0,
+  "warmup_epochs": 10,
+  "rationale": "The dataset has 21 channels and sequence length 32 with label inconsistency and domain shift between source and target cathodes, favoring a high-capacity model with physics-inspired edits. WideResNet_edited is tailored for battery data and transfer between mismatched chemistries, handling complex chemo-mechanical signals better than lightweight CNNs. Moderate dropout (0.35) and warmup epochs (10) help regularize and stabilize training given label inconsistency. Self-attention and openmax are avoided to reduce overfitting risk and complexity given the short sequence length and moderate batch size."
+}

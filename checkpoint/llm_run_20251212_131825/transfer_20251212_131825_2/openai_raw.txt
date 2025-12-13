@@ -1,0 +1,14 @@
+{
+  "model_name": "WideResNet_edited",
+  "self_attention": false,
+  "sngp": true,
+  "openmax": false,
+  "use_unknown_head": true,
+  "bottleneck": 256,
+  "dropout": 0.3,
+  "learning_rate": 0.001,
+  "batch_size": 64,
+  "lambda_src": 1.5,
+  "warmup_epochs": 10,
+  "rationale": "The dataset has 21 channels and short sequences (32 steps) with label inconsistency and domain shift between source and target cathodes. WideResNet_edited is tailored for battery data with physics-inspired feature edits, suitable for transfer learning across different chemistries. Using SNGP and an unknown head helps manage uncertainty and avoid overconfident extrapolation on outlier cycles, important given the chemistry mismatch. Dropout at 0.3 balances regularization, and a moderate bottleneck of 256 provides sufficient capacity without overfitting. Batch size 64 matches observed data, and warmup epochs allow stable adaptation."
+}

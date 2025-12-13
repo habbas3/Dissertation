@@ -1,0 +1,7 @@
+model,source,target,comparison_metric,baseline_score,transfer_score,improvement,baseline_common_acc,transfer_common_acc,baseline_outlier_acc,transfer_outlier_acc,baseline_hscore,transfer_hscore,final_model,note
+WideResNet_sa,nmc,spinel5v,common,0.9166666666666666,0.9166666666666666,0.0,0.9166666666666666,0.9166666666666666,0.0,0.0,0.0,0.0,baseline,baseline_kept
+WideResNet_sa,nmc,fcg,common,1.0,1.0,0.0,1.0,1.0,0.0,0.0,0.0,0.0,baseline,baseline_kept
+WideResNet_sa,lirich,spinel5v,common,1.0,1.0,0.0,1.0,1.0,0.0,0.0,0.0,0.0,baseline,baseline_kept
+WideResNet_sa,spinel5v,nmc,common,0.938122332859175,0.9544807965860598,0.016358463726884764,0.938122332859175,0.9544807965860598,0.0,0.0,0.0,0.0,transfer,
+WideResNet_sa,spinel5v,lirich,common,1.0,1.0,0.0,1.0,1.0,0.0,0.0,0.0,0.0,baseline,baseline_kept
+WideResNet_sa,fcg,nmc,common,0.9395448079658606,0.94950213371266,0.009957325746799417,0.9395448079658606,0.94950213371266,0.0,0.0,0.0,0.0,transfer,

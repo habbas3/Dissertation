@@ -1,0 +1,14 @@
+{
+  "model_name": "cnn_features_1d_sa",
+  "self_attention": true,
+  "sngp": false,
+  "openmax": false,
+  "use_unknown_head": false,
+  "bottleneck": 256,
+  "dropout": 0.35,
+  "learning_rate": 0.0005,
+  "batch_size": 8,
+  "lambda_src": 1.0,
+  "warmup_epochs": 10,
+  "rationale": "The dataset has 21 channels and short sequence length (32), favoring CNN with self-attention to capture local and some global dependencies. The domain shift from 5Vspinel to HE5050 and label inconsistency suggest using self-attention for adaptability without the complexity of openmax or SNGP. Moderate bottleneck and dropout balance capacity and regularization. Batch size 8 matches seen data, and warmup helps stabilize transfer learning."
+}

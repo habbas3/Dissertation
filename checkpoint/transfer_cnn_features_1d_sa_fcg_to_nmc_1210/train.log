@@ -1,0 +1,151 @@
+12-10 11:27:12 data_name: Battery_inconsistent
+12-10 11:27:12 data_dir: ./my_datasets/Battery
+12-10 11:27:12 csv: ./my_datasets/Battery/battery_cycles_labeled.csv
+12-10 11:27:12 normlizetype: mean-std
+12-10 11:27:12 method: sngp
+12-10 11:27:12 gp_hidden_dim: 2048
+12-10 11:27:12 spectral_norm_bound: 0.95
+12-10 11:27:12 n_power_iterations: 1
+12-10 11:27:12 nesterov: True
+12-10 11:27:12 print_freq: 10
+12-10 11:27:12 layers: 16
+12-10 11:27:12 widen_factor: 1
+12-10 11:27:12 droprate: 0.3
+12-10 11:27:12 cuda_device: 0
+12-10 11:27:12 checkpoint_dir: ./checkpoint
+12-10 11:27:12 pretrained: True
+12-10 11:27:12 batch_size: 64
+12-10 11:27:12 warmup_epochs: 4
+12-10 11:27:12 num_workers: 0
+12-10 11:27:12 bottleneck: True
+12-10 11:27:12 bottleneck_num: 256
+12-10 11:27:12 last_batch: False
+12-10 11:27:12 hidden_size: 1024
+12-10 11:27:12 trade_off_adversarial: Step
+12-10 11:27:12 lam_adversarial: 1
+12-10 11:27:12 opt: adam
+12-10 11:27:12 lr: 0.0005
+12-10 11:27:12 momentum: 0.9
+12-10 11:27:12 weight_decay: 1e-05
+12-10 11:27:12 lr_scheduler: step
+12-10 11:27:12 gamma: 0.1
+12-10 11:27:12 steps: 150, 250
+12-10 11:27:12 middle_epoch: 15
+12-10 11:27:12 max_epoch: 66
+12-10 11:27:12 print_step: 25
+12-10 11:27:12 inconsistent: UAN
+12-10 11:27:12 model_name: cnn_features_1d_sa
+12-10 11:27:12 th: 0.5
+12-10 11:27:12 input_channels: 7
+12-10 11:27:12 classification_label: eol_class
+12-10 11:27:12 sequence_length: 32
+12-10 11:27:12 cycles_per_file: 15
+12-10 11:27:12 source_cycles_per_file: None
+12-10 11:27:12 target_cycles_per_file: None
+12-10 11:27:12 cycle_ablation: False
+12-10 11:27:12 cycle_ablation_start: 5
+12-10 11:27:12 cycle_ablation_step: 10
+12-10 11:27:12 cycle_ablation_max: None
+12-10 11:27:12 literature_context_file: ./references/joule_s2542-4351-22-00409-3.md
+12-10 11:27:12 sample_random_state: 42
+12-10 11:27:12 transfer_task: [[[0], [1]], [[0], [2]], [[0], [3]], [[1], [0]], [[1], [2]], [[1], [3]], [[2], [0]], [[2], [1]], [[2], [3]], [[3], [0]], [[3], [1]], [[3], [2]]]
+12-10 11:27:12 source_cathode: ['FCG']
+12-10 11:27:12 target_cathode: ['HE5050', 'NMC111', 'NMC532', 'NMC622', 'NMC811']
+12-10 11:27:12 num_classes: None
+12-10 11:27:12 domain_temperature: 1.0
+12-10 11:27:12 class_temperature: 10.0
+12-10 11:27:12 lambda_src: 0.6
+12-10 11:27:12 lambda_src_decay_patience: 2
+12-10 11:27:12 lambda_src_decay_factor: 0.5
+12-10 11:27:12 lambda_src_min: 0.0
+12-10 11:27:12 lambda_src_warmup: 3
+12-10 11:27:12 improvement_metric: accuracy
+12-10 11:27:12 skip_retry: False
+12-10 11:27:12 auto_select: True
+12-10 11:27:12 llm_compare: True
+12-10 11:27:12 llm_backend: openai
+12-10 11:27:12 llm_model: None
+12-10 11:27:12 llm_context: 
+12-10 11:27:12 llm_ablation: False
+12-10 11:27:12 ablation_cycle_limits: 
+12-10 11:27:12 llm_cfg_inputs: {'text_context': "Dataset: Argonne National Laboratory battery aging time-series with partial cycle windows.\nSource cathodes: (all available); target cathodes: (none specified).\nLabel column 'eol_class' with ~None classes; sequence length 32; 7 channels covering cycle_number, energy_charge, capacity_charge, energy_discharge, capacity_discharge, cycle_start, cycle_duration.\nLiterature cues (Joule S2542-4351(22)00409-3, chemistry-sensitive ablations):\nJoule 2022 (S2542-4351(22)00409-3) key cues for chemistry-aware ablation:\n- Early-cycle capacity fade slopes and coulombic-efficiency stabilization highlight whether aging is lithium-inventory loss (graphite/anode-electrolyte limited) versus cathode structural decay (e.g., Ni-rich NMC cathodes with electrolyte oxidation risk).\n- High initial impedance growth, thick SEI signatures, or electrolyte oxidation markers flag chemistries that benefit from uncertainty-aware heads (SNGP/OpenMax) to avoid overconfident extrapolation on outlier cycles.\n- LFP/graphite pairs tend to show flatter voltage plateaus and slower early fade; Ni-rich NMC chemistries degrade faster under aggressive cycling and need stronger regularization or shorter cycle horizons in ablations.\n- Transfer between mismatched chemistries (e.g., NMC → LFP) should down-weight source loss and favor architectures that adapt quickly with self-attention or wider bottlenecks; closely matched chemistries can rely more on convolutional baselines.", 'numeric_summary': {'dataset': 'Battery_inconsistent', 'sequence_length_requested': 32, 'notes': 'label_inconsistent', 'lr_hint': 0.001, 'dropout_hint': 0.3, 'num_classes_hint': None, 'splits': {}, 'dataset_variant': 'argonne_battery', 'feature_names': ['cycle_number', 'energy_charge', 'capacity_charge', 'energy_discharge', 'capacity_discharge', 'cycle_start', 'cycle_duration'], 'source_cathodes': [], 'target_cathodes': [], 'label_column': 'eol_class'}}
+12-10 11:27:12 llm_cfg: {'architecture': 'cnn_1d_sa', 'model_name': 'cnn_features_1d_sa', 'self_attention': True, 'sngp': True, 'openmax': False, 'use_unknown_head': False, 'bottleneck': 256, 'dropout': 0.3, 'learning_rate': 0.001, 'batch_size': 64, 'lambda_src': 1.0, 'warmup_epochs': 10, 'rationale': 'The dataset has short sequences (32 steps) and 7 channels, suitable for 1D CNN with self-attention to capture local and multi-cycle correlations. Label inconsistency and potential outliers suggest using SNGP and unknown head for uncertainty-aware predictions. Moderate bottleneck (256) balances capacity and overfitting risk. Dropout 0.3 prevents overfitting given label noise. Learning rate 0.001 and batch size 64 balance convergence and memory. Warmup epochs 10 help stabilize training with uncertainty modules. Backbone frozen for 10 epoch(s) before full fine-tuning to stabilise feature reuse. Label inconsistency flagged → calibrated heads (SNGP/OpenMax) stay enabled for open-set robustness.', '_provider': 'openai', '_raw': '{\n  "model_name": "cnn_features_1d_sa",\n  "self_attention": true,\n  "sngp": true,\n  "openmax": false,\n  "use_unknown_head": true,\n  "bottleneck": 256,\n  "dropout": 0.3,\n  "learning_rate": 0.001,\n  "batch_size": 64,\n  "lambda_src": 1.0,\n  "warmup_epochs": 10,\n  "rationale": "The dataset has short sequences (32 steps) and 7 channels, suitable for 1D CNN with self-attention to capture local and multi-cycle correlations. Label inconsistency and potential outliers suggest using SNGP and unknown head for uncertainty-aware predictions. Moderate bottleneck (256) balances capacity and overfitting risk. Dropout 0.3 prevents overfitting given label noise. Learning rate 0.001 and batch size 64 balance convergence and memory. Warmup epochs 10 help stabilize training with uncertainty modules."\n}'}
+12-10 11:27:12 llm_cfg_stamp: 20251210_111212
+12-10 11:27:12 pretrained_model_path: ./checkpoint/pretrain_cnn_features_1d_sa_fcg_1210/best_model.pth
+12-10 11:27:12 using 1 cpu
+12-10 11:55:42 data_name: Battery_inconsistent
+12-10 11:55:42 data_dir: ./my_datasets/Battery
+12-10 11:55:42 csv: ./my_datasets/Battery/battery_cycles_labeled.csv
+12-10 11:55:42 normlizetype: mean-std
+12-10 11:55:42 method: deterministic
+12-10 11:55:42 gp_hidden_dim: 2048
+12-10 11:55:42 spectral_norm_bound: 0.95
+12-10 11:55:42 n_power_iterations: 1
+12-10 11:55:42 nesterov: True
+12-10 11:55:42 print_freq: 10
+12-10 11:55:42 layers: 16
+12-10 11:55:42 widen_factor: 1
+12-10 11:55:42 droprate: 0.3
+12-10 11:55:42 cuda_device: 0
+12-10 11:55:42 checkpoint_dir: ./checkpoint
+12-10 11:55:42 pretrained: True
+12-10 11:55:42 batch_size: 64
+12-10 11:55:42 warmup_epochs: 4
+12-10 11:55:42 num_workers: 0
+12-10 11:55:42 bottleneck: True
+12-10 11:55:42 bottleneck_num: 256
+12-10 11:55:42 last_batch: False
+12-10 11:55:42 hidden_size: 1024
+12-10 11:55:42 trade_off_adversarial: Step
+12-10 11:55:42 lam_adversarial: 1
+12-10 11:55:42 opt: adam
+12-10 11:55:42 lr: 0.0005
+12-10 11:55:42 momentum: 0.9
+12-10 11:55:42 weight_decay: 1e-05
+12-10 11:55:42 lr_scheduler: step
+12-10 11:55:42 gamma: 0.1
+12-10 11:55:42 steps: 150, 250
+12-10 11:55:42 middle_epoch: 15
+12-10 11:55:42 max_epoch: 66
+12-10 11:55:42 print_step: 25
+12-10 11:55:42 inconsistent: UAN
+12-10 11:55:42 model_name: cnn_features_1d_sa
+12-10 11:55:42 th: 0.5
+12-10 11:55:42 input_channels: 7
+12-10 11:55:42 classification_label: eol_class
+12-10 11:55:42 sequence_length: 32
+12-10 11:55:42 cycles_per_file: 15
+12-10 11:55:42 source_cycles_per_file: None
+12-10 11:55:42 target_cycles_per_file: None
+12-10 11:55:42 cycle_ablation: False
+12-10 11:55:42 cycle_ablation_start: 5
+12-10 11:55:42 cycle_ablation_step: 10
+12-10 11:55:42 cycle_ablation_max: None
+12-10 11:55:42 literature_context_file: ./references/joule_s2542-4351-22-00409-3.md
+12-10 11:55:42 sample_random_state: 42
+12-10 11:55:42 transfer_task: [[[0], [1]], [[0], [2]], [[0], [3]], [[1], [0]], [[1], [2]], [[1], [3]], [[2], [0]], [[2], [1]], [[2], [3]], [[3], [0]], [[3], [1]], [[3], [2]]]
+12-10 11:55:42 source_cathode: ['FCG']
+12-10 11:55:42 target_cathode: ['HE5050', 'NMC111', 'NMC532', 'NMC622', 'NMC811']
+12-10 11:55:42 num_classes: None
+12-10 11:55:42 domain_temperature: 1.0
+12-10 11:55:42 class_temperature: 10.0
+12-10 11:55:42 lambda_src: 0.6
+12-10 11:55:42 lambda_src_decay_patience: 2
+12-10 11:55:42 lambda_src_decay_factor: 0.5
+12-10 11:55:42 lambda_src_min: 0.0
+12-10 11:55:42 lambda_src_warmup: 3
+12-10 11:55:42 improvement_metric: accuracy
+12-10 11:55:42 skip_retry: False
+12-10 11:55:42 auto_select: True
+12-10 11:55:42 llm_compare: True
+12-10 11:55:42 llm_backend: openai
+12-10 11:55:42 llm_model: None
+12-10 11:55:42 llm_context: 
+12-10 11:55:42 llm_ablation: False
+12-10 11:55:42 ablation_cycle_limits: 
+12-10 11:55:42 llm_cfg_inputs: {'text_context': "Dataset: Argonne National Laboratory battery aging time-series with partial cycle windows.\nSource cathodes: (all available); target cathodes: (none specified).\nLabel column 'eol_class' with ~None classes; sequence length 32; 7 channels covering cycle_number, energy_charge, capacity_charge, energy_discharge, capacity_discharge, cycle_start, cycle_duration.\nLiterature cues (Joule S2542-4351(22)00409-3, chemistry-sensitive ablations):\nJoule 2022 (S2542-4351(22)00409-3) key cues for chemistry-aware ablation:\n- Early-cycle capacity fade slopes and coulombic-efficiency stabilization highlight whether aging is lithium-inventory loss (graphite/anode-electrolyte limited) versus cathode structural decay (e.g., Ni-rich NMC cathodes with electrolyte oxidation risk).\n- High initial impedance growth, thick SEI signatures, or electrolyte oxidation markers flag chemistries that benefit from uncertainty-aware heads (SNGP/OpenMax) to avoid overconfident extrapolation on outlier cycles.\n- LFP/graphite pairs tend to show flatter voltage plateaus and slower early fade; Ni-rich NMC chemistries degrade faster under aggressive cycling and need stronger regularization or shorter cycle horizons in ablations.\n- Transfer between mismatched chemistries (e.g., NMC → LFP) should down-weight source loss and favor architectures that adapt quickly with self-attention or wider bottlenecks; closely matched chemistries can rely more on convolutional baselines.", 'numeric_summary': {'dataset': 'Battery_inconsistent', 'sequence_length_requested': 32, 'notes': 'label_inconsistent', 'lr_hint': 0.001, 'dropout_hint': 0.3, 'num_classes_hint': None, 'splits': {}, 'dataset_variant': 'argonne_battery', 'feature_names': ['cycle_number', 'energy_charge', 'capacity_charge', 'energy_discharge', 'capacity_discharge', 'cycle_start', 'cycle_duration'], 'source_cathodes': [], 'target_cathodes': [], 'label_column': 'eol_class'}}
+12-10 11:55:42 llm_cfg: {'architecture': 'cnn_1d_sa', 'model_name': 'cnn_features_1d_sa', 'self_attention': True, 'sngp': True, 'openmax': False, 'use_unknown_head': False, 'bottleneck': 256, 'dropout': 0.3, 'learning_rate': 0.001, 'batch_size': 64, 'lambda_src': 1.0, 'warmup_epochs': 10, 'rationale': 'The dataset has short sequences (32 steps) and 7 channels, suitable for 1D CNN with self-attention to capture local and multi-cycle correlations. Label inconsistency and potential outliers suggest using SNGP and unknown head for uncertainty-aware predictions. Moderate bottleneck (256) balances capacity and overfitting risk. Dropout 0.3 prevents overfitting given label noise. Learning rate 0.001 and batch size 64 balance convergence and memory. Warmup epochs 10 help stabilize training with uncertainty modules. Backbone frozen for 10 epoch(s) before full fine-tuning to stabilise feature reuse. Label inconsistency flagged → calibrated heads (SNGP/OpenMax) stay enabled for open-set robustness.', '_provider': 'openai', '_raw': '{\n  "model_name": "cnn_features_1d_sa",\n  "self_attention": true,\n  "sngp": true,\n  "openmax": false,\n  "use_unknown_head": true,\n  "bottleneck": 256,\n  "dropout": 0.3,\n  "learning_rate": 0.001,\n  "batch_size": 64,\n  "lambda_src": 1.0,\n  "warmup_epochs": 10,\n  "rationale": "The dataset has short sequences (32 steps) and 7 channels, suitable for 1D CNN with self-attention to capture local and multi-cycle correlations. Label inconsistency and potential outliers suggest using SNGP and unknown head for uncertainty-aware predictions. Moderate bottleneck (256) balances capacity and overfitting risk. Dropout 0.3 prevents overfitting given label noise. Learning rate 0.001 and batch size 64 balance convergence and memory. Warmup epochs 10 help stabilize training with uncertainty modules."\n}'}
+12-10 11:55:42 llm_cfg_stamp: 20251210_111212
+12-10 11:55:42 tag: no_sngp_20251210_111212
+12-10 11:55:42 pretrained_model_path: ./checkpoint/pretrain_cnn_features_1d_sa_fcg_1210/best_model.pth
+12-10 11:55:42 using 1 cpu

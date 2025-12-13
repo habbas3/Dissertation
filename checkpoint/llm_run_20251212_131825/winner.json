@@ -1,0 +1,12 @@
+{
+  "tag": "llm_pick",
+  "model_name": "cnn_features_1d_sa",
+  "method": "sngp",
+  "droprate": 0.35,
+  "lr": 0.0005,
+  "batch_size": 16,
+  "lambda_src": 0.6,
+  "summary_csv": "checkpoint/llm_run_20251212_131825/compare/llm_pick_summary_1212_141551_Battery_inconsistent.csv",
+  "avg_improvement": 0.02027027027027025,
+  "cycle_limit": null
+}

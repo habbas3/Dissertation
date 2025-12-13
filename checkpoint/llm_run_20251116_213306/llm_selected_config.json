@@ -1,0 +1,44 @@
+{
+  "llm_choice": {
+    "architecture": "cnn_1d_sa",
+    "model_name": "cnn_features_1d_sa",
+    "self_attention": true,
+    "sngp": true,
+    "openmax": false,
+    "use_unknown_head": false,
+    "bottleneck": 128,
+    "dropout": 0.3,
+    "learning_rate": 0.001,
+    "batch_size": 64,
+    "lambda_src": 0.0,
+    "rationale": "The dataset has short sequences (32 steps) and 7 channels, suitable for a 1-D CNN with self-attention to capture local and some longer-range dependencies. Label inconsistency suggests avoiding openmax or unknown heads to reduce complexity and tuning overhead. Dropout at 0.3 balances overfitting risk given the small sequence length and label noise. Batch size 64 and learning rate 0.001 align with typical stable training for this domain. Label inconsistency flagged \u2192 calibrated heads (SNGP/OpenMax) stay enabled for open-set robustness. Enabled SNGP to stabilise open-set transfer risk detected in metadata.",
+    "_provider": "openai",
+    "_raw": "{\n  \"model_name\": \"cnn_features_1d_sa\",\n  \"self_attention\": true,\n  \"sngp\": false,\n  \"openmax\": false,\n  \"use_unknown_head\": false,\n  \"bottleneck\": 128,\n  \"dropout\": 0.3,\n  \"learning_rate\": 0.001,\n  \"batch_size\": 64,\n  \"lambda_src\": 0.0,\n  \"rationale\": \"The dataset has short sequences (32 steps) and 7 channels, suitable for a 1-D CNN with self-attention to capture local and some longer-range dependencies. Label inconsistency suggests avoiding openmax or unknown heads to reduce complexity and tuning overhead. Dropout at 0.3 balances overfitting risk given the small sequence length and label noise. Batch size 64 and learning rate 0.001 align with typical stable training for this domain.\"\n}"
+  },
+  "inputs": {
+    "text_context": "Dataset: Argonne National Laboratory battery aging time-series with partial cycle windows.\nSource cathodes: (all available); target cathodes: (none specified).\nLabel column 'eol_class' with ~None classes; sequence length 32; 7 channels covering cycle_number, energy_charge, capacity_charge, energy_discharge, capacity_discharge, cycle_start, cycle_duration.",
+    "numeric_summary": {
+      "dataset": "Battery_inconsistent",
+      "sequence_length_requested": 32,
+      "notes": "label_inconsistent",
+      "lr_hint": 0.001,
+      "dropout_hint": 0.3,
+      "num_classes_hint": null,
+      "splits": {},
+      "dataset_variant": "argonne_battery",
+      "feature_names": [
+        "cycle_number",
+        "energy_charge",
+        "capacity_charge",
+        "energy_discharge",
+        "capacity_discharge",
+        "cycle_start",
+        "cycle_duration"
+      ],
+      "source_cathodes": [],
+      "target_cathodes": [],
+      "label_column": "eol_class"
+    }
+  },
+  "timestamp": "20251116_213306"
+}

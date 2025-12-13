@@ -1,0 +1,2 @@
+model,source,target,comparison_metric,baseline_score,transfer_score,improvement,baseline_common_acc,transfer_common_acc,baseline_outlier_acc,transfer_outlier_acc,baseline_hscore,transfer_hscore,final_model,note
+WideResNet_sa,0,1,common,0.9096385542168675,0.9578313253012049,0.048192771084337394,0.9096385542168675,0.9578313253012049,0.0,0.0,0.0,0.0,transfer,

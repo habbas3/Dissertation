@@ -1,0 +1,67 @@
+11-23 14:07:54 data_name: CWRU_inconsistent
+11-23 14:07:54 data_dir: ./my_datasets/CWRU_dataset
+11-23 14:07:54 csv: ./my_datasets/Battery/battery_cycles_labeled.csv
+11-23 14:07:54 normlizetype: mean-std
+11-23 14:07:54 method: deterministic
+11-23 14:07:54 gp_hidden_dim: 2048
+11-23 14:07:54 spectral_norm_bound: 0.95
+11-23 14:07:54 n_power_iterations: 1
+11-23 14:07:54 nesterov: True
+11-23 14:07:54 print_freq: 10
+11-23 14:07:54 layers: 16
+11-23 14:07:54 widen_factor: 1
+11-23 14:07:54 droprate: 0.3
+11-23 14:07:54 cuda_device: 0
+11-23 14:07:54 checkpoint_dir: ./checkpoint
+11-23 14:07:54 pretrained: False
+11-23 14:07:54 batch_size: 64
+11-23 14:07:54 warmup_epochs: 3
+11-23 14:07:54 num_workers: 0
+11-23 14:07:54 bottleneck: True
+11-23 14:07:54 bottleneck_num: 128
+11-23 14:07:54 last_batch: False
+11-23 14:07:54 hidden_size: 1024
+11-23 14:07:54 trade_off_adversarial: Step
+11-23 14:07:54 lam_adversarial: 1
+11-23 14:07:54 opt: adam
+11-23 14:07:54 lr: 0.001
+11-23 14:07:54 momentum: 0.9
+11-23 14:07:54 weight_decay: 1e-05
+11-23 14:07:54 lr_scheduler: step
+11-23 14:07:54 gamma: 0.1
+11-23 14:07:54 steps: 150, 250
+11-23 14:07:54 middle_epoch: 15
+11-23 14:07:54 max_epoch: 50
+11-23 14:07:54 print_step: 25
+11-23 14:07:54 inconsistent: UAN
+11-23 14:07:54 model_name: cnn_features_1d
+11-23 14:07:54 th: 0.5
+11-23 14:07:54 input_channels: 7
+11-23 14:07:54 classification_label: eol_class
+11-23 14:07:54 sequence_length: 32
+11-23 14:07:54 cycles_per_file: 15
+11-23 14:07:54 source_cycles_per_file: None
+11-23 14:07:54 target_cycles_per_file: None
+11-23 14:07:54 sample_random_state: 42
+11-23 14:07:54 transfer_task: [[0], [1]]
+11-23 14:07:54 source_cathode: []
+11-23 14:07:54 target_cathode: []
+11-23 14:07:54 num_classes: 9
+11-23 14:07:54 domain_temperature: 1.0
+11-23 14:07:54 class_temperature: 10.0
+11-23 14:07:54 lambda_src: 1.0
+11-23 14:07:54 lambda_src_decay_patience: 5
+11-23 14:07:54 lambda_src_decay_factor: 0.5
+11-23 14:07:54 lambda_src_min: 0.0
+11-23 14:07:54 lambda_src_warmup: 0
+11-23 14:07:54 improvement_metric: common
+11-23 14:07:54 auto_select: True
+11-23 14:07:54 llm_compare: True
+11-23 14:07:54 llm_backend: openai
+11-23 14:07:54 llm_model: None
+11-23 14:07:54 llm_context: 
+11-23 14:07:54 llm_cfg_inputs: {'text_context': 'Dataset: Case Western Reserve University bearing vibration transfer benchmark with label inconsistency handling.\nTransfer from motors 0 to 1; inconsistency setting UAN.\nWindows are length 32 with 7 vibration channels; task uses None classes.', 'numeric_summary': {'dataset': 'CWRU_inconsistent', 'sequence_length_requested': 32, 'notes': 'label_inconsistent', 'lr_hint': 0.001, 'dropout_hint': 0.3, 'num_classes_hint': None, 'splits': {}, 'dataset_variant': 'cwru_bearing', 'transfer_task': [[0], [1]]}}
+11-23 14:07:54 llm_cfg: {'architecture': 'cnn_openmax', 'model_name': 'cnn_openmax', 'self_attention': False, 'sngp': True, 'openmax': True, 'use_unknown_head': True, 'bottleneck': 128, 'dropout': 0.3, 'learning_rate': 0.001, 'batch_size': 64, 'lambda_src': 1.0, 'warmup_epochs': 5, 'rationale': "The dataset has short sequences (32 steps) and 7 channels, fitting well with a 1-D CNN backbone. Label inconsistency and unknown classes motivate using OpenMax for explicit unknown rejection. Self-attention is avoided to reduce overfitting risk on small data. Moderate bottleneck and dropout balance capacity and regularization. Batch size 64 ensures stable training with transfer learning lambda_src=1.0 and a short warmup to adapt to domain shift. Backbone frozen for 5 epoch(s) before full fine-tuning to stabilise feature reuse. Label inconsistency flagged → calibrated heads (SNGP/OpenMax) stay enabled for open-set robustness. Benchmarking against Zhao et al.'s CNN baseline to highlight transfer-aware gains.", '_provider': 'openai', '_raw': '{\n  "model_name": "cnn_openmax",\n  "self_attention": false,\n  "sngp": false,\n  "openmax": true,\n  "use_unknown_head": true,\n  "bottleneck": 128,\n  "dropout": 0.3,\n  "learning_rate": 0.001,\n  "batch_size": 64,\n  "lambda_src": 1.0,\n  "warmup_epochs": 5,\n  "rationale": "The dataset has short sequences (32 steps) and 7 channels, fitting well with a 1-D CNN backbone. Label inconsistency and unknown classes motivate using OpenMax for explicit unknown rejection. Self-attention is avoided to reduce overfitting risk on small data. Moderate bottleneck and dropout balance capacity and regularization. Batch size 64 ensures stable training with transfer learning lambda_src=1.0 and a short warmup to adapt to domain shift."\n}'}
+11-23 14:07:54 llm_cfg_stamp: 20251123_135737
+11-23 14:07:54 tag: detcnn_20251123_135737
+11-23 14:07:54 using 1 cpu

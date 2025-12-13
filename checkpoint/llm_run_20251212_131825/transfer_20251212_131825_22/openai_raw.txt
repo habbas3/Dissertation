@@ -1,0 +1,14 @@
+{
+  "model_name": "WideResNet_edited",
+  "self_attention": false,
+  "sngp": true,
+  "openmax": false,
+  "use_unknown_head": true,
+  "bottleneck": 256,
+  "dropout": 0.35,
+  "learning_rate": 0.0005,
+  "batch_size": 8,
+  "lambda_src": 1.0,
+  "warmup_epochs": 10,
+  "rationale": "Given the 21 channels and short sequence length (32), a high-capacity model like WideResNet_edited is preferred for capturing complex battery aging patterns and domain shifts between cathode chemistries. The edited WideResNet variant is tailored for battery data and transfer tasks with chemistry mismatch. Self-attention is omitted to reduce overfitting risk on a small dataset, but SNGP and an unknown head are included to handle label inconsistency and out-of-distribution cycles, improving uncertainty calibration. Dropout at 0.35 balances regularization, and batch size 8 matches dataset constraints."
+}

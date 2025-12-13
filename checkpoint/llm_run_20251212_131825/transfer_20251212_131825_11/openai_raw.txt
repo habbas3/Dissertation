@@ -1,0 +1,14 @@
+{
+  "model_name": "cnn_features_1d_sa",
+  "self_attention": true,
+  "sngp": false,
+  "openmax": false,
+  "use_unknown_head": false,
+  "bottleneck": 256,
+  "dropout": 0.35,
+  "learning_rate": 0.0005,
+  "batch_size": 8,
+  "lambda_src": 1.0,
+  "warmup_epochs": 10,
+  "rationale": "The dataset has 21 channels and short sequence length (32), favoring a CNN backbone with self-attention to capture multi-cycle correlations and domain shifts between chemistries. Self-attention balances expressivity and efficiency without excessive memory use. Dropout at 0.35 mitigates overfitting on the small source domain. OpenMax or SNGP are less critical here since the label inconsistency is moderate and the focus is on transfer learning, so a standard unknown head is not used. A moderate bottleneck (256) supports adaptation to domain shift while maintaining capacity."
+}

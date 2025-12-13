@@ -1,0 +1,35 @@
+[
+  {
+    "tag": "llm_pick",
+    "model_name": "cnn_openmax",
+    "method": "sngp",
+    "droprate": 0.3,
+    "lr": 0.001,
+    "batch_size": 64,
+    "lambda_src": 1.0,
+    "summary_csv": "checkpoint/llm_run_20251114_143747/compare/llm_pick_summary_1114_CWRU_inconsistent.csv",
+    "avg_improvement": 0.0
+  },
+  {
+    "tag": "deterministic_cnn",
+    "model_name": "cnn_features_1d",
+    "method": "deterministic",
+    "droprate": 0.3,
+    "lr": 0.001,
+    "batch_size": 64,
+    "lambda_src": 1.0,
+    "summary_csv": "checkpoint/llm_run_20251114_143747/compare/deterministic_cnn_summary_1114_CWRU_inconsistent.csv",
+    "avg_improvement": 0.0120481927710842
+  },
+  {
+    "tag": "sngp_wrn_sa",
+    "model_name": "WideResNet_sa",
+    "method": "sngp",
+    "droprate": 0.3,
+    "lr": 0.001,
+    "batch_size": 64,
+    "lambda_src": 1.0,
+    "summary_csv": "checkpoint/llm_run_20251114_143747/compare/sngp_wrn_sa_summary_1114_CWRU_inconsistent.csv",
+    "avg_improvement": 0.0602409638554217
+  }
+]

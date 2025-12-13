@@ -1,0 +1,14 @@
+{
+  "model_name": "WideResNet_edited",
+  "self_attention": false,
+  "sngp": true,
+  "openmax": false,
+  "use_unknown_head": true,
+  "bottleneck": 256,
+  "dropout": 0.35,
+  "learning_rate": 0.0005,
+  "batch_size": 8,
+  "lambda_src": 1.0,
+  "warmup_epochs": 10,
+  "rationale": "The dataset has 21 channels and short sequences (32 steps) with domain shift between source and target cathodes, favoring a high-capacity model like WideResNet_edited tuned for battery data. Self-attention is avoided to reduce overfitting on the small source domain, but SNGP and an unknown head are enabled to handle label inconsistency and outlier cycles due to chemistry differences. Dropout at 0.35 balances regularization, batch size 8 matches seen data, and moderate warmup and lambda_src help adapt to domain shift."
+}
