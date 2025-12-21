@@ -946,6 +946,10 @@ def _llm_pick_for_transfer(args, dls_for_peek: dict, debug_root: Optional[str] =
             model=args.llm_model,
             debug_dir=debug_dir,
             cycle_horizons=cycle_limits,
+            base_config=llm_cfg,
+            lock_hyperparams=True,
+            chemistry_feedback=True,
+            compare_chemistry=True,
         )
 
     return llm_cfg, num_summary, text_ctx, ablation_records
@@ -2286,6 +2290,7 @@ def main():
         ablation_records = []
         cycle_ablation_cfgs = []
         coldstart_cfg = None
+        chemistry_off_cfg = None
         if args.llm_ablation:
             raw_limits = (getattr(args, "ablation_cycle_limits", "") or "")
             cycle_limits: list[int] = []
@@ -2314,11 +2319,17 @@ def main():
                 model=args.llm_model,
                 debug_dir=_llm_root,
                 cycle_horizons=cycle_limits,
+                base_config=llm_cfg,
+                lock_hyperparams=True,
+                chemistry_feedback=True,
+                compare_chemistry=True,
             )
 
             for record in ablation_records:
                 if record.get("tag") == "history_off":
                     coldstart_cfg = record.get("config")
+                if record.get("tag") == "chemistry_off":
+                    chemistry_off_cfg = record.get("config")
                 if record.get("cycle_limit"):
                     cycle_ablation_cfgs.append(record)
 
@@ -2353,6 +2364,11 @@ def main():
             cold_args = _apply_llm_cfg_to_args(coldstart_cfg, copy.deepcopy(base_args))
             cold_args.tag = (getattr(cold_args, "tag", "") + "_history_off_" + args.llm_cfg_stamp).strip("_")
             candidates.append(("history_off", cold_args))
+            
+        if chemistry_off_cfg:
+            chem_args = _apply_llm_cfg_to_args(chemistry_off_cfg, copy.deepcopy(base_args))
+            chem_args.tag = (getattr(chem_args, "tag", "") + "_chemistry_off_" + args.llm_cfg_stamp).strip("_")
+            candidates.append(("chemistry_off", chem_args))
 
         for record in cycle_ablation_cfgs:
             cyc_limit = int(record.get("cycle_limit", 0) or 0)

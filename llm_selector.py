@@ -209,7 +209,19 @@ def _describe_cwru_pair(source: Optional[int], target: Optional[int]) -> str:
     return f"Transfer {src_idx}→{tgt_idx}: {_fmt(src_idx, src_meta)} to {_fmt(tgt_idx, tgt_meta)}."
 
 
-def _describe_battery_transfer(num_summary: dict) -> str:
+_BATTERY_CHEMISTRY_PROFILE = {
+    "NMC111": {"family": "NMC", "ni_band": "low-Ni", "voltage": "mid", "fade": "stable"},
+    "NMC532": {"family": "NMC", "ni_band": "mid-Ni", "voltage": "mid", "fade": "balanced"},
+    "NMC622": {"family": "NMC", "ni_band": "mid-high Ni", "voltage": "mid-high", "fade": "moderate"},
+    "NMC811": {"family": "NMC", "ni_band": "high-Ni", "voltage": "high", "fade": "fragile"},
+    "HE5050": {"family": "experimental", "ni_band": "high-energy", "voltage": "high", "fade": "uncertain"},
+    "LFP": {"family": "LFP", "ni_band": "no-Ni", "voltage": "flat", "fade": "stable"},
+    "FCG": {"family": "graphite", "ni_band": "graphite-rich", "voltage": "flat", "fade": "stable"},
+    "5Vspinel": {"family": "spinel", "ni_band": "Mn-rich", "voltage": "very-high", "fade": "aggressive"},
+}
+
+
+def _describe_battery_transfer(num_summary: dict, *, chemistry_feedback: bool = True) -> str:
     source_cathodes = list(num_summary.get("source_cathodes") or [])
     target_cathodes = list(num_summary.get("target_cathodes") or [])
     target = target_cathodes[0] if target_cathodes else ""
@@ -222,31 +234,69 @@ def _describe_battery_transfer(num_summary: dict) -> str:
             return ""
         name = str(name)
         return _BATTERY_CHEMISTRY_HINTS.get(name, "")
+    
+    def _chem_profile(name: str) -> dict:
+        return _BATTERY_CHEMISTRY_PROFILE.get(str(name), {})
+
+    def _chem_distance(src: str, tgt: str) -> str:
+        src_prof, tgt_prof = _chem_profile(src), _chem_profile(tgt)
+        if not src_prof or not tgt_prof:
+            return "unknown gap"
+        gap = []
+        if src_prof.get("family") != tgt_prof.get("family"):
+            gap.append("family shift")
+        if src_prof.get("ni_band") != tgt_prof.get("ni_band"):
+            gap.append("Ni level gap")
+        if src_prof.get("voltage") != tgt_prof.get("voltage"):
+            gap.append("voltage mismatch")
+        return ", ".join(gap) if gap else "aligned chemistry"
+
 
     parts = []
     if target:
-        hint = _chem_hint(target)
-        suffix = f" ({hint})" if hint else ""
-        parts.append(f"Target cathode: {target}{suffix}.")
+        hint = _chem_hint(target) if chemistry_feedback else ""
+        profile = _chem_profile(target)
+        traits = []
+        if profile:
+            traits.append(profile.get("family"))
+            traits.append(profile.get("ni_band"))
+            traits.append(f"voltage {profile.get('voltage')}")
+        trait_str = f" ({', '.join([t for t in traits if t])})" if traits and chemistry_feedback else ""
+        suffix = f" ({hint})" if hint and chemistry_feedback else ""
+        parts.append(f"Target cathode: {target}{suffix}{trait_str}.")
 
     if source_cathodes:
         annotated = []
         for src in source_cathodes:
-            hint = _chem_hint(src)
-            annotated.append(f"{src} ({hint})" if hint else str(src))
+            hint = _chem_hint(src) if chemistry_feedback else ""
+            prof = _chem_profile(src)
+            traits = []
+            if prof and chemistry_feedback:
+                traits.append(prof.get("family"))
+                traits.append(prof.get("ni_band"))
+            trait_str = f" ({', '.join([t for t in traits if t])})" if traits else ""
+            annotated.append(f"{src}{trait_str if chemistry_feedback else ''}{' (' + hint + ')' if hint else ''}")
         parts.append(f"Source cathodes: {', '.join(annotated)}.")
 
-    if target and source_cathodes:
-        cross_family = any(_chem_hint(src) != _chem_hint(target) for src in source_cathodes)
-        if cross_family:
-            parts.append("Source/target chemistries differ → expect domain shift.")
+    if target and source_cathodes and chemistry_feedback:
+        distances = []
+        for src in source_cathodes:
+            dist = _chem_distance(src, target)
+            distances.append(f"{src}→{target}: {dist}")
+        if distances:
+            parts.append("Chemistry deltas: " + "; ".join(distances) + ".")
+
+        if any(_chem_profile(src).get("family") != _chem_profile(target).get("family") for src in source_cathodes):
+            parts.append("Cross-family cathodes → expect stronger domain shift and value in calibrated heads.")
+        elif any(_chem_profile(src).get("ni_band") != _chem_profile(target).get("ni_band") for src in source_cathodes):
+            parts.append("Same family but Ni band differs → moderate shift; adjust capacity and dropout accordingly.")
         else:
-            parts.append("Source and target chemistries align → lighter head may suffice.")
+            parts.append("Source and target chemistries align closely → lighter transfer head may suffice.")
 
     return " ".join(parts)
 
 
-def _describe_transfer_context(num_summary: dict) -> str:
+def _describe_transfer_context(num_summary: dict, *, chemistry_feedback: bool = True) -> str:
     dataset = str(num_summary.get("dataset") or num_summary.get("dataset_variant") or "").lower()
     transfer_task = num_summary.get("transfer_task") or num_summary.get("transfer_pair")
     src_idx = None
@@ -264,7 +314,7 @@ def _describe_transfer_context(num_summary: dict) -> str:
             lines.append(desc)
 
     if "battery" in dataset:
-        desc = _describe_battery_transfer(num_summary)
+        desc = _describe_battery_transfer(num_summary, chemistry_feedback=chemistry_feedback)
         if desc:
             lines.append(desc)
 
@@ -996,6 +1046,10 @@ def run_ablation_suite(
     model: Optional[str] = None,
     debug_dir: Optional[str] = None,
     cycle_horizons: Optional[list[int]] = None,
+    base_config: Optional[dict[str, Any]] = None,
+    lock_hyperparams: bool = True,
+    chemistry_feedback: bool = True,
+    compare_chemistry: bool = True,
 ) -> list[dict[str, Any]]:
     """
     Generate configs for a small ablation grid:
@@ -1013,7 +1067,9 @@ def run_ablation_suite(
         model=model,
         debug_dir=debug_dir,
         allow_history=True,
+        chemistry_feedback=chemistry_feedback,
     )
+    base_config = base_config or primary
     records.append({
         "tag": "history_on",
         "config": primary,
@@ -1027,12 +1083,29 @@ def run_ablation_suite(
         model=model,
         debug_dir=debug_dir,
         allow_history=False,
+        chemistry_feedback=chemistry_feedback,
     )
     records.append({
         "tag": "history_off",
         "config": cold,
         "cycle_limit": None,
     })
+    
+    if compare_chemistry:
+        chem_off_cfg = select_config(
+            text_context,
+            num_summary,
+            backend=backend,
+            model=model,
+            debug_dir=debug_dir,
+            allow_history=True,
+            chemistry_feedback=False,
+        )
+        records.append({
+            "tag": "chemistry_off",
+            "config": chem_off_cfg,
+            "cycle_limit": None,
+        })
 
     for horizon in cycle_horizons or []:
         scoped_summary = _limit_summary_cycles(num_summary, horizon)
@@ -1043,7 +1116,17 @@ def run_ablation_suite(
             model=model,
             debug_dir=debug_dir,
             allow_history=True,
+            chemistry_feedback=chemistry_feedback,
         )
+        if lock_hyperparams and base_config:
+            locked_cfg = dict(base_config)
+            locked_cfg["cycle_limit_hint"] = int(horizon)
+            locked_cfg["rationale"] = (
+                f"Cycle-limit ablation locked to primary hyperparameters; "
+                f"only exposure capped at {int(horizon)} cycles. "
+                f"Original rationale: {base_config.get('rationale', '')}"
+            )
+            cfg = locked_cfg
         records.append({
             "tag": f"cycles_{horizon}",
             "config": cfg,
@@ -1054,16 +1137,19 @@ def run_ablation_suite(
     return records
 
 
-def _build_user_prompt(text_context: str, num_summary: Dict[str, Any]) -> str:
+def _build_user_prompt(
+    text_context: str, num_summary: Dict[str, Any], *, chemistry_feedback: bool = True
+) -> str:
     summary = _summarize_numeric(num_summary)
     schema_str = json.dumps(JSON_SCHEMA, indent=2)
     arch_reference = textwrap.shorten(
         _format_architecture_reference(), width=2400, placeholder="..."
     )
-    transfer_context = _describe_transfer_context(num_summary)
+    transfer_context = _describe_transfer_context(num_summary, chemistry_feedback=chemistry_feedback)
     transfer_block = ""
     if transfer_context:
-        transfer_block = f"TRANSFER CONTEXT\n----------------\n{transfer_context}\n\n"
+        chem_note = " (chemistry feedback disabled)" if not chemistry_feedback else ""
+        transfer_block = f"TRANSFER CONTEXT{chem_note}\n----------------\n{transfer_context}\n\n"
     return f"""\
 {transfer_block}
 DATASET CONTEXT
@@ -1201,14 +1287,15 @@ def call_openai(text_context: str,
                 num_summary: Dict[str, Any],
                 model: str = "gpt-4o-mini",
                 debug_dir: Optional[str] = None,
-                allow_history: bool = True) -> Dict[str, Any]:
+                allow_history: bool = True,
+                chemistry_feedback: bool = True) -> Dict[str, Any]:
     """OpenAI backend using Chat Completions (v1 SDK)."""
     import os, json
     from openai import OpenAI
 
     # Build prompts
     sys = SYSTEM_PROMPT
-    user = _build_user_prompt(text_context, num_summary)
+    user = _build_user_prompt(text_context, num_summary, chemistry_feedback=chemistry_feedback)
 
     # Init client (picks up OPENAI_API_KEY / OPENAI_PROJECT / OPENAI_ORG_ID)
     client = OpenAI()
@@ -1282,13 +1369,14 @@ def call_ollama(text_context: str,
                 num_summary: Dict[str, Any],
                 model: str = "llama3.1:8b",
                 debug_dir: Optional[str] = None,
-                allow_history: bool = True) -> Dict[str, Any]:
+                allow_history: bool = True,
+                chemistry_feedback: bool = True) -> Dict[str, Any]:
     """
     Use local Ollama with JSON-only mode. Saves raw request/response if debug_dir is given.
     """
     import json, os, requests
     sys = SYSTEM_PROMPT
-    user = _build_user_prompt(text_context, num_summary)
+    user = _build_user_prompt(text_context, num_summary, chemistry_feedback=chemistry_feedback)
 
     payload = {
         "model": model,
@@ -1349,7 +1437,8 @@ def select_config(text_context: str,
                   backend: str = "auto",
                   model: Optional[str] = None,
                   debug_dir: Optional[str] = None,
-                  allow_history: bool = True) -> Dict[str, Any]:
+                  allow_history: bool = True,
+                  chemistry_feedback: bool = True) -> Dict[str, Any]:
     if backend == "openai" or (backend == "auto" and os.getenv("OPENAI_API_KEY")):
         return call_openai(
             text_context,
@@ -1357,6 +1446,7 @@ def select_config(text_context: str,
             model or "gpt-4.1-mini",
             debug_dir=debug_dir,
             allow_history=allow_history,
+            chemistry_feedback=chemistry_feedback,
         )
     if backend == "ollama" or backend == "auto":
         return call_ollama(
@@ -1365,5 +1455,6 @@ def select_config(text_context: str,
             model or "llama3.1:8b",
             debug_dir=debug_dir,
             allow_history=allow_history,
+            chemistry_feedback=chemistry_feedback,
         )
     raise RuntimeError("No LLM backend available. Set OPENAI_API_KEY or run Ollama locally.")
