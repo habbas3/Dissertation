@@ -1288,37 +1288,66 @@ def call_openai(text_context: str,
                 model: str = "gpt-4o-mini",
                 debug_dir: Optional[str] = None,
                 allow_history: bool = True,
-                chemistry_feedback: bool = True) -> Dict[str, Any]:
+                chemistry_feedback: bool = True,
+                max_attempts: int = 3,
+                request_timeout: int = 60,
+                retry_backoff: float = 2.0) -> Dict[str, Any]:
     """OpenAI backend using Chat Completions (v1 SDK)."""
-    import os, json
-    from openai import OpenAI
+    import os, json, time
+    from openai import (
+        OpenAI,
+        APIConnectionError,
+        APIError,
+        APITimeoutError,
+        RateLimitError,
+    )
 
     # Build prompts
     sys = SYSTEM_PROMPT
     user = _build_user_prompt(text_context, num_summary, chemistry_feedback=chemistry_feedback)
 
     # Init client (picks up OPENAI_API_KEY / OPENAI_PROJECT / OPENAI_ORG_ID)
-    client = OpenAI()
+    client = OpenAI(timeout=request_timeout)
+
+    def _request_with_retries(request_callable):
+        last_err = None
+        for attempt in range(max_attempts):
+            try:
+                return request_callable()
+            except (APITimeoutError, APIConnectionError, RateLimitError) as err:
+                last_err = err
+            except APIError as err:
+                # Retry only on 5xx responses; surfacing client-side errors directly
+                status_code = getattr(err, "status_code", None)
+                if status_code is not None and status_code < 500:
+                    raise
+                last_err = err
+
+            if attempt == max_attempts - 1:
+                raise last_err
+
+            sleep_s = min(retry_backoff * (2 ** attempt), 30)
+            time.sleep(sleep_s)
 
     # Try JSON mode; if the model/SDK doesn’t support response_format, retry without it
     content = ""
     try:
-        resp = client.chat.completions.create(
-            model=model,
-            messages=[{"role": "system", "content": sys},
-                      {"role": "user", "content": user}],
-            temperature=0.2,
-            response_format={"type": "json_object"},
-        )
+        resp = _request_with_retries(lambda: client.chat.completions.create(
+                model=model,
+                messages=[{"role": "system", "content": sys},
+                          {"role": "user", "content": user}],
+                temperature=0.2,
+                response_format={"type": "json_object"},
+            ))
         content = resp.choices[0].message.content or ""
     except TypeError:
         # No JSON mode → ask for JSON in the system prompt instead
-        resp = client.chat.completions.create(
-            model=model,
-            messages=[{"role": "system", "content": sys + "\nReturn strictly JSON."},
-                      {"role": "user", "content": user}],
-            temperature=0.2,
-        )
+        resp = _request_with_retries(lambda: client.chat.completions.create(
+                model=model,
+                messages=[{"role": "system", "content": sys + "\nReturn strictly JSON."},
+                          {"role": "user", "content": user}],
+                temperature=0.2,
+            ))
         content = resp.choices[0].message.content or ""
 
     # Debug dumps
