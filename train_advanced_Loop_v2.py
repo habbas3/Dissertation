@@ -2402,6 +2402,41 @@ def main():
             no_sngp.method = "deterministic"
             no_sngp.tag = (getattr(no_sngp, "tag", "") + "_no_sngp_" + args.llm_cfg_stamp).strip("_")
             candidates.append(("ablate_sngp_off", no_sngp))
+            
+        if not args.llm_cfg.get("openmax", False):
+            om = _apply_llm_cfg_to_args(args.llm_cfg, copy.deepcopy(base_args))
+            om.model_name = "cnn_openmax"
+            om.method = "deterministic"
+            om.tag = (getattr(om, "tag", "") + "_cnn_openmax_" + args.llm_cfg_stamp).strip("_")
+            candidates.append(("cnn_openmax", om))
+
+        wrn_det = copy.deepcopy(base_args)
+        wrn_det.model_name = "WideResNet"
+        wrn_det.method = "deterministic"
+        wrn_det.droprate = max(getattr(base_args, "droprate", 0.3), 0.25)
+        wrn_det.tag = (getattr(wrn_det, "tag", "") + "_wrn_base_" + args.llm_cfg_stamp).strip("_")
+        candidates.append(("wideresnet", wrn_det))
+
+        if not getattr(args, "llm_cfg", {}).get("self_attention", False):
+            wrn_sa = copy.deepcopy(base_args)
+            wrn_sa.model_name = "WideResNet_sa"
+            wrn_sa.method = "deterministic"
+            wrn_sa.droprate = 0.3
+            wrn_sa.tag = (getattr(wrn_sa, "tag", "") + "_wrn_sa_det_" + args.llm_cfg_stamp).strip("_")
+            candidates.append(("wideresnet_sa", wrn_sa))
+
+        if getattr(args, "llm_cfg", None):
+            def _hp_sweep_variant(name: str, lr_scale: float, dropout_shift: float, batch_scale: float, lambda_delta: float):
+                tuned = _apply_llm_cfg_to_args(args.llm_cfg, copy.deepcopy(base_args))
+                tuned.lr = max(1e-5, min(tuned.lr * lr_scale, 1e-2))
+                tuned.droprate = min(0.6, max(0.1, tuned.droprate + dropout_shift))
+                tuned.batch_size = int(max(8, min(256, round(tuned.batch_size * batch_scale))))
+                tuned.lambda_src = max(0.1, tuned.lambda_src + lambda_delta)
+                tuned.tag = (getattr(tuned, "tag", "") + f"_{name}_" + args.llm_cfg_stamp).strip("_")
+                candidates.append((name, tuned))
+
+            _hp_sweep_variant("hp_lr_up_bs_up", lr_scale=1.5, dropout_shift=-0.05, batch_scale=1.5, lambda_delta=-0.1)
+            _hp_sweep_variant("hp_lr_down_reg_up", lr_scale=0.6, dropout_shift=0.05, batch_scale=0.75, lambda_delta=0.1)
 
         # 2) Deterministic CNN baseline (no SA/OpenMax/SNGP)
         det = copy.deepcopy(base_args)
@@ -2424,27 +2459,46 @@ def main():
 
         leaderboard_rows = []
 
-        def _collect_latest_summary(copy_prefix: str) -> tuple[str, float]:
+        def _collect_latest_summary(copy_prefix: str) -> tuple[str, dict]:
             summaries = sorted(glob.glob(_os.path.join("checkpoint", "summary_*.csv")), key=os.path.getmtime)
             if not summaries:
-                return ("", float("nan"))
+                return ("", {})
             latest = summaries[-1]
             dst = os.path.join(_cmp_dir, f"{copy_prefix}_{os.path.basename(latest)}")
             try:
                 shutil.copy2(latest, dst)
             except Exception:
                 dst = latest
+            stats: dict[str, float] = {}
             try:
                 df = _pd.read_csv(latest)
                 if "improvement" in df.columns:
-                    avg_imp = float(_pd.to_numeric(df["improvement"], errors="coerce").mean())
+                    imp = _pd.to_numeric(df["improvement"], errors="coerce").dropna()
+                    if not imp.empty:
+                        avg_imp = float(imp.mean())
+                        stats["mean"] = avg_imp
+                        stats["median"] = float(imp.median())
+                        stats["std"] = float(imp.std(ddof=0))
+                        stats["count"] = float(len(imp))
+                        stats["positive"] = float((imp > 0).sum())
+                        stderr = float(imp.std(ddof=0) / max(len(imp) ** 0.5, 1e-9))
+                        stats["ci95"] = float(1.96 * stderr)
                 elif {"transfer_acc","baseline_acc"}.issubset(df.columns):
-                    avg_imp = float((_pd.to_numeric(df["transfer_acc"], errors="coerce") - _pd.to_numeric(df["baseline_acc"], errors="coerce")).mean())
-                else:
-                    avg_imp = float("nan")
+                    diffs = (
+                        _pd.to_numeric(df["transfer_acc"], errors="coerce")
+                        - _pd.to_numeric(df["baseline_acc"], errors="coerce")
+                    ).dropna()
+                    if not diffs.empty:
+                        stats["mean"] = float(diffs.mean())
+                        stats["median"] = float(diffs.median())
+                        stats["std"] = float(diffs.std(ddof=0))
+                        stats["count"] = float(len(diffs))
+                        stats["positive"] = float((diffs > 0).sum())
+                        stderr = float(diffs.std(ddof=0) / max(len(diffs) ** 0.5, 1e-9))
+                        stats["ci95"] = float(1.96 * stderr)
             except Exception:
-                avg_imp = float("nan")
-            return (dst, avg_imp)
+                stats = {}
+            return (dst, stats)
         for tag, cfg in candidates:
             print(f"\n===== LLM comparison run: {tag} =====")
             if cfg.data_name == 'Battery_inconsistent':
@@ -2454,7 +2508,8 @@ def main():
 
             time.sleep(0.5)
 
-            copied_path, avg_imp = _collect_latest_summary(copy_prefix=tag)
+            copied_path, stats = _collect_latest_summary(copy_prefix=tag)
+            avg_imp = stats.get("mean", float("nan")) if stats else float("nan")
             cyc_lim = None
             if tag.startswith("cycles_"):
                 try:
@@ -2471,6 +2526,11 @@ def main():
                 "lambda_src": getattr(cfg, "lambda_src", None),
                 "summary_csv": copied_path,
                 "avg_improvement": avg_imp,
+                "improvement_median": stats.get("median") if stats else None,
+                "improvement_std": stats.get("std") if stats else None,
+                "improvement_count": stats.get("count") if stats else None,
+                "improvement_positive": stats.get("positive") if stats else None,
+                "improvement_ci95": stats.get("ci95") if stats else None,
                 "cycle_limit": cyc_lim,
             })
 

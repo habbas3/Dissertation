@@ -33,12 +33,23 @@ def _load_ablation_json(run_dir: Path) -> list[dict]:
 def plot_leaderboard(df: pd.DataFrame, out_path: Path) -> None:
     ordered = df.sort_values("avg_improvement", ascending=False)
     plt.figure(figsize=(10, 6))
-    plt.bar(ordered["tag"], ordered["avg_improvement"], color="steelblue")
+    yerr = None
+    if "improvement_ci95" in ordered.columns:
+        try:
+            yerr = ordered["improvement_ci95"].fillna(0.0).to_list()
+        except Exception:
+            yerr = None
+    plt.bar(ordered["tag"], ordered["avg_improvement"], color="steelblue", yerr=yerr, capsize=4)
     plt.xticks(rotation=45, ha="right")
     plt.ylabel("Avg. improvement vs. baseline")
     plt.title("LLM comparison + ablation leaderboard")
-    for i, v in enumerate(ordered["avg_improvement"]):
-        plt.text(i, v + 0.001, f"{v:+.3f}", ha="center", va="bottom", fontsize=8)
+    for i, (_, row) in enumerate(ordered.iterrows()):
+        v = row["avg_improvement"]
+        n = row.get("improvement_count")
+        note = f"{v:+.3f}"
+        if pd.notna(n):
+            note += f"\nn={int(n)}"
+        plt.text(i, v + 0.001, note, ha="center", va="bottom", fontsize=8)
     plt.tight_layout()
     plt.savefig(out_path, dpi=300)
     plt.close()
@@ -83,6 +94,16 @@ def _write_summary(df: pd.DataFrame, out_path: Path) -> None:
         "",
         f"Top candidate: **{winner['tag']}** (Δ={winner['avg_improvement']:+.4f})",
     ]
+    if "improvement_median" in winner and not pd.isna(winner.get("improvement_median", float("nan"))):
+        med = float(winner.get("improvement_median"))
+        ci = winner.get("improvement_ci95")
+        count = winner.get("improvement_count")
+        ci_str = f"{float(ci):+.4f}" if ci is not None and not pd.isna(ci) else "n/a"
+        count_str = int(count) if count is not None and not pd.isna(count) else "?"
+        lines.append(
+            f"Median Δ={med:+.4f} "
+            f"(n={count_str}, ±95% CI≈{ci_str})."
+        )
     if not cycle_df.empty:
         best_cycle = cycle_df.loc[cycle_df["avg_improvement"].idxmax(), "cycle_limit"]
         lines.append(f"Best cycle-limited prompt: **{int(best_cycle)} cycles**")

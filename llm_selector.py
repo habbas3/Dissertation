@@ -1059,6 +1059,7 @@ def run_ablation_suite(
     """
 
     records: list[dict[str, Any]] = []
+    transfer_ctx = _describe_transfer_context(num_summary, chemistry_feedback=chemistry_feedback)
 
     primary = select_config(
         text_context,
@@ -1074,6 +1075,8 @@ def run_ablation_suite(
         "tag": "history_on",
         "config": primary,
         "cycle_limit": None,
+        "chemistry_feedback": chemistry_feedback,
+        "prompt_transfer_context": transfer_ctx,
     })
 
     cold = select_config(
@@ -1089,6 +1092,8 @@ def run_ablation_suite(
         "tag": "history_off",
         "config": cold,
         "cycle_limit": None,
+        "chemistry_feedback": chemistry_feedback,
+        "prompt_transfer_context": transfer_ctx,
     })
     
     if compare_chemistry:
@@ -1105,6 +1110,8 @@ def run_ablation_suite(
             "tag": "chemistry_off",
             "config": chem_off_cfg,
             "cycle_limit": None,
+            "chemistry_feedback": False,
+            "prompt_transfer_context": _describe_transfer_context(num_summary, chemistry_feedback=False),
         })
 
     for horizon in cycle_horizons or []:
@@ -1132,6 +1139,8 @@ def run_ablation_suite(
             "config": cfg,
             "cycle_limit": int(horizon),
             "num_summary": scoped_summary,
+            "chemistry_feedback": chemistry_feedback,
+            "prompt_transfer_context": _describe_transfer_context(scoped_summary, chemistry_feedback=chemistry_feedback),
         })
 
     return records
