@@ -1,13 +1,5 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""
-Created on Sat Dec 13 16:59:49 2025
-
-@author: habbas
-"""
-
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
 """Plot SNGP confidence/entropy summaries for EOL classification."""
 
 from __future__ import annotations

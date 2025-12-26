@@ -2360,6 +2360,12 @@ def main():
         # 1) The LLM pick (already applied to args)
         candidates.append(("llm_pick", copy.deepcopy(args)))
         
+        if args.llm_cfg:
+            chem_on = _apply_llm_cfg_to_args(args.llm_cfg, copy.deepcopy(base_args))
+            chem_on.tag = (getattr(chem_on, "tag", "") + "_chemistry_on_" + args.llm_cfg_stamp).strip("_")
+            candidates.append(("chemistry_on", chem_on))
+        
+        
         if coldstart_cfg:
             cold_args = _apply_llm_cfg_to_args(coldstart_cfg, copy.deepcopy(base_args))
             cold_args.tag = (getattr(cold_args, "tag", "") + "_history_off_" + args.llm_cfg_stamp).strip("_")
@@ -2472,6 +2478,20 @@ def main():
             stats: dict[str, float] = {}
             try:
                 df = _pd.read_csv(latest)
+                acc_stats = {}
+                for col in ("baseline_accuracy", "transfer_accuracy"):
+                    if col in df.columns:
+                        vals = _pd.to_numeric(df[col], errors="coerce").dropna()
+                        if not vals.empty:
+                            acc_stats[col] = float(vals.mean())
+                if "baseline_accuracy" in acc_stats and "transfer_accuracy" in acc_stats:
+                    acc_stats["accuracy_delta"] = acc_stats["transfer_accuracy"] - acc_stats["baseline_accuracy"]
+                if "transfer_uncertainty_mean_entropy" in df.columns:
+                    entropy_vals = _pd.to_numeric(
+                        df["transfer_uncertainty_mean_entropy"], errors="coerce"
+                    ).dropna()
+                    if not entropy_vals.empty:
+                        acc_stats["transfer_uncertainty_mean_entropy"] = float(entropy_vals.mean())
                 if "improvement" in df.columns:
                     imp = _pd.to_numeric(df["improvement"], errors="coerce").dropna()
                     if not imp.empty:
@@ -2498,9 +2518,11 @@ def main():
                         stats["ci95"] = float(1.96 * stderr)
             except Exception:
                 stats = {}
+                stats.update(acc_stats)
             return (dst, stats)
         for tag, cfg in candidates:
             print(f"\n===== LLM comparison run: {tag} =====")
+            cfg.llm_per_transfer = False
             if cfg.data_name == 'Battery_inconsistent':
                 run_battery_experiments(cfg)
             else:
@@ -2531,6 +2553,10 @@ def main():
                 "improvement_count": stats.get("count") if stats else None,
                 "improvement_positive": stats.get("positive") if stats else None,
                 "improvement_ci95": stats.get("ci95") if stats else None,
+                "baseline_accuracy_mean": stats.get("baseline_accuracy") if stats else None,
+                "transfer_accuracy_mean": stats.get("transfer_accuracy") if stats else None,
+                "accuracy_delta_mean": stats.get("accuracy_delta") if stats else None,
+                "transfer_uncertainty_mean_entropy": stats.get("transfer_uncertainty_mean_entropy") if stats else None,
                 "cycle_limit": cyc_lim,
             })
 
