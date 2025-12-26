@@ -31,15 +31,66 @@ def _load_ablation_json(run_dir: Path) -> list[dict]:
 
 
 def plot_leaderboard(df: pd.DataFrame, out_path: Path) -> None:
-    ordered = df.sort_values("avg_improvement", ascending=False)
-    plt.figure(figsize=(10, 6))
+    group_rules = [
+        ("cycle limits", "cycles_"),
+        ("history toggles", "history_"),
+        ("head toggles", "head_"),
+        ("regularization", "ablate_"),
+    ]
+
+    def _assign_group(tag: str) -> str:
+        for group, key in group_rules:
+            if key in tag:
+                return group
+        return "other"
+
+    grouped = df.copy()
+    grouped["group"] = grouped["tag"].astype(str).map(_assign_group)
+    group_order = [group for group, _ in group_rules] + ["other"]
+    grouped["group_order"] = grouped["group"].apply(
+        lambda group: group_order.index(group) if group in group_order else len(group_order)
+    )
+    ordered = grouped.sort_values(["group_order", "avg_improvement"], ascending=[True, False])
+    plt.figure(figsize=(11, 6))
+    ax = plt.gca()
     yerr = None
     if "improvement_ci95" in ordered.columns:
         try:
             yerr = ordered["improvement_ci95"].fillna(0.0).to_list()
         except Exception:
             yerr = None
-    plt.bar(ordered["tag"], ordered["avg_improvement"], color="steelblue", yerr=yerr, capsize=4)
+    palette = {
+        "cycle limits": "#4C78A8",
+        "history toggles": "#F58518",
+        "head toggles": "#54A24B",
+        "regularization": "#E45756",
+        "other": "#999999",
+    }
+    colors = [palette.get(group, "#999999") for group in ordered["group"]]
+    ax.bar(ordered["tag"], ordered["avg_improvement"], color=colors, yerr=yerr, capsize=4)
+    group_bounds: list[tuple[int, int, str]] = []
+    start = 0
+    for idx, group in enumerate(ordered["group"]):
+        if idx == 0:
+            continue
+        prev_group = ordered["group"].iloc[idx - 1]
+        if group != prev_group:
+            group_bounds.append((start, idx - 1, prev_group))
+            start = idx
+    if len(ordered):
+        group_bounds.append((start, len(ordered) - 1, ordered["group"].iloc[-1]))
+    for band_index, (start_idx, end_idx, group) in enumerate(group_bounds):
+        if band_index % 2 == 0:
+            ax.axvspan(start_idx - 0.5, end_idx + 0.5, color="#000000", alpha=0.04, zorder=0)
+        if end_idx + 1 < len(ordered):
+            ax.axvline(end_idx + 0.5, color="#666666", alpha=0.4, linewidth=0.8)
+    legend_handles = [
+        plt.Line2D([0], [0], color=palette[group], lw=6, label=group)
+        for group in group_order
+        if group in ordered["group"].values
+    ]
+    if legend_handles:
+        ax.legend(handles=legend_handles, title="Ablation group", loc="upper right", frameon=False)
     plt.xticks(rotation=45, ha="right")
     plt.ylabel("Avg. improvement vs. baseline")
     plt.title("LLM comparison + ablation leaderboard")
@@ -70,6 +121,60 @@ def plot_cycle_limits(df: pd.DataFrame, out_path: Path) -> None:
     plt.tight_layout()
     plt.savefig(out_path, dpi=300)
     plt.close()
+
+
+def _collect_ablation_pairs(df: pd.DataFrame) -> list[dict]:
+    tags = set(df["tag"].dropna().astype(str))
+    pairs = []
+    used = set()
+    for tag in sorted(tags):
+        if tag.endswith("_off"):
+            counterpart = tag[:-4] + "_on"
+            if counterpart in tags:
+                key = tuple(sorted([tag, counterpart]))
+                if key in used:
+                    continue
+                used.add(key)
+                pairs.append(
+                    {
+                        "label": tag[:-4],
+                        "baseline": tag,
+                        "ablated": counterpart,
+                    }
+                )
+    return pairs
+
+
+def plot_pairwise_deltas(df: pd.DataFrame, out_path: Path) -> None:
+    pairs = _collect_ablation_pairs(df)
+    if not pairs:
+        return
+
+    avg_map = df.set_index("tag")["avg_improvement"].to_dict()
+    fig, ax = plt.subplots(figsize=(8, max(3, 0.6 * len(pairs))))
+
+    y_positions = list(range(len(pairs)))
+    for y, pair in zip(y_positions, pairs):
+        baseline = avg_map.get(pair["baseline"])
+        ablated = avg_map.get(pair["ablated"])
+        if baseline is None or ablated is None:
+            continue
+        ax.plot([baseline, ablated], [y, y], color="slategray", linewidth=2)
+        ax.scatter([baseline], [y], color="steelblue", zorder=3, label="baseline" if y == 0 else "")
+        ax.scatter([ablated], [y], color="darkorange", zorder=3, label="ablated" if y == 0 else "")
+        delta = ablated - baseline
+        mid = (baseline + ablated) / 2
+        ax.text(mid, y + 0.05, f"{delta:+.3f}", ha="center", va="bottom", fontsize=9)
+
+    ax.set_yticks(y_positions)
+    ax.set_yticklabels([pair["label"] for pair in pairs])
+    ax.set_xlabel("Avg. improvement vs. baseline")
+    ax.set_title("Baseline vs ablated pairs")
+    ax.axvline(0, color="black", linewidth=0.8, linestyle="--", alpha=0.6)
+    ax.legend(loc="lower right")
+    plt.tight_layout()
+    plt.savefig(out_path, dpi=300)
+    plt.close(fig)
 
 
 def _write_summary(df: pd.DataFrame, out_path: Path) -> None:
@@ -155,6 +260,11 @@ def main():
     plot_cycle_limits(df, cycle_plot)
     if cycle_plot.exists():
         print(f"Saved cycle-ablation plot to {cycle_plot}")
+        
+    pair_plot = run_dir / "ablation_pairs.png"
+    plot_pairwise_deltas(df, pair_plot)
+    if pair_plot.exists():
+        print(f"Saved ablation-pairs plot to {pair_plot}")
         
     if not args.no_summary:
         _write_summary(df, run_dir / "ablation_summary.md")
