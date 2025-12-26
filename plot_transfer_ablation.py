@@ -32,6 +32,8 @@ from typing import Iterable
 import matplotlib.pyplot as plt
 import pandas as pd
 
+from utils.plot_utils import find_latest_compare_csv
+
 _CWRU_LOADS = {
     0: {"hp": 0, "rpm": 1797},
     1: {"hp": 1, "rpm": 1772},
@@ -176,8 +178,10 @@ def main() -> None:
         default="cwru",
         help="Dataset name for labelling outputs.",
     )
-    parser.add_argument("--baseline", type=Path, default="checkpoint/llm_run_20251210_125835/compare/deterministic_cnn_summary_1210_222659_CWRU_inconsistent.csv", help="CSV with baseline transfer results.")
-    parser.add_argument("--improved", type=Path, default="checkpoint/llm_run_20251210_125835/compare/llm_pick_summary_1210_161139_CWRU_inconsistent.csv", help="CSV with improved/LLM transfer results.")
+    parser.add_argument("--checkpoint_root", type=Path, default=Path("checkpoint"))
+    parser.add_argument("--run_dir", type=Path, default=None, help="Optional llm_run_* directory to use.")
+    parser.add_argument("--baseline", type=Path, default=None, help="CSV with baseline transfer results.")
+    parser.add_argument("--improved", type=Path, default=None, help="CSV with improved/LLM transfer results.")
     parser.add_argument("--demo", action="store_true", help="Run with synthetic data instead of CSV inputs.")
     parser.add_argument("--out_dir", type=Path, default=Path("figures"), help="Directory to save plots and CSV.")
     args = parser.parse_args()
@@ -187,12 +191,25 @@ def main() -> None:
     
     baseline_path = getattr(args, "baseline", None)
     improved_path = getattr(args, "improved", None)
+    dataset_tag = "CWRU_inconsistent" if args.dataset == "cwru" else "Battery_inconsistent"
 
     if args.demo:
         base_df, imp_df = _demo_transfer_frames(args.dataset)
-    elif baseline_path is None or improved_path is None:
-        parser.error("Provide both --baseline and --improved, or pass --demo for synthetic data.")
     else:
+        if baseline_path is None:
+            baseline_path = find_latest_compare_csv(
+                args.checkpoint_root,
+                "deterministic_cnn_summary",
+                dataset_tag,
+                run_dir=args.run_dir,
+            )
+        if improved_path is None:
+            improved_path = find_latest_compare_csv(
+                args.checkpoint_root,
+                "llm_pick_summary",
+                dataset_tag,
+                run_dir=args.run_dir,
+            )
         base_df = pd.read_csv(baseline_path)
         imp_df = pd.read_csv(improved_path)
     merged = _merge_pairs(base_df, imp_df)

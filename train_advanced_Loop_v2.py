@@ -263,6 +263,26 @@ def parse_args():
                         help='Collect ablation configs (history on/off, limited-cycle prompts) for closed-loop evidence')
     parser.add_argument('--no-llm_ablation', dest='llm_ablation', action='store_false',
                         help='Disable ablation prompt collection and comparison candidates')
+    parser.add_argument(
+        '--compare_cycles',
+        type=int,
+        default=50,
+        help='Fixed cycle horizon for non-cycle LLM comparisons (used in llm_compare runs).',
+    )
+    parser.add_argument(
+        '--no_llm_history',
+        dest='llm_allow_history',
+        action='store_false',
+        default=True,
+        help='Disable leaderboard/history context when prompting the LLM.',
+    )
+    parser.add_argument(
+        '--no_llm_chemistry',
+        dest='llm_chemistry_feedback',
+        action='store_false',
+        default=True,
+        help='Disable cathode chemistry hints when prompting the LLM.',
+    )
     parser.add_argument('--llm_per_transfer', action='store_true', default=True,
                         help='Request an LLM pick for every transfer task/cathode pair instead of one global config')
     parser.add_argument('--ablation_cycle_limits', type=str, default='5,15,30,50,100',
@@ -910,7 +930,39 @@ def _parse_cycle_limits(raw: str, num_summary: dict, cycles_per_file: int) -> li
     return sorted([v for v in defaults if v > 0])
 
 
-def _llm_pick_for_transfer(args, dls_for_peek: dict, debug_root: Optional[str] = None):
+def _resolve_compare_cycles(args, num_summary: Optional[dict] = None) -> int:
+    """Pick a fixed cycle budget for non-cycle comparisons in llm_compare runs."""
+
+    explicit = getattr(args, "compare_cycles", None)
+    if explicit is not None and explicit > 0:
+        reference = int(explicit)
+    else:
+        reference = 50
+
+    cycle_hint = None
+    if num_summary:
+        cycle_hint = (num_summary.get("cycle_stats") or {}).get("target_train_cycles")
+    if not cycle_hint:
+        cycle_hint = (getattr(args, "dataset_cycle_stats", {}) or {}).get("target_train_cycles")
+    if cycle_hint:
+        reference = min(reference, int(cycle_hint))
+    return max(1, int(reference))
+
+
+def _apply_cycle_budget(target_args, cycles: int) -> None:
+    target_args.cycles_per_file = int(cycles)
+    target_args.source_cycles_per_file = int(cycles)
+    target_args.target_cycles_per_file = int(cycles)
+
+def _llm_pick_for_transfer(
+    args,
+    dls_for_peek: dict,
+    debug_root: Optional[str] = None,
+    *,
+    allow_history: Optional[bool] = None,
+    chemistry_feedback: Optional[bool] = None,
+    compare_chemistry: Optional[bool] = None,
+):
     """Build a per-transfer prompt and fetch configs + ablations."""
 
     stamp = getattr(args, "llm_cfg_stamp", datetime.now().strftime("%Y%m%d_%H%M%S"))
@@ -923,6 +975,13 @@ def _llm_pick_for_transfer(args, dls_for_peek: dict, debug_root: Optional[str] =
 
     num_summary = _build_numeric_summary(dls_for_peek, args)
     text_ctx = _build_text_context(args, num_summary)
+    
+    if allow_history is None:
+        allow_history = getattr(args, "llm_allow_history", True)
+    if chemistry_feedback is None:
+        chemistry_feedback = getattr(args, "llm_chemistry_feedback", True)
+    if compare_chemistry is None:
+        compare_chemistry = chemistry_feedback
 
     llm_cfg = select_config(
         text_context=text_ctx,
@@ -930,6 +989,8 @@ def _llm_pick_for_transfer(args, dls_for_peek: dict, debug_root: Optional[str] =
         backend=args.llm_backend,
         model=args.llm_model,
         debug_dir=debug_dir,
+        allow_history=allow_history,
+        chemistry_feedback=chemistry_feedback,
     )
 
     cycle_limits = _parse_cycle_limits(
@@ -948,8 +1009,8 @@ def _llm_pick_for_transfer(args, dls_for_peek: dict, debug_root: Optional[str] =
             cycle_horizons=cycle_limits,
             base_config=llm_cfg,
             lock_hyperparams=True,
-            chemistry_feedback=True,
-            compare_chemistry=True,
+            chemistry_feedback=chemistry_feedback,
+            compare_chemistry=compare_chemistry,
         )
 
     return llm_cfg, num_summary, text_ctx, ablation_records
@@ -2346,6 +2407,19 @@ def main():
         base_args = copy.deepcopy(args)
         candidates = []
         
+        reference_cycles = _resolve_compare_cycles(args, locals().get("num_summary"))
+
+        def _configure_llm_prompting(target_args, tag: str) -> None:
+            if tag in {"llm_pick", "chemistry_on", "chemistry_off", "history_off"} or tag.startswith("cycles_"):
+                target_args.llm_per_transfer = True
+                target_args.llm_allow_history = tag != "history_off"
+                target_args.llm_chemistry_feedback = tag != "chemistry_off"
+            else:
+                target_args.llm_per_transfer = False
+
+        def _apply_non_cycle_budget(target_args) -> None:
+            _apply_cycle_budget(target_args, reference_cycles)
+        
         def _apply_llm_cfg_to_args(cfg_obj, target_args):
             target_args.model_name = cfg_obj.get("model_name", target_args.model_name)
             target_args.method = 'sngp' if cfg_obj.get("sngp", False) else 'deterministic'
@@ -2381,9 +2455,7 @@ def main():
             if cyc_limit <= 0:
                 continue
             cyc_args = _apply_llm_cfg_to_args(record.get("config", {}), copy.deepcopy(base_args))
-            cyc_args.cycles_per_file = cyc_limit
-            cyc_args.source_cycles_per_file = cyc_limit
-            cyc_args.target_cycles_per_file = cyc_limit
+            _apply_cycle_budget(cyc_args, cyc_limit)
             cyc_args.tag = (getattr(cyc_args, "tag", "") + f"_cycles{cyc_limit}_" + args.llm_cfg_stamp).strip("_")
             candidates.append((f"cycles_{cyc_limit}", cyc_args))
 
@@ -2522,7 +2594,16 @@ def main():
             return (dst, stats)
         for tag, cfg in candidates:
             print(f"\n===== LLM comparison run: {tag} =====")
-            cfg.llm_per_transfer = False
+            if tag.startswith("cycles_"):
+                try:
+                    cyc_val = int(tag.split("_", 1)[1])
+                    _apply_cycle_budget(cfg, cyc_val)
+                except Exception:
+                    _apply_cycle_budget(cfg, reference_cycles)
+            else:
+                _apply_non_cycle_budget(cfg)
+
+            _configure_llm_prompting(cfg, tag)
             if cfg.data_name == 'Battery_inconsistent':
                 run_battery_experiments(cfg)
             else:
