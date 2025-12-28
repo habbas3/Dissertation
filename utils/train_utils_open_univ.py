@@ -1405,6 +1405,12 @@ class train_utils_open_univ(object):
                         inputs = inputs.unsqueeze(1)
                     if inputs.shape[1] != self.args.input_channels and inputs.shape[-1] == self.args.input_channels:
                         inputs = inputs.permute(0, 2, 1)
+                    if not torch.isfinite(inputs).all():
+                        bad_count = int((~torch.isfinite(inputs)).sum().item())
+                        if not hasattr(self, "_nan_sanitized_logged"):
+                            print(f"⚠️ Found {bad_count} non-finite input values; replacing with zeros.")
+                            self._nan_sanitized_logged = True
+                        inputs = torch.nan_to_num(inputs, nan=0.0, posinf=0.0, neginf=0.0)
     
                     self.optimizer.zero_grad()
                     with torch.set_grad_enabled(phase.endswith('train')):
