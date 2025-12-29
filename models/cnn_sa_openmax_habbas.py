@@ -100,30 +100,36 @@ class CNN(nn.Module):
 
         
     def forward(self, x):
+        x = self._sanitize_tensor(x, "inputs")
         x = self.layer1(x)
-        if torch.isnan(x).any():
-            raise ValueError("NaN values detected after layer1")
+        x = self._sanitize_tensor(x, "layer1")
         x = self.layer2(x)
-        if torch.isnan(x).any():
-            raise ValueError("NaN values detected after layer2")    
+        x = self._sanitize_tensor(x, "layer2")  
         x = self.layer3(x)
-        if torch.isnan(x).any():
-            raise ValueError("NaN values detected after layer3")
+        x = self._sanitize_tensor(x, "layer3")
         x = self.layer4(x)
-        if torch.isnan(x).any():
-            raise ValueError("NaN values detected after layer4")
+        x = self._sanitize_tensor(x, "layer4")
     
         # Apply self-attention after convolutional layers
         x = self.attn(x)
         x = self.attn_outliers(x)
-        if torch.isnan(x).any():
-            raise ValueError("NaN values detected after attention layer")
+        x = self._sanitize_tensor(x, "attention")
     
         x = x.view(x.size(0), -1)
         x = self.layer5(x)
-        if torch.isnan(x).any():
-            raise ValueError("NaN values detected after layer5")
+        x = self._sanitize_tensor(x, "layer5")
         return x
+    
+    def _sanitize_tensor(self, tensor, stage):
+            if torch.isnan(tensor).any() or torch.isinf(tensor).any():
+                nan_count = torch.isnan(tensor).sum().item()
+                inf_count = torch.isinf(tensor).sum().item()
+                warnings.warn(
+                    f"Replacing invalid values detected in {stage} "
+                    f"(nan={nan_count}, inf={inf_count})."
+                )
+                tensor = torch.nan_to_num(tensor, nan=0.0, posinf=1e6, neginf=-1e6)
+            return tensor
         
 class OpenMaxLayer(nn.Module):
     def __init__(self, num_features, num_classes, tail_size=70, alpha=10):
