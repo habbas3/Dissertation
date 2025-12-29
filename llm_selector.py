@@ -361,6 +361,112 @@ def _mean_csv_column(path: Path, column: str) -> Optional[float]:
     return None if stats is None else stats["mean"]
 
 
+def _model_name_to_arch(model_name: str) -> str:
+    key = (model_name or "").strip()
+    mapping = {
+        "cnn_features_1d": "cnn_1d",
+        "cnn_features_1d_sa": "cnn_1d_sa",
+        "cnn_openmax": "cnn_openmax",
+        "WideResNet": "wideresnet",
+        "WideResNet_sa": "wideresnet_sa",
+        "WideResNet_edited": "wideresnet_edited",
+    }
+    return mapping.get(key, "")
+
+def _parse_leaderboard_row(row: dict) -> dict:
+    model_name = _normalize_model_name(str(row.get("model_name", "")).strip())
+    arch = _model_name_to_arch(model_name)
+    method = str(row.get("method", "")).lower()
+    sngp = "sngp" in method
+    openmax = model_name == "cnn_openmax"
+    self_attention = model_name.endswith("_sa") or model_name.lower().endswith("sa")
+    cfg = {
+        "architecture": arch or "",
+        "model_name": model_name or "",
+        "self_attention": bool(self_attention),
+        "sngp": bool(sngp),
+        "openmax": bool(openmax),
+        "use_unknown_head": bool(openmax),
+    }
+    for key, cfg_key in [
+        ("droprate", "dropout"),
+        ("lr", "learning_rate"),
+        ("batch_size", "batch_size"),
+        ("lambda_src", "lambda_src"),
+    ]:
+        raw_val = row.get(key)
+        if raw_val is None:
+            continue
+        try:
+            cfg[cfg_key] = float(raw_val) if cfg_key in {"dropout", "learning_rate", "lambda_src"} else int(raw_val)
+        except Exception:
+            continue
+    return cfg
+
+def _select_leaderboard_winner(
+    checkpoint_root: Path,
+    dataset: str,
+    min_runs: int,
+    min_positive_frac: float,
+) -> Tuple[Optional[dict], Optional[dict[str, float]], Optional[str], Optional[str]]:
+    best_row: Optional[dict] = None
+    best_stats: Optional[dict[str, float]] = None
+    best_score = float("-inf")
+    best_tag: Optional[str] = None
+    best_source: Optional[str] = None
+    if not dataset:
+        return None, None, None, None
+    target_token = f"_{dataset}.csv"
+    for leaderboard in sorted(checkpoint_root.glob("llm_run_*/llm_leaderboard.csv")):
+        try:
+            with leaderboard.open("r", encoding="utf-8") as f:
+                reader = csv.DictReader(f)
+                for row in reader:
+                    summary_csv = str(row.get("summary_csv", "")).strip()
+                    if dataset not in summary_csv and target_token not in summary_csv:
+                        continue
+                    stats = None
+                    if summary_csv:
+                        stats = _csv_column_stats(Path(summary_csv), "improvement")
+                    if stats:
+                        count = int(stats.get("count", 0))
+                        if count < min_runs:
+                            continue
+                        mean = float(stats.get("mean", 0.0))
+                        if mean <= 0:
+                            continue
+                        pos = float(stats.get("positive_count", 0.0))
+                        frac_positive = pos / count if count > 0 else 0.0
+                        if frac_positive < min_positive_frac:
+                            continue
+                        score = mean
+                    else:
+                        try:
+                            mean = float(row.get("avg_improvement", 0.0))
+                        except Exception:
+                            mean = 0.0
+                        if mean <= 0:
+                            continue
+                        stats = {
+                            "mean": mean,
+                            "median": mean,
+                            "std": 0.0,
+                            "count": 0.0,
+                            "positive_count": 0.0,
+                            "lower_bound": mean,
+                        }
+                        score = mean
+                    if score > best_score:
+                        best_score = score
+                        best_row = row
+                        best_stats = stats
+                        best_tag = str(row.get("tag", "")).strip() or None
+                        best_source = str(leaderboard)
+        except Exception:
+            continue
+    return best_row, best_stats, best_tag, best_source
+
+
 _HISTORICAL_TAG_OVERRIDES: dict[str, dict[str, Any]] = {
     "deterministic_cnn": {
         "architecture": "cnn_1d",
@@ -403,12 +509,37 @@ def _maybe_apply_historical_winner(
     checkpoint_root = Path("checkpoint")
     if not checkpoint_root.exists():
         return cfg, None
+    
+    min_runs = int(os.environ.get("LLM_HIST_MIN_RUNS", 3))
+    min_positive_frac = float(os.environ.get("LLM_HIST_MIN_POSITIVE_FRAC", 0.2))
+    best_row, best_stats, best_tag, best_source = _select_leaderboard_winner(
+        checkpoint_root,
+        dataset,
+        min_runs,
+        min_positive_frac,
+    )
+    if best_row and best_stats:
+        updated = dict(cfg)
+        updated.update(_parse_leaderboard_row(best_row))
+        arch = updated.get("architecture") or _model_name_to_arch(updated.get("model_name", ""))
+        if arch:
+            updated["architecture"] = arch
+        if not updated.get("model_name"):
+            updated["model_name"] = _arch_to_model_name(
+                updated.get("architecture", ""),
+                updated.get("self_attention", False),
+                updated.get("openmax", False),
+            )
+        note = (
+            f"Historical leaderboard favoured {best_tag or 'candidate'} on {dataset} "
+            f"(mean Δ={best_stats['mean']:+.4f}, median Δ={best_stats['median']:+.4f}, "
+            f"n={int(best_stats['count'])}); applied {best_row.get('model_name')} from {best_source}."
+        )
+        return updated, note
 
     best_tag: Optional[str] = None
     best_score = float("-inf")
     best_stats: Optional[dict[str, float]] = None
-    min_runs = int(os.environ.get("LLM_HIST_MIN_RUNS", 3))
-    min_positive_frac = float(os.environ.get("LLM_HIST_MIN_POSITIVE_FRAC", 0.6))
     pattern = f"*_{dataset}.csv"
     for run_dir in sorted(checkpoint_root.glob("llm_run_*")):
         compare_dir = run_dir / "compare"
@@ -423,14 +554,12 @@ def _maybe_apply_historical_winner(
             positive_count = float(stats.get("positive_count", 0.0))
             if count < min_runs:
                 continue
-            if stats.get("median", 0.0) <= 0:
-                continue
             frac_positive = positive_count / count if count > 0 else 0.0
             if frac_positive < min_positive_frac:
                 continue
-            if stats.get("lower_bound", float("-inf")) <= 0:
-                continue
             avg = float(stats.get("mean", float("-inf")))
+            if avg <= 0:
+                continue
             if avg > best_score:
                 best_score = avg
                 best_tag = tag
