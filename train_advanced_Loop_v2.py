@@ -937,7 +937,7 @@ def _resolve_compare_cycles(args, num_summary: Optional[dict] = None) -> int:
     if explicit is not None and explicit > 0:
         reference = int(explicit)
     else:
-        reference = 50
+        reference = 15
 
     cycle_hint = None
     if num_summary:
@@ -2549,15 +2549,39 @@ def main():
                 dst = latest
             stats: dict[str, float] = {}
             try:
-                df = _pd.read_csv(latest)
+                df = _pd.read_csv(dst)
                 acc_stats = {}
-                for col in ("baseline_accuracy", "transfer_accuracy"):
-                    if col in df.columns:
-                        vals = _pd.to_numeric(df[col], errors="coerce").dropna()
+                
+                def _mean_from_cols(columns, mask=None):
+                    for col in columns:
+                        if col not in df.columns:
+                            continue
+                        series = df[col]
+                        if mask is not None:
+                            series = series[mask]
+                        vals = _pd.to_numeric(series, errors="coerce").dropna()
                         if not vals.empty:
-                            acc_stats[col] = float(vals.mean())
-                if "baseline_accuracy" in acc_stats and "transfer_accuracy" in acc_stats:
-                    acc_stats["accuracy_delta"] = acc_stats["transfer_accuracy"] - acc_stats["baseline_accuracy"]
+                            return float(vals.mean())
+                    return None
+
+                acc_mask = None
+                if "comparison_metric" in df.columns:
+                    acc_mask = df["comparison_metric"].astype(str).str.lower().isin({"accuracy", "common"})
+
+                baseline_acc = _mean_from_cols(["baseline_accuracy", "baseline_acc"], mask=acc_mask)
+                transfer_acc = _mean_from_cols(["transfer_accuracy", "transfer_acc"], mask=acc_mask)
+                if baseline_acc is None:
+                    baseline_acc = _mean_from_cols(["baseline_score"], mask=acc_mask)
+                if transfer_acc is None:
+                    transfer_acc = _mean_from_cols(["transfer_score"], mask=acc_mask)
+
+                if baseline_acc is not None:
+                    acc_stats["baseline_accuracy"] = baseline_acc
+                if transfer_acc is not None:
+                    acc_stats["transfer_accuracy"] = transfer_acc
+                if baseline_acc is not None and transfer_acc is not None:
+                    acc_stats["accuracy_delta"] = transfer_acc - baseline_acc
+
                 if "transfer_uncertainty_mean_entropy" in df.columns:
                     entropy_vals = _pd.to_numeric(
                         df["transfer_uncertainty_mean_entropy"], errors="coerce"
@@ -2579,6 +2603,19 @@ def main():
                     diffs = (
                         _pd.to_numeric(df["transfer_acc"], errors="coerce")
                         - _pd.to_numeric(df["baseline_acc"], errors="coerce")
+                    ).dropna()
+                    if not diffs.empty:
+                        stats["mean"] = float(diffs.mean())
+                        stats["median"] = float(diffs.median())
+                        stats["std"] = float(diffs.std(ddof=0))
+                        stats["count"] = float(len(diffs))
+                        stats["positive"] = float((diffs > 0).sum())
+                        stderr = float(diffs.std(ddof=0) / max(len(diffs) ** 0.5, 1e-9))
+                        stats["ci95"] = float(1.96 * stderr)
+                elif {"transfer_score", "baseline_score"}.issubset(df.columns):
+                    diffs = (
+                        _pd.to_numeric(df["transfer_score"], errors="coerce")
+                        - _pd.to_numeric(df["baseline_score"], errors="coerce")
                     ).dropna()
                     if not diffs.empty:
                         stats["mean"] = float(diffs.mean())
