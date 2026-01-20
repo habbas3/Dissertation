@@ -184,6 +184,10 @@ def parse_args():
     parser.add_argument('--middle_epoch', type=int, default=15) #30
     parser.add_argument('--max_epoch', type=int, default=50) #100
     parser.add_argument('--print_step', type=int, default=25) #50
+    parser.add_argument('--no_confmat', action='store_true',
+                        help='Skip confusion-matrix generation to reduce post-training memory usage')
+    parser.add_argument('--confmat_dir', type=str, default='',
+                        help='Optional directory to save confusion matrices (defaults to the run checkpoint folder)')
     parser.add_argument('--inconsistent', type=str, default='UAN')
     parser.add_argument('--model_name', type=str, default='cnn_features_1d')
     parser.add_argument('--th', type=float, default=0.5)
@@ -1687,20 +1691,24 @@ def run_battery_experiments(args):
                     f"⚠️  Baseline accuracy mismatch: cm_acc={baseline_acc_cm:.4f} vs metric={baseline_acc_metric:.4f}."
                 )
 
-            transfer_cm_path = os.path.join(ft_dir, f"cm_transfer_{src_name}_to_{tgt_name}.png")
-            baseline_cm_path = os.path.join(ft_dir, f"cm_baseline_{src_name}_to_{tgt_name}.png")
-            _save_highres_confusion(
-                cm_transfer,
-                labels,
-                transfer_cm_path,
-                title=f"Transfer {src_name}→{tgt_name} | acc={transfer_acc*100:.2f}%",
-            )
-            _save_highres_confusion(
-                cm_baseline,
-                labels,
-                baseline_cm_path,
-                title=f"Baseline {tgt_name} | acc={baseline_acc*100:.2f}%",
-            )
+            if not args.no_confmat:
+                confmat_dir = args.confmat_dir or ft_dir
+                transfer_cm_path = os.path.join(
+                    confmat_dir, f"cm_transfer_{src_name}_to_{tgt_name}.png"
+                )
+                baseline_cm_path = os.path.join(confmat_dir, f"cm_baseline_{tgt_name}.png")
+                _save_highres_confusion(
+                    cm_transfer,
+                    labels,
+                    transfer_cm_path,
+                    title=f"Transfer {src_name}→{tgt_name} | acc={transfer_acc*100:.2f}%",
+                )
+                _save_highres_confusion(
+                    cm_baseline,
+                    labels,
+                    baseline_cm_path,
+                    title=f"Baseline {tgt_name} | acc={baseline_acc*100:.2f}%",
+                )
             
             results.append({
                 "model": model_name,
@@ -2182,20 +2190,24 @@ def run_cwru_experiments(args):
                     f"⚠️  Baseline accuracy mismatch: cm_acc={baseline_acc_cm:.4f} vs metric={baseline_acc_metric:.4f}."
                 )
 
-            transfer_cm_path = os.path.join(ft_dir, f"cm_transfer_{src_str}_to_{tgt_str}.png")
-            baseline_cm_path = os.path.join(ft_dir, f"cm_baseline_{src_str}_to_{tgt_str}.png")
-            _save_highres_confusion(
-                cm_transfer,
-                labels,
-                transfer_cm_path,
-                title=f"Transfer {src_str}→{tgt_str} | acc={transfer_acc*100:.2f}%",
-            )
-            _save_highres_confusion(
-                cm_baseline,
-                labels,
-                baseline_cm_path,
-                title=f"Baseline {tgt_str} | acc={baseline_acc*100:.2f}%",
-            )
+            if not args.no_confmat:
+                confmat_dir = args.confmat_dir or ft_dir
+                transfer_cm_path = os.path.join(
+                    confmat_dir, f"cm_transfer_{src_str}_to_{tgt_str}.png"
+                )
+                baseline_cm_path = os.path.join(confmat_dir, f"cm_baseline_{tgt_str}.png")
+                _save_highres_confusion(
+                    cm_transfer,
+                    labels,
+                    transfer_cm_path,
+                    title=f"Transfer {src_str}→{tgt_str} | acc={transfer_acc*100:.2f}%",
+                )
+                _save_highres_confusion(
+                    cm_baseline,
+                    labels,
+                    baseline_cm_path,
+                    title=f"Baseline {tgt_str} | acc={baseline_acc*100:.2f}%",
+                )
 
             
             results.append(
