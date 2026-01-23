@@ -132,17 +132,21 @@ def get_files(root, N, name, label):
     return [data, lab]
 
 
+def _resolve_axis_key(axisname: str) -> str:
+    datanumber = axisname.split(".")
+    if eval(datanumber[0]) < 100:
+        return "X0" + datanumber[0] + axis[0]
+    return "X" + datanumber[0] + axis[0]
+
+
+
 def data_load(filename, axisname, label):
-    '''
+    """
     This function is mainly used to generate test data and training data.
     filename:Data location
     axisname:Select which channel's data,---->"_DE_time","_FE_time","_BA_time"
-    '''
-    datanumber = axisname.split(".")
-    if eval(datanumber[0]) < 100:
-        realaxis = "X0" + datanumber[0] + axis[0]
-    else:
-        realaxis = "X" + datanumber[0] + axis[0]
+    """
+    realaxis = _resolve_axis_key(axisname)
     fl = loadmat(filename)[realaxis]
     data = []
     lab = []
@@ -154,6 +158,79 @@ def data_load(filename, axisname, label):
         end += signal_size
 
     return data, lab
+
+
+def build_window_index(root, N, name, label):
+    """Build a lightweight index of CWRU windows to avoid loading all data into memory."""
+    window_index = []
+    for k in range(len(N)):
+        for i, n in enumerate(name):
+            if int(dataname[N[k]][n].split(".")[0]) < 101:
+                path1 = os.path.join(root, datasetname[3], dataname[N[k]][n])
+            else:
+                path1 = os.path.join(root, datasetname[0], dataname[N[k]][n])
+            axisname = dataname[N[k]][n]
+            realaxis = _resolve_axis_key(axisname)
+            fl = loadmat(path1)[realaxis]
+            max_windows = fl.shape[0] // signal_size
+            for window_idx in range(max_windows):
+                start = window_idx * signal_size
+                window_index.append((path1, axisname, start, label[i]))
+            del fl
+    return window_index
+
+
+class CWRUWindowDataset(torch.utils.data.Dataset):
+    """Lazy-loading dataset that reads CWRU windows on demand."""
+
+    def __init__(self, window_index, transform=None, sequence_length=1):
+        self.window_index = window_index
+        self.sequence_length = sequence_length
+        self.transforms = transform if transform else Compose([Reshape()])
+        self._labels = np.asarray([entry[3] for entry in window_index], dtype=int)
+        self._cache_key = None
+        self._cache_data = None
+
+    @property
+    def labels(self):
+        if self._labels.size == 0:
+            return np.zeros((0,), dtype=int)
+        if self.sequence_length <= 1:
+            return self._labels
+        num_sequences = max(0, len(self.window_index) - self.sequence_length + 1)
+        indices = np.arange(num_sequences) + self.sequence_length - 1
+        indices = np.clip(indices, 0, len(self._labels) - 1)
+        return self._labels[indices]
+
+    def _load_signal(self, path, axisname):
+        cache_key = (path, axisname)
+        if self._cache_key == cache_key and self._cache_data is not None:
+            return self._cache_data
+        realaxis = _resolve_axis_key(axisname)
+        data = loadmat(path)[realaxis]
+        self._cache_key = cache_key
+        self._cache_data = data
+        return data
+
+    def __len__(self):
+        return max(0, len(self.window_index) - self.sequence_length + 1)
+
+    def __getitem__(self, item):
+        windows = []
+        for offset in range(self.sequence_length):
+            path, axisname, start, _ = self.window_index[item + offset]
+            signal = self._load_signal(path, axisname)
+            window = np.asarray(signal[start:start + signal_size]).squeeze()
+            windows.append(window)
+        seq = np.stack(windows)
+        seq = self.transforms(seq)
+        if not isinstance(seq, torch.Tensor):
+            seq = torch.tensor(seq, dtype=torch.float32)
+        label = self.labels[item] if self.labels.size else -1
+        return seq, int(label)
+
+
+
 
 #--------------------------------------------------------------------------------------------------------------------
 class CWRU_inconsistent(object):
@@ -188,18 +265,44 @@ class CWRU_inconsistent(object):
         if transfer_learning:
             # get source train and val
             name_source, name_target, label_source, label_target, num_classes = dataset_information(self.source_N,self.target_N,self.inconsistent)
-            list_data = get_files(self.data_dir, self.source_N, name_source, label_source)
-            data_pd = pd.DataFrame({"data": list_data[0], "label": list_data[1]})
-            train_pd, val_pd = train_test_split(data_pd, test_size=0.2, random_state=40, stratify=data_pd["label"])
-            source_train = dataset(list_data=train_pd, transform=self.data_transforms['train'], sequence_length=1)
-            source_val = dataset(list_data=val_pd, transform=self.data_transforms['val'], sequence_length=1)
+            source_index = build_window_index(self.data_dir, self.source_N, name_source, label_source)
+            source_labels = [entry[3] for entry in source_index]
+            train_idx, val_idx = train_test_split(
+                np.arange(len(source_index)),
+                test_size=0.2,
+                random_state=40,
+                stratify=source_labels,
+            )
+            source_train = CWRUWindowDataset(
+                [source_index[i] for i in train_idx],
+                transform=self.data_transforms['train'],
+                sequence_length=1,
+            )
+            source_val = CWRUWindowDataset(
+                [source_index[i] for i in val_idx],
+                transform=self.data_transforms['val'],
+                sequence_length=1,
+            )
 
             # get target train and val
-            list_data = get_files(self.data_dir, self.target_N, name_target, label_target)
-            data_pd = pd.DataFrame({"data": list_data[0], "label": list_data[1]})
-            train_pd, val_pd = train_test_split(data_pd, test_size=0.2, random_state=40, stratify=data_pd["label"])
-            target_train = dataset(list_data=train_pd, transform=self.data_transforms['train'], sequence_length=1)
-            target_val = dataset(list_data=val_pd, transform=self.data_transforms['val'], sequence_length=1)
+            target_index = build_window_index(self.data_dir, self.target_N, name_target, label_target)
+            target_labels = [entry[3] for entry in target_index]
+            train_idx, val_idx = train_test_split(
+                np.arange(len(target_index)),
+                test_size=0.2,
+                random_state=40,
+                stratify=target_labels,
+            )
+            target_train = CWRUWindowDataset(
+                [target_index[i] for i in train_idx],
+                transform=self.data_transforms['train'],
+                sequence_length=1,
+            )
+            target_val = CWRUWindowDataset(
+                [target_index[i] for i in val_idx],
+                transform=self.data_transforms['val'],
+                sequence_length=1,
+            )
             return source_train, source_val, target_train, target_val, num_classes
         else:
             # Baseline: load all classes with consistent labeling
@@ -207,21 +310,34 @@ class CWRU_inconsistent(object):
             all_labels = list(range(len(dataname[0])))
 
             # get source train and val
-            list_data = get_files(self.data_dir, self.source_N, all_names, all_labels)
-            data_pd = pd.DataFrame({"data": list_data[0], "label": list_data[1]})
-            train_pd, val_pd = train_test_split(
+            source_index = build_window_index(self.data_dir, self.source_N, all_names, all_labels)
+            source_labels = [entry[3] for entry in source_index]
+            train_idx, val_idx = train_test_split(
+                np.arange(len(source_index)),
                 data_pd,
                 test_size=0.2,
                 random_state=40,
-                stratify=data_pd["label"],
+                stratify=source_labels,
             )
-            source_train = dataset(list_data=train_pd, transform=self.data_transforms['train'], sequence_length=1)
-            source_val = dataset(list_data=val_pd, transform=self.data_transforms['val'], sequence_length=1)
+            source_train = CWRUWindowDataset(
+                [source_index[i] for i in train_idx],
+                transform=self.data_transforms['train'],
+                sequence_length=1,
+            )
+            source_val = CWRUWindowDataset(
+                [source_index[i] for i in val_idx],
+                transform=self.data_transforms['val'],
+                sequence_length=1,
+            )
+            
 
             # get target val (entire target domain with same labels)
-            list_data = get_files(self.data_dir, self.target_N, all_names, all_labels)
-            data_pd = pd.DataFrame({"data": list_data[0], "label": list_data[1]})
-            target_val = dataset(list_data=data_pd, transform=self.data_transforms['val'], sequence_length=1)
+            target_index = build_window_index(self.data_dir, self.target_N, all_names, all_labels)
+            target_val = CWRUWindowDataset(
+                target_index,
+                transform=self.data_transforms['val'],
+                sequence_length=1,
+            )
             return source_train, source_val, target_val
 
 
