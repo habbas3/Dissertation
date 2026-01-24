@@ -9,6 +9,7 @@ import matplotlib.pyplot as plt
 import pickle
 import shutil
 import os
+import gc
 from typing import Optional
 from datetime import datetime
 from utils.logger import setlogger
@@ -38,6 +39,20 @@ from llm_selector import select_config, run_ablation_suite
 from utils.experiment_runner import _cm_with_min_labels
 import os as _os
 from scipy.spatial.distance import jensenshannon
+
+
+def _cleanup_memory(tag: str = ""):
+    """Best-effort memory cleanup to avoid kernel restarts on long runs."""
+    if torch.cuda.is_available():
+        torch.cuda.empty_cache()
+        try:
+            torch.cuda.ipc_collect()
+        except Exception:
+            pass
+    gc.collect()
+    if tag:
+        print(f"🧹 Memory cleanup: {tag}")
+
 
 def _save_highres_confusion(cm, labels, path, title, normalize=True):
     labels = list(labels)
@@ -1731,7 +1746,30 @@ def run_battery_experiments(args):
                 "note": selection_note,
             })
             
+            try:
+                del model_retry
+            except UnboundLocalError:
+                pass
+            try:
+                del model_boost
+            except UnboundLocalError:
+                pass
+            del model_ft
+            del model_bl
+            del eval_loader
+            del transfer_override
+            del baseline_override
+            del transfer_args
+            del baseline_args
+            _cleanup_memory(f"battery {src_name}->{tgt_name} {model_name}")
+            
             args.method = original_method
+        
+        del shared_src_train_loader
+        del shared_src_val_loader
+        del shared_tgt_train_loader
+        del shared_tgt_val_loader
+        _cleanup_memory(f"battery loaders {src_name}->{tgt_name}")
 
     if results:
         summary_df = pd.DataFrame(results)
@@ -2233,7 +2271,26 @@ def run_cwru_experiments(args):
                 }
             )
             
+            try:
+                del model_retry
+            except UnboundLocalError:
+                pass
+            del model_ft
+            del model_bl
+            del eval_loader
+            del transfer_override
+            del baseline_override
+            del transfer_args
+            del baseline_args
+            _cleanup_memory(f"cwru {src_str}->{tgt_str} {model_name}")
+            
         args.method = original_method
+        
+        del shared_src_train_loader
+        del shared_src_val_loader
+        del shared_tgt_train_loader
+        del shared_tgt_val_loader
+        _cleanup_memory(f"cwru loaders {src_str}->{tgt_str}")
 
     if results:
         summary_df = pd.DataFrame(results)
