@@ -1607,14 +1607,26 @@ def select_config(text_context: str,
                   allow_history: bool = True,
                   chemistry_feedback: bool = True) -> Dict[str, Any]:
     if backend == "openai" or (backend == "auto" and os.getenv("OPENAI_API_KEY")):
-        return call_openai(
-            text_context,
-            num_summary,
-            model or "gpt-4.1-mini",
-            debug_dir=debug_dir,
-            allow_history=allow_history,
-            chemistry_feedback=chemistry_feedback,
-        )
+        try:
+            return call_openai(
+                text_context,
+                num_summary,
+                model or "gpt-4.1-mini",
+                debug_dir=debug_dir,
+                allow_history=allow_history,
+                chemistry_feedback=chemistry_feedback,
+            )
+        except Exception as err:
+            if backend != "auto":
+                raise
+            try:
+                from openai import RateLimitError
+            except Exception:  # pragma: no cover - import guard for optional dependency
+                RateLimitError = None
+            is_quota_error = isinstance(err, RateLimitError) if RateLimitError else False
+            if not is_quota_error:
+                raise
+            print("⚠️  OpenAI quota exceeded; falling back to local Ollama backend.")
     if backend == "ollama" or backend == "auto":
         return call_ollama(
             text_context,
