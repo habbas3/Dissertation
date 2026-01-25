@@ -127,6 +127,20 @@ def _wrap_with_class_balanced_sampler(loader, batch_size, num_workers, device):
         drop_last=False
     )
 
+def _clear_runtime_cache(tag: str | None = None):
+    """Best-effort cleanup to reduce long-run memory growth."""
+    if torch.cuda.is_available():
+        torch.cuda.empty_cache()
+        try:
+            torch.cuda.ipc_collect()
+        except Exception:
+            pass
+    gc.collect()
+    if tag:
+        print(f"🧹 Memory cleanup: {tag}")
+
+
+
 
 
 @torch.no_grad()
@@ -1698,6 +1712,10 @@ class train_utils_open_univ(object):
                         self._best_epoch = epoch
                         self._best_metric_time = time.time() - self._train_start_time
                         
+                del preds_all
+                del labels_all
+                _clear_runtime_cache(f"epoch {epoch + 1} {phase}")
+                        
                         
             if self.transfer_mode and self.dataloaders.get('target_train') is not None:
                 if val_improved:
@@ -1740,6 +1758,7 @@ class train_utils_open_univ(object):
                     if epochs_no_improve >= patience:
                         print(f"⏹ Early stopping triggered after {patience} epochs without improvement.")
                         break
+            _clear_runtime_cache(f"epoch {epoch + 1} end")
     
         print("Training complete.")
         self.model.load_state_dict(best_model_wts)
@@ -1756,13 +1775,7 @@ class train_utils_open_univ(object):
             
             self.best_target_balanced_acc = 0.0
 
-        if self.transfer_mode and self.dataloaders.get('target_train') is not None:
-            calibrate_bn(
-                self.model,
-                self.dataloaders['target_train'],
-                self.device,
-                max_batches=int(getattr(self.args, 'bn_calibration_batches', 64))
-            )
+
             
         if self.transfer_mode and self.dataloaders.get('target_train') is not None:
             calibrate_bn(
