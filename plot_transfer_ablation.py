@@ -140,34 +140,18 @@ def plot_transfer_comparison(df: pd.DataFrame, dataset: str, out_dir: Path) -> N
     df["pair"] = _make_pair_label(zip(df["source"], df["target"]), dataset)
     df["delta"] = df[score_col_improved] - df[score_col_base_full]
 
-    # --- paired bar plot ---
-    plt.figure(figsize=(10, 6))
-    x = range(len(df))
-    width = 0.4
-    plt.bar([i - width / 2 for i in x], df[score_col_base_full] * 100, width=width, label="Baseline")
-    plt.bar([i + width / 2 for i in x], df[score_col_improved] * 100, width=width, label="Improved")
-    plt.xticks(ticks=list(x), labels=df["pair"], rotation=45, ha="right")
-    plt.ylabel("Transfer score (%)", fontweight="bold")
-    plt.title(f"{dataset}: per-transfer performance comparison", fontweight="bold")
-    plt.legend()
-    plt.tight_layout()
-    paired_path = out_dir / f"{dataset}_transfer_comparison.png"
-    plt.savefig(paired_path, dpi=300)
-    plt.close()
-    print(f"Saved {paired_path}")
-
-    # --- delta plot ---
+    # --- delta plot (improvement scores only) ---
     ordered = df.sort_values("delta", ascending=False)
     plt.figure(figsize=(10, 5))
     plt.bar(ordered["pair"], ordered["delta"] * 100, color="seagreen")
     plt.axhline(0, color="black", linewidth=0.8)
     plt.xticks(rotation=45, ha="right")
     plt.ylabel("Δ Improved – Baseline (score %)", fontweight="bold")
-    plt.title(f"{dataset}: per-transfer gain/loss (ablation)", fontweight="bold")
+    plt.title(f"CWRU: Per-Transfer Improvement Scores", fontweight="bold")
     for i, v in enumerate(ordered["delta"] * 100):
         plt.text(i, v + (0.4 if v >= 0 else -0.6), f"{v:+.2f}", ha="center", va="bottom", fontsize=8)
     plt.tight_layout()
-    delta_path = out_dir / f"{dataset}_transfer_delta.png"
+    delta_path = out_dir / f"{dataset}_transfer_improvement.png"
     plt.savefig(delta_path, dpi=300)
     plt.close()
     print(f"Saved {delta_path}")
