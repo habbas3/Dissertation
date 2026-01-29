@@ -8,6 +8,7 @@ from __future__ import annotations
 import argparse
 import json
 import re
+from datetime import datetime
 from pathlib import Path
 
 import matplotlib.pyplot as plt
@@ -24,7 +25,7 @@ _GROUP_RULES = [
 
 
 def _find_latest_dataset_run(root: Path, dataset_tag: str) -> Path | None:
-    runs = sorted(root.glob("llm_run_*/llm_leaderboard.csv"))
+    runs = list(root.glob("llm_run_*/llm_leaderboard.csv"))
     matches: list[Path] = []
     for run in runs:
         try:
@@ -35,7 +36,18 @@ def _find_latest_dataset_run(root: Path, dataset_tag: str) -> Path | None:
             continue
         if df["summary_csv"].astype(str).str.contains(dataset_tag, na=False).any():
             matches.append(run.parent)
-    return matches[-1] if matches else None
+    if not matches:
+        return None
+    ts_regex = re.compile(r"llm_run_(\d{8})_(\d{6})")
+
+    def sort_key(path: Path) -> tuple[int, float]:
+        match = ts_regex.search(path.name)
+        if match:
+            stamp = datetime.strptime("".join(match.groups()), "%Y%m%d%H%M%S").timestamp()
+            return (1, stamp)
+        return (0, path.stat().st_mtime)
+
+    return max(matches, key=sort_key)
 
 
 def _load_ablation_json(run_dir: Path) -> list[dict]:
