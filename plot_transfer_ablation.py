@@ -129,6 +129,10 @@ def plot_transfer_comparison(df: pd.DataFrame, dataset: str, out_dir: Path) -> N
     imp_col_base_full = imp_col_base + "_base"
 
     df = df.copy()
+    if dataset == "cwru":
+        df = df.dropna(subset=[imp_col_base_full, imp_col_improved])
+        if df.empty:
+            raise ValueError("No CWRU transfer results found after filtering empty transfers.")
     df["pair"] = _make_pair_label(zip(df["source"], df["target"]), dataset)
     df["delta"] = df[imp_col_improved] - df[imp_col_base_full]
 

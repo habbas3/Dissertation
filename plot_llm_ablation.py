@@ -180,6 +180,9 @@ def plot_pairwise_deltas(df: pd.DataFrame, out_path: Path) -> None:
 def _write_summary(df: pd.DataFrame, out_path: Path) -> None:
     """Persist a short markdown summary of the ablation sweep."""
 
+    if df.empty:
+        print("No ablation rows available for summary.")
+        return
     ordered = df.sort_values("avg_improvement", ascending=False)
     winner = ordered.iloc[0]
 
@@ -248,6 +251,10 @@ def main():
         raise SystemExit(f"Missing leaderboard at {leaderboard_path}")
 
     df = pd.read_csv(leaderboard_path)
+    # Ablation deltas are already computed vs. the llm_pick baseline, so drop it from plots.
+    df = df[df["tag"].astype(str) != "llm_pick"].copy()
+    if df.empty:
+        raise SystemExit("Leaderboard only contains llm_pick; no ablation rows to plot.")
     ablation_records = _load_ablation_json(run_dir)
     if ablation_records:
         print(f"Loaded {len(ablation_records)} ablation prompt variants from {run_dir}")

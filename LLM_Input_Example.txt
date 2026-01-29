@@ -1,0 +1,64 @@
+
+  "request_id": "llm_run_2026-01-28T21:05:33Z_task_batt_HE+NMC_to_5Vspinel_historyON_chemON",\
+  "provider": "openai",\
+  "mode": "history_on",\
+  "chemistry_context": \{\
+    "enabled": true,\
+    "source_cathodes": ["HE5050", "NMC111", "NMC532", "NMC622", "NMC811"],\
+    "target_cathodes": ["5Vspinel"],\
+    "chemistry_hints": \{\
+      "HE5050": "high-energy experimental blend (layered oxide family)",\
+      "NMC111": "layered NMC, low-Ni (more stable, slower fade)",\
+      "NMC532": "layered NMC, mid-Ni (balanced energy/stability)",\
+      "NMC622": "layered NMC, higher-Ni (higher energy, more fragile)",\
+      "NMC811": "layered NMC, high-Ni (highest energy, more OOD risk)",\
+      "5Vspinel": "high-voltage spinel, Mn-rich (very-high voltage regime)"\
+    \},\
+    "transfer_flags": \{\
+      "cross_family_shift": true,\
+      "expected_domain_shift": "high",\
+      "notes": "Layered NMC/HE \uc0\u8594  Spinel implies different voltage regime and degradation signatures."\
+    \}\
+  \},\
+  "history_context": \{\
+    "enabled": true,\
+    "leaderboard_excerpt": [\
+      \{\
+        "run_id": "llm_run_2026-01-25T18:11:02Z",\
+        "task": "Battery_inconsistent: (HE5050+NMC*) -> 5Vspinel",\
+        "top_configs": [\
+          \{\
+            "model_name": "cnn_features_1d",\
+            "sngp": true,\
+            "openmax": false,\
+            "lr": 0.001,\
+            "dropout": 0.30,\
+            "batch_size": 64,\
+            "bottleneck": 256,\
+            "metric_target_val_acc": 0.42,\
+            "notes": "Fast convergence; occasional overconfidence on minority target classes."\
+          \},\
+          \{\
+            "model_name": "cnn_features_1d",\
+            "sngp": true,\
+            "openmax": false,\
+            "lr": 0.0005,\
+            "dropout": 0.35,\
+            "batch_size": 32,\
+            "bottleneck": 256,\
+            "metric_target_val_acc": 0.46,\
+            "notes": "More stable, less variance; better minority-class recall."\
+          \}\
+        ],\
+        "failure_modes_observed": [\
+          "lr=0.001 with low dropout sometimes yields unstable target calibration",\
+          "OpenMax tail-fitting unstable when target has very few samples in some classes"\
+        ]\
+      \}\
+    ]\
+  \},\
+  "llm_prompt": \{\
+    "system": "You are an expert ML engineer. Recommend a configuration for transfer learning under label inconsistency and domain shift. Output JSON ONLY with keys: model_name, self_attention, sngp, openmax, use_unknown_head, bottleneck, dropout, learning_rate, batch_size, lambda_src, warmup_epochs, rationale.",\
+    "user": "Dataset: Argonne battery aging time-series. Task: Battery_inconsistent transfer.\\nSource cathodes: HE5050, NMC111, NMC532, NMC622, NMC811. Target cathode: 5Vspinel.\\nSetting: label-inconsistent / open-set-like target distribution; high chemistry domain shift.\\nGoal: maximize target generalization and avoid overconfident predictions.\\n\\nNUMERIC SUMMARY (representative):\\n- sequence_length_requested: 32\\n- channels: 21\\n- batch_size_seen: 64\\n- label_column: eol_class\\n\\nSPLIT SNAPSHOT:\\nsource_train:\\n  batch_shape: [64, 21, 32]\\n  class_distribution: \{\\"0\\": 23, \\"1\\": 22, \\"2\\": 41, \\"3\\": 37, \\"4\\": 42\}\\n  batch_channel_mean(first8): [0.8607, 0.0979, 0.1167, 0.0635, 0.1176, 0.1993, -0.2292, -0.0653]\\n  batch_channel_std(first8):  [1.0595, 1.0638, 1.0585, 1.0671, 1.0603, 0.9482,  0.9322,  0.7140]\\n  feature_range: [-10.0714, 26.9622]\\n  feature_global_mean: 0.04733\\n\\ntarget_train:\\n  batch_shape: [64, 21, 32]\\n  class_distribution: \{\\"0\\": 19, \\"1\\": 18, \\"2\\": 2, \\"3\\": 1, \\"4\\": 1\}\\n  batch_channel_mean(first8): [0.4504, 0.0265, -0.0560, -0.0800, -0.1323, -0.0156, 0.0127, 0.0489]\\n  batch_channel_std(first8):  [1.0003, 0.7572,  0.7368,  0.6441,  0.7308,  0.8728,  0.8209,  0.8204]\\n  feature_range: [-3.2104, 5.1942]\\n  feature_global_mean: -0.01481\\n\\nsource_val:\\n  batch_shape: [64, 21, 32]\\n  class_distribution: \{\\"0\\": 8, \\"1\\": 10, \\"2\\": 16, \\"3\\": 14, \\"4\\": 16\}\\n\\ntarget_val:\\n  batch_shape: [12, 21, 32]\\n  class_distribution: \{\\"0\\": 5, \\"1\\": 5, \\"2\\": 1, \\"4\\": 1\}\\n\\nDATASET HINTS:\\n- lr_hint: 0.001\\n- dropout_hint: 0.30\\n- expected_domain_shift: HIGH (chemistry mismatch)\\n- target is class-sparse (minority target classes extremely limited)\\n\\nHISTORY (available):\\n- Prior leaderboard suggests lr=5e-4 and dropout\uc0\u8776 0.35 reduces variance and improves minority-class behavior.\\n\\nReturn the best config JSON and provide a detailed rationale tying your decisions to the numeric evidence and chemistry context."\
+  \}\
+\}}

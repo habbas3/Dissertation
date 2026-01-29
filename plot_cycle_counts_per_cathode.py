@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Boxplot of per-cell EOL cycle counts grouped by cathode, with color legend.
+Boxplot of total cycles per cell grouped by cathode chemistry, with color legend.
 """
 
 import pandas as pd
@@ -25,20 +25,23 @@ if cycle_col is None:
     raise ValueError("No cycle column found. Update column name.")
 
 # Check required columns
-if "cathode" not in df.columns or "filename" not in df.columns:
-    raise ValueError("Missing required columns: 'cathode', 'filename'.")
+cathode_col = "cathode"
+if "cathode_chemistry" in df.columns:
+    cathode_col = "cathode_chemistry"
+if cathode_col not in df.columns or "filename" not in df.columns:
+    raise ValueError("Missing required columns: cathode chemistry and 'filename'.")
 
 # === Compute per-cell cycle count ===
 per_cell_cycles = (
-    df.groupby(["cathode", "filename"])[cycle_col]
+    df.groupby([cathode_col, "filename"])[cycle_col]
       .max()
       .reset_index()
-      .rename(columns={cycle_col: "cycle_count"})
+      .rename(columns={cycle_col: "total_cycles"})
 )
 
 # Order cathodes by median lifetime
 cathode_order = (
-    per_cell_cycles.groupby("cathode")["cycle_count"]
+    per_cell_cycles.groupby(cathode_col)["total_cycles"]
     .median()
     .sort_values(ascending=False)
     .index.tolist()
@@ -55,7 +58,7 @@ fig, ax = plt.subplots(figsize=(11, 5))
 boxplots = []
 
 for i, cat in enumerate(cathode_order):
-    data = per_cell_cycles[per_cell_cycles["cathode"] == cat]["cycle_count"]
+    data = per_cell_cycles[per_cell_cycles[cathode_col] == cat]["total_cycles"]
     bp = ax.boxplot(
         data,
         positions=[i],
@@ -76,8 +79,9 @@ for i, cat in enumerate(cathode_order):
     boxplots.append(bp)
 
 # Axes labels
-ax.set_title("Distribution of EOL Cycle Counts per Cathode", fontweight='bold')
-ax.set_ylabel("Cycle Count at EOL", fontweight='bold')
+ax.set_title("Total Cycles per Cell by Cathode Chemistry", fontweight='bold')
+ax.set_ylabel("Total Cycles per Cell", fontweight='bold')
+ax.set_xlabel("Cathode Chemistry", fontweight='bold')
 ax.set_xticks(range(len(cathode_order)))
 ax.set_xticklabels(cathode_order, rotation=45, ha="right", fontsize=9)
 
