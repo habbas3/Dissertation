@@ -124,6 +124,39 @@ def _demo_transfer_frames(dataset: str) -> tuple[pd.DataFrame, pd.DataFrame]:
 
     return baseline, improved
 
+def _resolve_csv_path(path: Path | str | None) -> Path:
+    if path is None:
+        raise ValueError("CSV path is required but was not provided.")
+    candidate = Path(path)
+    if candidate.exists():
+        if candidate.is_dir():
+            csvs = sorted(candidate.glob("*.csv"), key=lambda p: p.stat().st_mtime)
+            if not csvs:
+                raise FileNotFoundError(f"No CSV files found in directory: {candidate}")
+            return csvs[-1]
+        return candidate
+    if candidate.suffix != ".csv":
+        csv_candidate = candidate.with_suffix(".csv")
+        if csv_candidate.exists():
+            return csv_candidate
+    raise FileNotFoundError(f"CSV path not found: {candidate}")
+
+
+def _find_compare_csv_in_dir(compare_dir: Path, prefix: str, dataset_tag: str) -> Path:
+    if not compare_dir.exists():
+        raise FileNotFoundError(f"Compare directory not found: {compare_dir}")
+    matches = sorted(
+        compare_dir.glob(f"{prefix}*{dataset_tag}*.csv"),
+        key=lambda p: p.stat().st_mtime,
+    )
+    if not matches:
+        raise FileNotFoundError(
+            f"No compare CSVs found in {compare_dir} for prefix={prefix} dataset={dataset_tag}."
+        )
+    return matches[-1]
+
+
+
 def plot_transfer_comparison(df: pd.DataFrame, dataset: str, out_dir: Path) -> None:
     out_dir.mkdir(parents=True, exist_ok=True)
     score_col_base = _detect_transfer_column(df.filter(regex="_base$", axis=1)).replace("_base", "")
@@ -217,36 +250,37 @@ def main() -> None:
     try:
         if args.demo:
             base_df, imp_df = _demo_transfer_frames(args.dataset)
-        else:
-            if args.results_file is not None and improved_path is None:
-                improved_path = _resolve_csv_path(args.results_file)
-                if not improved_path.exists():
-                    print(f"Results file not found: {improved_path}. Exiting without plotting.")
-                    return
-                compare_dir = improved_path.parent
-                if compare_dir.name != "compare" and (compare_dir / "compare").exists():
-                    compare_dir = compare_dir / "compare"
-                if baseline_path is None:
-                    baseline_path = _find_compare_csv_in_dir(
-                        compare_dir,
-                        "deterministic_cnn_summary",
-                        dataset_tag,
-                    )
+            merged = _merge_pairs(base_df, imp_df)
+            plot_transfer_comparison(merged, args.dataset, args.out_dir)
+            return
+
+        if args.results_file is not None and improved_path is None:
+           improved_path = _resolve_csv_path(args.results_file)
+           compare_dir = improved_path.parent
+           if compare_dir.name != "compare" and (compare_dir / "compare").exists():
+               compare_dir = compare_dir / "compare"
                     
-            if baseline_path is None:
-                baseline_path = find_latest_compare_csv(
-                    args.checkpoint_root,
+           if baseline_path is None:
+                baseline_path = _find_compare_csv_in_dir(
+                    compare_dir,
                     "deterministic_cnn_summary",
                     dataset_tag,
-                    run_dir=args.run_dir,
+                    
                 )
-            if improved_path is None:
-                improved_path = find_latest_compare_csv(
-                    args.checkpoint_root,
-                    "llm_pick_summary",
-                    dataset_tag,
-                    run_dir=args.run_dir,
-                )
+        if baseline_path is None:
+            baseline_path = find_latest_compare_csv(
+                args.checkpoint_root,
+                "deterministic_cnn_summary",
+                dataset_tag,
+                run_dir=args.run_dir,
+            )
+        if improved_path is None:
+            improved_path = find_latest_compare_csv(
+                args.checkpoint_root,
+                "llm_pick_summary",
+                dataset_tag,
+                run_dir=args.run_dir,
+            )
         base_df = pd.read_csv(_resolve_csv_path(baseline_path))
         imp_df = pd.read_csv(_resolve_csv_path(improved_path))
         merged = _merge_pairs(base_df, imp_df)
