@@ -107,7 +107,7 @@ def _demo_transfer_frames(dataset: str) -> tuple[pd.DataFrame, pd.DataFrame]:
     pairs = [
         ("A", "B", 0.78, 0.82),
         ("A", "C", 0.74, 0.77),
-        ("B", "C", 0.69, 0.75),
+        ("B", "C", 0.69, 0.68),
         ("C", "D", 0.72, 0.80),
     ]
     baseline = pd.DataFrame(pairs, columns=["source", "target", "transfer_score", "_improved"])[
@@ -123,70 +123,6 @@ def _demo_transfer_frames(dataset: str) -> tuple[pd.DataFrame, pd.DataFrame]:
         baseline["transfer_score"] -= 0.005
 
     return baseline, improved
-
-def _resolve_csv_path(path: Path | str | None) -> Path:
-    if path is None:
-        raise ValueError("CSV path is required but was not provided.")
-    candidate = Path(path)
-    if candidate.exists():
-        if candidate.is_dir():
-            csvs = sorted(candidate.glob("*.csv"), key=lambda p: p.stat().st_mtime)
-            if not csvs:
-                raise FileNotFoundError(f"No CSV files found in directory: {candidate}")
-            return csvs[-1]
-        return candidate
-    if candidate.suffix != ".csv":
-        csv_candidate = candidate.with_suffix(".csv")
-        if csv_candidate.exists():
-            return csv_candidate
-    raise FileNotFoundError(f"CSV path not found: {candidate}")
-
-
-def _infer_prefix_from_path(path: Path, dataset_tag: str) -> str:
-    stem = path.stem
-    tag_suffix = f"_{dataset_tag}"
-    if stem.endswith(tag_suffix):
-        stem = stem[: -len(tag_suffix)]
-    parts = stem.split("_")
-    while parts and parts[-1].isdigit():
-        parts.pop()
-    return "_".join(parts) if parts else stem
-
-
-def _find_baseline_csv(
-    compare_dir: Path,
-    dataset_tag: str,
-    improved_path: Path | None = None,
-    preferred_prefixes: Iterable[str] | None = None,
-) -> Path:
-    if not compare_dir.exists():
-        raise FileNotFoundError(f"Compare directory not found: {compare_dir}")
-    preferred_prefixes = list(preferred_prefixes or [])
-    preferred_prefixes = [p for p in preferred_prefixes if p]
-
-    for prefix in preferred_prefixes:
-        matches = sorted(
-            compare_dir.glob(f"{prefix}*{dataset_tag}*.csv"),
-            key=lambda p: p.stat().st_mtime,
-        )
-        if improved_path is not None:
-            matches = [p for p in matches if p.resolve() != improved_path.resolve()]
-        if matches:
-            return matches[-1]
-
-    matches = sorted(
-        compare_dir.glob(f"*{dataset_tag}*.csv"),
-        key=lambda p: p.stat().st_mtime,
-    )
-    if improved_path is not None:
-        matches = [p for p in matches if p.resolve() != improved_path.resolve()]
-    if matches:
-        return matches[-1]
-    raise FileNotFoundError(
-        f"No baseline compare CSVs found in {compare_dir} for dataset={dataset_tag}."
-    )
-
-
 
 def plot_transfer_comparison(df: pd.DataFrame, dataset: str, out_dir: Path) -> None:
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -211,7 +147,7 @@ def plot_transfer_comparison(df: pd.DataFrame, dataset: str, out_dir: Path) -> N
     plt.bar([i - width / 2 for i in x], df[score_col_base_full] * 100, width=width, label="Baseline")
     plt.bar([i + width / 2 for i in x], df[score_col_improved] * 100, width=width, label="Improved")
     plt.xticks(ticks=list(x), labels=df["pair"], rotation=45, ha="right")
-    plt.ylabel("Accuracy (%)", fontweight="bold")
+    plt.ylabel("Transfer score (%)", fontweight="bold")
     plt.title(f"{dataset}: per-transfer performance comparison", fontweight="bold")
     plt.legend()
     plt.tight_layout()
@@ -243,10 +179,6 @@ def plot_transfer_comparison(df: pd.DataFrame, dataset: str, out_dir: Path) -> N
 
 
 def main() -> None:
-    default_results_file = Path(
-        "/Users/moondiab/Documents/Dissertation/UDTL_Lable_Inconsistent-main/checkpoint/"
-        "llm_run_20260126_213942/compare/cycles_5_summary_0128_023915_CWRU_inconsistent"
-    )
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
         "--dataset",
@@ -258,15 +190,6 @@ def main() -> None:
     parser.add_argument("--run_dir", type=Path, default=None, help="Optional llm_run_* directory to use.")
     parser.add_argument("--baseline", type=Path, default=None, help="CSV with baseline transfer results.")
     parser.add_argument("--improved", type=Path, default=None, help="CSV with improved/LLM transfer results.")
-    parser.add_argument(
-        "--results_file",
-        type=Path,
-        default=default_results_file,
-        help=(
-            "CSV path for the improved/ablation results. If set, the baseline defaults to a "
-            "deterministic_cnn_summary CSV in the same compare directory."
-        ),
-    )
     parser.add_argument("--demo", action="store_true", help="Run with synthetic data instead of CSV inputs.")
     parser.add_argument("--out_dir", type=Path, default=Path("figures"), help="Directory to save plots and CSV.")
     args = parser.parse_args()
@@ -278,28 +201,9 @@ def main() -> None:
     improved_path = getattr(args, "improved", None)
     dataset_tag = "CWRU_inconsistent" if args.dataset == "cwru" else "Battery_inconsistent"
 
-    try:
-        if args.demo:
-            base_df, imp_df = _demo_transfer_frames(args.dataset)
-            merged = _merge_pairs(base_df, imp_df)
-            plot_transfer_comparison(merged, args.dataset, args.out_dir)
-            return
-
-        if args.results_file is not None and improved_path is None:
-           improved_path = _resolve_csv_path(args.results_file)
-           compare_dir = improved_path.parent
-           if compare_dir.name != "compare" and (compare_dir / "compare").exists():
-                compare_dir = compare_dir / "compare"
-
-           if baseline_path is None:
-                inferred_prefix = _infer_prefix_from_path(improved_path, dataset_tag)
-                baseline_path = _find_baseline_csv(
-                    compare_dir,
-                    dataset_tag,
-                    improved_path=improved_path,
-                    preferred_prefixes=["deterministic_cnn_summary", inferred_prefix],
-                    
-                )
+    if args.demo:
+        base_df, imp_df = _demo_transfer_frames(args.dataset)
+    else:
         if baseline_path is None:
             baseline_path = find_latest_compare_csv(
                 args.checkpoint_root,
@@ -314,13 +218,10 @@ def main() -> None:
                 dataset_tag,
                 run_dir=args.run_dir,
             )
-        base_df = pd.read_csv(_resolve_csv_path(baseline_path))
-        imp_df = pd.read_csv(_resolve_csv_path(improved_path))
-        merged = _merge_pairs(base_df, imp_df)
-        plot_transfer_comparison(merged, args.dataset, args.out_dir)
-    except (FileNotFoundError, ValueError, pd.errors.EmptyDataError) as exc:
-        print(f"Transfer ablation failed safely: {exc}")
-        return
+        base_df = pd.read_csv(baseline_path)
+        imp_df = pd.read_csv(improved_path)
+    merged = _merge_pairs(base_df, imp_df)
+    plot_transfer_comparison(merged, args.dataset, args.out_dir)
 
 
 if __name__ == "__main__":
