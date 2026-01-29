@@ -37,6 +37,11 @@ def plot_leaderboard(df: pd.DataFrame, out_path: Path) -> None:
         ("head toggles", "head_"),
         ("regularization", "ablate_"),
     ]
+    
+    def _display_tag(tag: str) -> tuple[str, bool]:
+        highlight = "cnn_openmax" in tag.lower()
+        label = f"{tag} [LLM pick]" if highlight else tag
+        return label, highlight
 
     def _assign_group(tag: str) -> str:
         for group, key in group_rules:
@@ -67,7 +72,8 @@ def plot_leaderboard(df: pd.DataFrame, out_path: Path) -> None:
         "other": "#999999",
     }
     colors = [palette.get(group, "#999999") for group in ordered["group"]]
-    ax.bar(ordered["tag"], ordered["avg_improvement"], color=colors, yerr=yerr, capsize=4)
+    x_positions = list(range(len(ordered)))
+    ax.bar(x_positions, ordered["avg_improvement"], color=colors, yerr=yerr, capsize=4)
     group_bounds: list[tuple[int, int, str]] = []
     start = 0
     for idx, group in enumerate(ordered["group"]):
@@ -91,7 +97,12 @@ def plot_leaderboard(df: pd.DataFrame, out_path: Path) -> None:
     ]
     if legend_handles:
         ax.legend(handles=legend_handles, title="Ablation group", loc="upper right", frameon=False)
-    plt.xticks(rotation=45, ha="right")
+    labels, highlights = zip(*(_display_tag(str(tag)) for tag in ordered["tag"]))
+    ax.set_xticks(x_positions)
+    ax.set_xticklabels(labels, rotation=45, ha="right")
+    for tick_label, highlight in zip(ax.get_xticklabels(), highlights):
+        if highlight:
+            tick_label.set_fontweight("bold")
     plt.ylabel("Avg. improvement vs. baseline")
     plt.title("LLM comparison + ablation leaderboard")
     for i, (_, row) in enumerate(ordered.iterrows()):

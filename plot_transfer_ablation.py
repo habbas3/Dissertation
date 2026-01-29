@@ -42,12 +42,36 @@ _CWRU_LOADS = {
 }
 
 
-def _detect_improvement_column(df: pd.DataFrame) -> str:
-    for candidate in ("improvement", "delta_common", "delta_metric"):
+def _detect_transfer_column(df: pd.DataFrame) -> str:
+    for candidate in ("transfer_score", "transfer_common_acc", "transfer_accuracy", "transfer_hscore"):
         for col in df.columns:
             if col.startswith(candidate):
                 return col
-    raise ValueError("No improvement column found (expected improvement/delta_common/delta_metric).")
+    raise ValueError(
+        "No transfer score column found (expected transfer_score/transfer_common_acc/transfer_accuracy/transfer_hscore)."
+    )
+
+def _find_compare_csv_in_dir(compare_dir: Path, prefix: str, dataset_tag: str) -> Path:
+    if not compare_dir.exists():
+        raise FileNotFoundError(f"Compare directory does not exist: {compare_dir}")
+    matches = sorted(
+        compare_dir.glob(f"{prefix}*{dataset_tag}*.csv"),
+        key=lambda p: p.stat().st_mtime,
+    )
+    if not matches:
+        raise FileNotFoundError(
+            f"No compare CSVs found for prefix={prefix} dataset={dataset_tag} under {compare_dir}"
+        )
+    return matches[-1]
+
+
+def _resolve_csv_path(path: Path) -> Path:
+    if path.suffix:
+        return path
+    candidate = path.with_suffix(".csv")
+    if candidate.exists():
+        return candidate
+    return path
 
 
 def _merge_pairs(baseline: pd.DataFrame, improved: pd.DataFrame) -> pd.DataFrame:
@@ -103,48 +127,50 @@ def _demo_transfer_frames(dataset: str) -> tuple[pd.DataFrame, pd.DataFrame]:
     """Build small synthetic transfer tables for quick, argument-free demos."""
 
     pairs = [
-        ("A", "B", 0.05, 0.08),
-        ("A", "C", 0.01, 0.03),
-        ("B", "C", -0.02, 0.00),
-        ("C", "D", 0.04, 0.09),
+        ("A", "B", 0.78, 0.82),
+        ("A", "C", 0.74, 0.77),
+        ("B", "C", 0.69, 0.75),
+        ("C", "D", 0.72, 0.80),
     ]
-    baseline = pd.DataFrame(pairs, columns=["source", "target", "improvement", "_improved"])[
-        ["source", "target", "improvement"]
+    baseline = pd.DataFrame(pairs, columns=["source", "target", "transfer_score", "_improved"])[
+        ["source", "target", "transfer_score"]
     ]
-    improved = pd.DataFrame(pairs, columns=["source", "target", "_base", "improvement"])[
-        ["source", "target", "improvement"]
+    improved = pd.DataFrame(pairs, columns=["source", "target", "_base", "transfer_score"])[
+        ["source", "target", "transfer_score"]
     ]
 
     # Slightly tweak the numbers based on dataset for variety.
     if dataset == "battery":
-        improved["improvement"] += 0.01
-        baseline["improvement"] -= 0.005
+        improved["transfer_score"] += 0.01
+        baseline["transfer_score"] -= 0.005
 
     return baseline, improved
 
 def plot_transfer_comparison(df: pd.DataFrame, dataset: str, out_dir: Path) -> None:
     out_dir.mkdir(parents=True, exist_ok=True)
-    imp_col_base = _detect_improvement_column(df.filter(regex="_base$", axis=1)).replace("_base", "")
-    imp_col_improved = imp_col_base + "_improved"
-    imp_col_base_full = imp_col_base + "_base"
+    score_col_base = _detect_transfer_column(df.filter(regex="_base$", axis=1)).replace("_base", "")
+    score_col_improved = score_col_base + "_improved"
+    score_col_base_full = score_col_base + "_base"
 
     df = df.copy()
     if dataset == "cwru":
-        df = df.dropna(subset=[imp_col_base_full, imp_col_improved])
+        df[score_col_base_full] = pd.to_numeric(df[score_col_base_full], errors="coerce")
+        df[score_col_improved] = pd.to_numeric(df[score_col_improved], errors="coerce")
+        df = df.dropna(subset=[score_col_base_full, score_col_improved])
         if df.empty:
             raise ValueError("No CWRU transfer results found after filtering empty transfers.")
     df["pair"] = _make_pair_label(zip(df["source"], df["target"]), dataset)
-    df["delta"] = df[imp_col_improved] - df[imp_col_base_full]
+    df["delta"] = df[score_col_improved] - df[score_col_base_full]
 
     # --- paired bar plot ---
     plt.figure(figsize=(10, 6))
     x = range(len(df))
     width = 0.4
-    plt.bar([i - width / 2 for i in x], df[imp_col_base_full] * 100, width=width, label="Baseline")
-    plt.bar([i + width / 2 for i in x], df[imp_col_improved] * 100, width=width, label="Improved")
+    plt.bar([i - width / 2 for i in x], df[score_col_base_full] * 100, width=width, label="Baseline")
+    plt.bar([i + width / 2 for i in x], df[score_col_improved] * 100, width=width, label="Improved")
     plt.xticks(ticks=list(x), labels=df["pair"], rotation=45, ha="right")
-    plt.ylabel("Improvement (%)", fontweight="bold")
-    plt.title(f"{dataset}: per-transfer improvement comparison", fontweight="bold")
+    plt.ylabel("Accuracy (%)", fontweight="bold")
+    plt.title(f"{dataset}: per-transfer performance comparison", fontweight="bold")
     plt.legend()
     plt.tight_layout()
     paired_path = out_dir / f"{dataset}_transfer_comparison.png"
@@ -158,7 +184,7 @@ def plot_transfer_comparison(df: pd.DataFrame, dataset: str, out_dir: Path) -> N
     plt.bar(ordered["pair"], ordered["delta"] * 100, color="seagreen")
     plt.axhline(0, color="black", linewidth=0.8)
     plt.xticks(rotation=45, ha="right")
-    plt.ylabel("Δ Improved – Baseline (%)", fontweight="bold")
+    plt.ylabel("Δ Improved – Baseline (score %)", fontweight="bold")
     plt.title(f"{dataset}: per-transfer gain/loss (ablation)", fontweight="bold")
     for i, v in enumerate(ordered["delta"] * 100):
         plt.text(i, v + (0.4 if v >= 0 else -0.6), f"{v:+.2f}", ha="center", va="bottom", fontsize=8)
@@ -186,6 +212,15 @@ def main() -> None:
     parser.add_argument("--run_dir", type=Path, default=None, help="Optional llm_run_* directory to use.")
     parser.add_argument("--baseline", type=Path, default=None, help="CSV with baseline transfer results.")
     parser.add_argument("--improved", type=Path, default=None, help="CSV with improved/LLM transfer results.")
+    parser.add_argument(
+        "--results_file",
+        type=Path,
+        default=None,
+        help=(
+            "CSV path for the improved/ablation results. If set, the baseline defaults to a "
+            "deterministic_cnn_summary CSV in the same compare directory."
+        ),
+    )
     parser.add_argument("--demo", action="store_true", help="Run with synthetic data instead of CSV inputs.")
     parser.add_argument("--out_dir", type=Path, default=Path("figures"), help="Directory to save plots and CSV.")
     args = parser.parse_args()
@@ -199,7 +234,19 @@ def main() -> None:
 
     if args.demo:
         base_df, imp_df = _demo_transfer_frames(args.dataset)
+        
     else:
+        if args.results_file is not None and improved_path is None:
+            improved_path = _resolve_csv_path(args.results_file)
+            compare_dir = improved_path.parent
+            if compare_dir.name != "compare" and (compare_dir / "compare").exists():
+                compare_dir = compare_dir / "compare"
+            if baseline_path is None:
+                baseline_path = _find_compare_csv_in_dir(
+                    compare_dir,
+                    "deterministic_cnn_summary",
+                    dataset_tag,
+                )
         if baseline_path is None:
             baseline_path = find_latest_compare_csv(
                 args.checkpoint_root,
@@ -214,8 +261,8 @@ def main() -> None:
                 dataset_tag,
                 run_dir=args.run_dir,
             )
-        base_df = pd.read_csv(baseline_path)
-        imp_df = pd.read_csv(improved_path)
+        base_df = pd.read_csv(_resolve_csv_path(baseline_path))
+        imp_df = pd.read_csv(_resolve_csv_path(improved_path))
     merged = _merge_pairs(base_df, imp_df)
     plot_transfer_comparison(merged, args.dataset, args.out_dir)
 
