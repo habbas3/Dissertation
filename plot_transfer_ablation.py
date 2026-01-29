@@ -51,28 +51,6 @@ def _detect_transfer_column(df: pd.DataFrame) -> str:
         "No transfer score column found (expected transfer_score/transfer_common_acc/transfer_accuracy/transfer_hscore)."
     )
 
-def _find_compare_csv_in_dir(compare_dir: Path, prefix: str, dataset_tag: str) -> Path:
-    if not compare_dir.exists():
-        raise FileNotFoundError(f"Compare directory does not exist: {compare_dir}")
-    matches = sorted(
-        compare_dir.glob(f"{prefix}*{dataset_tag}*.csv"),
-        key=lambda p: p.stat().st_mtime,
-    )
-    if not matches:
-        raise FileNotFoundError(
-            f"No compare CSVs found for prefix={prefix} dataset={dataset_tag} under {compare_dir}"
-        )
-    return matches[-1]
-
-
-def _resolve_csv_path(path: Path) -> Path:
-    if path.suffix:
-        return path
-    candidate = path.with_suffix(".csv")
-    if candidate.exists():
-        return candidate
-    return path
-
 
 def _merge_pairs(baseline: pd.DataFrame, improved: pd.DataFrame) -> pd.DataFrame:
     required_cols = {"source", "target"}
@@ -201,6 +179,10 @@ def plot_transfer_comparison(df: pd.DataFrame, dataset: str, out_dir: Path) -> N
 
 
 def main() -> None:
+    default_results_file = Path(
+        "/Users/moondiab/Documents/Dissertation/UDTL_Lable_Inconsistent-main/checkpoint/"
+        "llm_run_20260126_213942/compare/cycles_5_summary_0128_023915_CWRU_inconsistent"
+    )
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
         "--dataset",
@@ -215,7 +197,7 @@ def main() -> None:
     parser.add_argument(
         "--results_file",
         type=Path,
-        default=None,
+        default=default_results_file,
         help=(
             "CSV path for the improved/ablation results. If set, the baseline defaults to a "
             "deterministic_cnn_summary CSV in the same compare directory."
@@ -232,39 +214,46 @@ def main() -> None:
     improved_path = getattr(args, "improved", None)
     dataset_tag = "CWRU_inconsistent" if args.dataset == "cwru" else "Battery_inconsistent"
 
-    if args.demo:
-        base_df, imp_df = _demo_transfer_frames(args.dataset)
-        
-    else:
-        if args.results_file is not None and improved_path is None:
-            improved_path = _resolve_csv_path(args.results_file)
-            compare_dir = improved_path.parent
-            if compare_dir.name != "compare" and (compare_dir / "compare").exists():
-                compare_dir = compare_dir / "compare"
+    try:
+        if args.demo:
+            base_df, imp_df = _demo_transfer_frames(args.dataset)
+        else:
+            if args.results_file is not None and improved_path is None:
+                improved_path = _resolve_csv_path(args.results_file)
+                if not improved_path.exists():
+                    print(f"Results file not found: {improved_path}. Exiting without plotting.")
+                    return
+                compare_dir = improved_path.parent
+                if compare_dir.name != "compare" and (compare_dir / "compare").exists():
+                    compare_dir = compare_dir / "compare"
+                if baseline_path is None:
+                    baseline_path = _find_compare_csv_in_dir(
+                        compare_dir,
+                        "deterministic_cnn_summary",
+                        dataset_tag,
+                    )
+                    
             if baseline_path is None:
-                baseline_path = _find_compare_csv_in_dir(
-                    compare_dir,
+                baseline_path = find_latest_compare_csv(
+                    args.checkpoint_root,
                     "deterministic_cnn_summary",
                     dataset_tag,
+                    run_dir=args.run_dir,
                 )
-        if baseline_path is None:
-            baseline_path = find_latest_compare_csv(
-                args.checkpoint_root,
-                "deterministic_cnn_summary",
-                dataset_tag,
-                run_dir=args.run_dir,
-            )
-        if improved_path is None:
-            improved_path = find_latest_compare_csv(
-                args.checkpoint_root,
-                "llm_pick_summary",
-                dataset_tag,
-                run_dir=args.run_dir,
-            )
+            if improved_path is None:
+                improved_path = find_latest_compare_csv(
+                    args.checkpoint_root,
+                    "llm_pick_summary",
+                    dataset_tag,
+                    run_dir=args.run_dir,
+                )
         base_df = pd.read_csv(_resolve_csv_path(baseline_path))
         imp_df = pd.read_csv(_resolve_csv_path(improved_path))
-    merged = _merge_pairs(base_df, imp_df)
-    plot_transfer_comparison(merged, args.dataset, args.out_dir)
+        merged = _merge_pairs(base_df, imp_df)
+        plot_transfer_comparison(merged, args.dataset, args.out_dir)
+    except (FileNotFoundError, ValueError, pd.errors.EmptyDataError) as exc:
+        print(f"Transfer ablation failed safely: {exc}")
+        return
 
 
 if __name__ == "__main__":
