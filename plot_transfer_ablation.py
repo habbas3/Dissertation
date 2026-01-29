@@ -142,18 +142,49 @@ def _resolve_csv_path(path: Path | str | None) -> Path:
     raise FileNotFoundError(f"CSV path not found: {candidate}")
 
 
-def _find_compare_csv_in_dir(compare_dir: Path, prefix: str, dataset_tag: str) -> Path:
+def _infer_prefix_from_path(path: Path, dataset_tag: str) -> str:
+    stem = path.stem
+    tag_suffix = f"_{dataset_tag}"
+    if stem.endswith(tag_suffix):
+        stem = stem[: -len(tag_suffix)]
+    parts = stem.split("_")
+    while parts and parts[-1].isdigit():
+        parts.pop()
+    return "_".join(parts) if parts else stem
+
+
+def _find_baseline_csv(
+    compare_dir: Path,
+    dataset_tag: str,
+    improved_path: Path | None = None,
+    preferred_prefixes: Iterable[str] | None = None,
+) -> Path:
     if not compare_dir.exists():
         raise FileNotFoundError(f"Compare directory not found: {compare_dir}")
+    preferred_prefixes = list(preferred_prefixes or [])
+    preferred_prefixes = [p for p in preferred_prefixes if p]
+
+    for prefix in preferred_prefixes:
+        matches = sorted(
+            compare_dir.glob(f"{prefix}*{dataset_tag}*.csv"),
+            key=lambda p: p.stat().st_mtime,
+        )
+        if improved_path is not None:
+            matches = [p for p in matches if p.resolve() != improved_path.resolve()]
+        if matches:
+            return matches[-1]
+
     matches = sorted(
-        compare_dir.glob(f"{prefix}*{dataset_tag}*.csv"),
+        compare_dir.glob(f"*{dataset_tag}*.csv"),
         key=lambda p: p.stat().st_mtime,
     )
-    if not matches:
-        raise FileNotFoundError(
-            f"No compare CSVs found in {compare_dir} for prefix={prefix} dataset={dataset_tag}."
-        )
-    return matches[-1]
+    if improved_path is not None:
+        matches = [p for p in matches if p.resolve() != improved_path.resolve()]
+    if matches:
+        return matches[-1]
+    raise FileNotFoundError(
+        f"No baseline compare CSVs found in {compare_dir} for dataset={dataset_tag}."
+    )
 
 
 
@@ -258,13 +289,15 @@ def main() -> None:
            improved_path = _resolve_csv_path(args.results_file)
            compare_dir = improved_path.parent
            if compare_dir.name != "compare" and (compare_dir / "compare").exists():
-               compare_dir = compare_dir / "compare"
-                    
+                compare_dir = compare_dir / "compare"
+
            if baseline_path is None:
-                baseline_path = _find_compare_csv_in_dir(
+                inferred_prefix = _infer_prefix_from_path(improved_path, dataset_tag)
+                baseline_path = _find_baseline_csv(
                     compare_dir,
-                    "deterministic_cnn_summary",
                     dataset_tag,
+                    improved_path=improved_path,
+                    preferred_prefixes=["deterministic_cnn_summary", inferred_prefix],
                     
                 )
         if baseline_path is None:
