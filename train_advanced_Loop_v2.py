@@ -969,7 +969,7 @@ def _resolve_compare_cycles(args, num_summary: Optional[dict] = None) -> int:
     if explicit is not None and explicit > 0:
         reference = int(explicit)
     else:
-        reference = 15
+        reference = 30
 
     cycle_hint = None
     if num_summary:

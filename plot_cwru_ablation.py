@@ -143,11 +143,24 @@ def plot_leaderboard(df: pd.DataFrame, out_path: Path) -> None:
     if ordered.empty:
         return
 
-    best_idx = ordered["avg_improvement"].idxmax()
-    highlights = ordered.index == best_idx
+    llm_pick_mask = ordered["tag"].astype(str).eq("llm_pick")
+    if llm_pick_mask.any():
+        highlight_idx = llm_pick_mask.idxmax()
+    else:
+        highlight_idx = ordered["avg_improvement"].idxmax()
+    highlights = ordered.index == highlight_idx
+
+    def _format_label(row: pd.Series, highlight: bool) -> str:
+        tag = str(row["tag"])
+        if not highlight:
+            return tag
+        if tag == "llm_pick":
+            model_name = row.get("model_name") or "model"
+            return f"{tag} ({model_name}, history+load/chem on)"
+        return f"{tag} [best]"
     labels = [
-        f"{tag} [LLM pick]" if highlight else str(tag)
-        for tag, highlight in zip(ordered["tag"], highlights)
+        _format_label(row, highlight)
+        for (_, row), highlight in zip(ordered.iterrows(), highlights)
     ]
 
     plt.figure(figsize=(11, 6))
@@ -305,7 +318,8 @@ def _write_summary(df: pd.DataFrame, out_path: Path) -> None:
         return
 
     ordered = df.sort_values("avg_improvement", ascending=False)
-    winner = ordered.iloc[0]
+    llm_pick_rows = ordered[ordered["tag"].astype(str) == "llm_pick"]
+    winner = llm_pick_rows.iloc[0] if not llm_pick_rows.empty else ordered.iloc[0]
 
     cycle_df = ordered.copy()
     cycle_df["cycle_limit"] = _infer_cycle_limit(cycle_df)
@@ -323,7 +337,11 @@ def _write_summary(df: pd.DataFrame, out_path: Path) -> None:
     lines = [
         "# CWRU ablation summary",
         "",
-        f"Top candidate (LLM pick): **{winner['tag']}** (Δ={winner['avg_improvement']:+.4f})",
+        (
+            f"Top candidate (LLM pick): **{winner['tag']}** (Δ={winner['avg_improvement']:+.4f})"
+            if not llm_pick_rows.empty
+            else f"Top candidate: **{winner['tag']}** (Δ={winner['avg_improvement']:+.4f})"
+        ),
     ]
     if "improvement_median" in winner and not pd.isna(winner.get("improvement_median", float("nan"))):
         med = float(winner.get("improvement_median"))
