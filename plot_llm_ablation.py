@@ -55,13 +55,18 @@ def plot_leaderboard(df: pd.DataFrame, out_path: Path) -> None:
     grouped["group_order"] = grouped["group"].apply(
         lambda group: group_order.index(group) if group in group_order else len(group_order)
     )
-    ordered = grouped.sort_values(["group_order", "avg_improvement"], ascending=[True, False])
+    grouped["cycle_order"] = grouped["cycle_limit"].fillna(float("inf"))
+    grouped["order_within_group"] = grouped.apply(
+        lambda row: row["cycle_order"] if row["group"] == "cycle limits" else -row["avg_improvement"],
+        axis=1,
+    )
+    ordered = grouped.sort_values(["group_order", "order_within_group"], ascending=[True, True])
     plt.figure(figsize=(11, 6))
     ax = plt.gca()
     yerr = None
     if "improvement_ci95" in ordered.columns:
         try:
-            yerr = ordered["improvement_ci95"].fillna(0.0).to_list()
+            yerr = (ordered["improvement_ci95"].fillna(0.0) * 100.0).to_list()
         except Exception:
             yerr = None
     palette = {
@@ -73,7 +78,8 @@ def plot_leaderboard(df: pd.DataFrame, out_path: Path) -> None:
     }
     colors = [palette.get(group, "#999999") for group in ordered["group"]]
     x_positions = list(range(len(ordered)))
-    ax.bar(x_positions, ordered["avg_improvement"], color=colors, yerr=yerr, capsize=4)
+    avg_improvement_pct = ordered["avg_improvement"] * 100.0
+    ax.bar(x_positions, avg_improvement_pct, color=colors, yerr=yerr, capsize=4)
     group_bounds: list[tuple[int, int, str]] = []
     start = 0
     for idx, group in enumerate(ordered["group"]):
@@ -103,15 +109,15 @@ def plot_leaderboard(df: pd.DataFrame, out_path: Path) -> None:
     for tick_label, highlight in zip(ax.get_xticklabels(), highlights):
         if highlight:
             tick_label.set_fontweight("bold")
-    plt.ylabel("Avg. improvement vs. baseline")
+    plt.ylabel("Avg. improvement vs. baseline (%)")
     plt.title("LLM comparison + ablation leaderboard")
     for i, (_, row) in enumerate(ordered.iterrows()):
-        v = row["avg_improvement"]
+        v = row["avg_improvement"] * 100.0
         n = row.get("improvement_count")
-        note = f"{v:+.3f}"
+        note = f"{v:+.2f}%"
         if pd.notna(n):
             note += f"\nn={int(n)}"
-        plt.text(i, v + 0.001, note, ha="center", va="bottom", fontsize=8)
+        plt.text(i, v + 0.1, note, ha="center", va="bottom", fontsize=8)
     plt.tight_layout()
     plt.savefig(out_path, dpi=300)
     plt.close()
@@ -123,12 +129,13 @@ def plot_cycle_limits(df: pd.DataFrame, out_path: Path) -> None:
         return
     plt.figure(figsize=(8, 4))
     scoped = scoped.sort_values("cycle_limit")
-    plt.plot(scoped["cycle_limit"], scoped["avg_improvement"], marker="o")
+    improvement_pct = scoped["avg_improvement"] * 100.0
+    plt.plot(scoped["cycle_limit"], improvement_pct, marker="o")
     plt.xlabel("Cycle horizon exposed")
-    plt.ylabel("Avg. improvement vs. baseline")
+    plt.ylabel("Avg. improvement vs. baseline (%)")
     plt.title("Early-cycle EOL ablation")
-    for x, y in zip(scoped["cycle_limit"], scoped["avg_improvement"]):
-        plt.text(x, y, f"{y:+.3f}", ha="center", va="bottom", fontsize=8)
+    for x, y in zip(scoped["cycle_limit"], improvement_pct):
+        plt.text(x, y, f"{y:+.2f}%", ha="center", va="bottom", fontsize=8)
     plt.tight_layout()
     plt.savefig(out_path, dpi=300)
     plt.close()
@@ -161,7 +168,7 @@ def plot_pairwise_deltas(df: pd.DataFrame, out_path: Path) -> None:
     if not pairs:
         return
 
-    avg_map = df.set_index("tag")["avg_improvement"].to_dict()
+    avg_map = (df.set_index("tag")["avg_improvement"] * 100.0).to_dict()
     fig, ax = plt.subplots(figsize=(8, max(3, 0.6 * len(pairs))))
 
     y_positions = list(range(len(pairs)))
@@ -175,11 +182,12 @@ def plot_pairwise_deltas(df: pd.DataFrame, out_path: Path) -> None:
         ax.scatter([ablated], [y], color="darkorange", zorder=3, label="ablated" if y == 0 else "")
         delta = ablated - baseline
         mid = (baseline + ablated) / 2
-        ax.text(mid, y + 0.05, f"{delta:+.3f}", ha="center", va="bottom", fontsize=9)
+        ax.text(mid, y + 0.05, f"{delta:+.2f}%", ha="center", va="bottom", fontsize=9)
+
 
     ax.set_yticks(y_positions)
     ax.set_yticklabels([pair["label"] for pair in pairs])
-    ax.set_xlabel("Avg. improvement vs. baseline")
+    ax.set_xlabel("Avg. improvement vs. baseline (%)")
     ax.set_title("Baseline vs ablated pairs")
     ax.axvline(0, color="black", linewidth=0.8, linestyle="--", alpha=0.6)
     ax.legend(loc="lower right")
@@ -211,16 +219,16 @@ def _write_summary(df: pd.DataFrame, out_path: Path) -> None:
     lines = [
         "# LLM ablation summary",
         "",
-        f"Top candidate: **{winner['tag']}** (Δ={winner['avg_improvement']:+.4f})",
+        f"Top candidate: **{winner['tag']}** (Δ={winner['avg_improvement'] * 100.0:+.2f}%)",
     ]
     if "improvement_median" in winner and not pd.isna(winner.get("improvement_median", float("nan"))):
-        med = float(winner.get("improvement_median"))
+        med = float(winner.get("improvement_median")) * 100.0
         ci = winner.get("improvement_ci95")
         count = winner.get("improvement_count")
-        ci_str = f"{float(ci):+.4f}" if ci is not None and not pd.isna(ci) else "n/a"
+        ci_str = f"{float(ci) * 100.0:+.2f}%" if ci is not None and not pd.isna(ci) else "n/a"
         count_str = int(count) if count is not None and not pd.isna(count) else "?"
         lines.append(
-            f"Median Δ={med:+.4f} "
+            f"Median Δ={med:+.2f}% "
             f"(n={count_str}, ±95% CI≈{ci_str})."
         )
     if not cycle_df.empty:
@@ -228,6 +236,17 @@ def _write_summary(df: pd.DataFrame, out_path: Path) -> None:
         lines.append(f"Best cycle-limited prompt: **{int(best_cycle)} cycles**")
         if plateau_cycle:
             lines.append(f"Improvement plateau begins by **{plateau_cycle} cycles** (≤1e-3 gain vs. prior).")
+            
+    lines.extend(
+        [
+            "",
+            "Definitions:",
+            "- Δ improvement is reported as a percentage: (transfer metric − Zhao CNN baseline) × 100.",
+            "- history_on includes prior leaderboard context in the prompt; history_off is a cold-start prompt.",
+            "- cycle-limited prompts cap the LLM context to the first N cycles; hyperparameters stay locked to the",
+            "  primary LLM pick when the ablation suite is configured with locked hyperparameters.",
+        ]
+    )
 
     out_path.write_text("\n".join(lines))
     print(f"Saved ablation summary to {out_path}")

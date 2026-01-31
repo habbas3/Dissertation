@@ -23,6 +23,10 @@ _GROUP_RULES = [
     ("chemistry toggles", "chemistry_"),
 ]
 
+_DEFAULT_CWRU_RUN = Path(
+    "/Users/moondiab/Documents/Dissertation/UDTL_Lable_Inconsistent-main/checkpoint/"
+    "llm_run_20260126_213942"
+)
 
 def _find_latest_dataset_run(root: Path, dataset_tag: str) -> Path | None:
     runs = list(root.glob("llm_run_*/llm_leaderboard.csv"))
@@ -65,6 +69,52 @@ def _assign_group(tag: str) -> str:
         if key in tag:
             return group
     return "other"
+
+def _infer_improvement_column(df: pd.DataFrame) -> str | None:
+    for col in ("improvement", "delta_common", "delta_metric"):
+        if col in df.columns:
+            return col
+    return None
+
+
+def _load_compare_summaries(run_dir: Path, dataset_tag: str) -> pd.DataFrame:
+    compare_dir = run_dir / "compare"
+    if not compare_dir.exists():
+        return pd.DataFrame()
+
+    rows: list[dict] = []
+    for path in sorted(compare_dir.glob(f"*summary*{dataset_tag}*.csv")):
+        try:
+            summary = pd.read_csv(path)
+        except Exception:
+            continue
+        imp_col = _infer_improvement_column(summary)
+        if imp_col is None:
+            continue
+        improvements = pd.to_numeric(summary[imp_col], errors="coerce").dropna()
+        if improvements.empty:
+            continue
+        stem = path.stem
+        tag = stem.split("_summary")[0] if "_summary" in stem else stem
+        mean = float(improvements.mean())
+        median = float(improvements.median())
+        count = int(improvements.shape[0])
+        if count > 1:
+            ci95 = float(1.96 * improvements.std(ddof=1) / (count**0.5))
+        else:
+            ci95 = 0.0
+        rows.append(
+            {
+                "tag": tag,
+                "avg_improvement": mean,
+                "improvement_median": median,
+                "improvement_count": count,
+                "improvement_ci95": ci95,
+                "summary_csv": str(path),
+            }
+        )
+    return pd.DataFrame(rows)
+
 
 
 def _infer_cycle_limit(df: pd.DataFrame) -> pd.Series:
@@ -298,7 +348,10 @@ def main() -> None:
         "--run_dir",
         type=Path,
         default=None,
-        help="Path to an llm_run_* folder (auto-picks latest CWRU run when omitted).",
+        help=(
+            "Path to an llm_run_* folder (defaults to the latest known CWRU run, or "
+            "auto-picks the latest CWRU run when omitted)."
+        ),
     )
     parser.add_argument(
         "--checkpoint_root",
@@ -322,6 +375,8 @@ def main() -> None:
     run_dir: Path
     if args.run_dir:
         run_dir = args.run_dir
+    elif _DEFAULT_CWRU_RUN.exists():
+        run_dir = _DEFAULT_CWRU_RUN
     else:
         latest = _find_latest_dataset_run(args.checkpoint_root, args.dataset_tag)
         if latest is None:
@@ -329,14 +384,21 @@ def main() -> None:
         run_dir = latest
 
     leaderboard_path = run_dir / "llm_leaderboard.csv"
-    if not leaderboard_path.exists():
-        raise SystemExit(f"Missing leaderboard at {leaderboard_path}")
+    if leaderboard_path.exists():
+        df = pd.read_csv(leaderboard_path)
+        if "summary_csv" in df.columns:
+            df = df[df["summary_csv"].astype(str).str.contains(args.dataset_tag, na=False)].copy()
+    else:
+        df = _load_compare_summaries(run_dir, args.dataset_tag)
+        if df.empty:
+            raise SystemExit(
+                f"Missing leaderboard at {leaderboard_path} and no compare summaries found in {run_dir / 'compare'}."
+            )
+        print("Leaderboard missing; using compare summary CSVs for ablation aggregation.")
 
-    df = pd.read_csv(leaderboard_path)
-    if "summary_csv" in df.columns:
-        df = df[df["summary_csv"].astype(str).str.contains(args.dataset_tag, na=False)].copy()
+    
     if df.empty:
-        raise SystemExit(f"Leaderboard contains no {args.dataset_tag} rows to plot.")
+        raise SystemExit(f"No {args.dataset_tag} rows available to plot.")
 
     ablation_records = _load_ablation_json(run_dir)
     if ablation_records:
