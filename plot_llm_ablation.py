@@ -243,6 +243,7 @@ def _write_summary(df: pd.DataFrame, out_path: Path) -> None:
             "Definitions:",
             "- Δ improvement is reported as a percentage: (transfer metric − Zhao CNN baseline) × 100.",
             "- history_on includes prior leaderboard context in the prompt; history_off is a cold-start prompt.",
+            "- chemistry_off removes battery chemistry hints; load_off removes CWRU load/HP/rpm transfer metadata.",
             "- cycle-limited prompts cap the LLM context to the first N cycles; hyperparameters stay locked to the",
             "  primary LLM pick when the ablation suite is configured with locked hyperparameters.",
         ]
@@ -281,7 +282,7 @@ def main():
         raise SystemExit(f"Missing leaderboard at {leaderboard_path}")
 
     df = pd.read_csv(leaderboard_path)
-    # Ablation deltas are already computed vs. the llm_pick baseline, so drop it from plots.
+    # Ablation deltas are computed vs. the Zhao CNN baseline; drop llm_pick for readability.
     df = df[df["tag"].astype(str) != "llm_pick"].copy()
     if df.empty:
         raise SystemExit("Leaderboard only contains llm_pick; no ablation rows to plot.")

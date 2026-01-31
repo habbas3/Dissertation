@@ -158,7 +158,7 @@ def reset_seed(seed=SEED):
 
 def parse_args():
     parser = argparse.ArgumentParser(description='Train')
-    parser.add_argument('--data_name', type=str, default='CWRU_inconsistent',
+    parser.add_argument('--data_name', type=str, default='Battery_inconsistent',
                         choices=['Battery_inconsistent', 'CWRU_inconsistent'])
     parser.add_argument('--data_dir', type=str, default='./my_datasets/Battery',
                         help='Root directory for datasets')
@@ -259,8 +259,11 @@ def parse_args():
             "Accuracy is the default to keep transfer scores aligned with the observed confusion-matrix accuracy."
         ),
     )
-    parser.add_argument('--skip_retry', action='store_true',
-                        help='Skip retry fine-tunes when transfer underperforms the Zhao CNN baseline')
+    parser.add_argument(
+        '--skip_retry',
+        action='store_true',
+        help='Deprecated (retries disabled for fairness comparisons).',
+    )
     # --- LLM meta-selection flags (enabled by default; add --no-* to disable) ---
     parser.add_argument('--auto_select', dest='auto_select', action='store_true', default=True,
                         help='Use an LLM to choose model/config from data context (default: on)')
@@ -938,15 +941,25 @@ def _parse_cycle_limits(raw: str, num_summary: dict, cycles_per_file: int) -> li
                 cycle_limits.append(val)
         except Exception:
             continue
+        
+    def _unique_in_order(values: list[int]) -> list[int]:
+        seen: set[int] = set()
+        ordered: list[int] = []
+        for value in values:
+            if value <= 0 or value in seen:
+                continue
+            ordered.append(value)
+            seen.add(value)
+        return ordered
 
     if cycle_limits:
-        return sorted(set(cycle_limits))
+        return _unique_in_order(cycle_limits)
 
     cycle_hint = (num_summary.get("cycle_stats") or {}).get("target_train_cycles") or 0
-    defaults = {5, 15, 30, 50, 100, int(cycles_per_file)}
+    defaults = [5, 15, 30, 50, 100, int(cycles_per_file)]
     if cycle_hint:
-        defaults.add(int(min(cycle_hint, max(defaults))))
-    return sorted([v for v in defaults if v > 0])
+        defaults.append(int(min(cycle_hint, max(defaults))))
+    return _unique_in_order(defaults)
 
 
 def _resolve_compare_cycles(args, num_summary: Optional[dict] = None) -> int:
@@ -1552,107 +1565,12 @@ def run_battery_experiments(args):
             final_model_label = 'transfer'
             selection_note = ''
             
-            skip_retry = getattr(args, "skip_retry", False)
-            if transfer_score <= baseline_score and not skip_retry:
-                print(f"♻️ Transfer lagged Zhao CNN baseline for {src_name} → {tgt_name}; launching target-focused fine-tune retry.")
+            if transfer_score <= baseline_score:
+                print(
+                    f"⚠️ Transfer below Zhao CNN baseline for {src_name} → {tgt_name}; "
+                    "no retries or booster passes run (fair single-shot evaluation)."
+                )
                 
-                retry_args = argparse.Namespace(**vars(transfer_args))
-                retry_args.lr = max(1e-5, transfer_args.lr * 0.5)
-                retry_args.max_epoch = int(max(transfer_args.max_epoch, 40) * 1.25)
-                retry_args.reinit_head = False
-                retry_args.pretrained_model_path = os.path.join(ft_dir, "best_model.pth")
-                retry_args.lambda_src_warmup = 0
-                retry_args.lambda_src_decay_patience = max(1, getattr(transfer_args, 'lambda_src_decay_patience', 5) // 2)
-                retry_dir = os.path.join(ft_dir, "retry_target_focus")
-                os.makedirs(retry_dir, exist_ok=True)
-                model_retry, _, _, _, tr_loader_retry = run_experiment(
-                    retry_args,
-                    retry_dir,
-                    override_data=transfer_override,
-                )
-                retry_labels, retry_preds = evaluate_model(model_retry, tr_loader_retry)
-                r_common, r_out, r_h = compute_common_outlier_metrics(retry_labels, retry_preds, num_known)
-                r_acc = _safe_accuracy(retry_labels, retry_preds)
-                retry_stats = getattr(retry_args, "dataset_cycle_stats", {})
-                retry_score = {
-                    "accuracy": r_acc,
-                    "common": r_common,
-                    "hscore": r_h,
-                    "overall": (r_common + r_out) / 2.0,
-                }[metric_key]
-
-                if retry_score > transfer_score:
-                    print(f"✅ Retry fine-tune surpassed initial transfer ({retry_score:.4f} vs {transfer_score:.4f}).")
-                    model_ft = model_retry
-                    tr_labels, tr_preds = retry_labels, retry_preds
-                    t_common, t_out, t_h = r_common, r_out, r_h
-                    transfer_acc_metric = _safe_accuracy(tr_labels, tr_preds)
-                    transfer_score = retry_score
-                    transfer_stats = retry_stats or transfer_stats
-                else:
-                    print(f"⚠️ Retry fine-tune did not exceed initial transfer ({retry_score:.4f} ≤ {transfer_score:.4f}).")
-
-                metric_lookup = {
-                    "accuracy": (transfer_acc_metric, baseline_acc_metric),
-                    "common": (t_common, b_common),
-                    "hscore": (t_h, b_h),
-                    "overall": ((t_common + t_out) / 2.0, (b_common + b_out) / 2.0),
-                }
-                transfer_score, baseline_score = metric_lookup[metric_key]
-                improvement = transfer_score - baseline_score
-                print(
-                    f"📊 Updated {src_name} → {tgt_name}: Zhao-baseline({metric_key})={baseline_score:.4f}, "
-                    f"transfer({metric_key})={transfer_score:.4f}, improvement={improvement:+.4f}"
-                )
-                if transfer_score <= baseline_score:
-                    print(f"⚠️ Transfer remains below Zhao CNN baseline for {src_name} → {tgt_name} even after retry.")
-            elif transfer_score <= baseline_score and skip_retry:
-                print(f"⚠️ Transfer below Zhao CNN baseline for {src_name} → {tgt_name}; retry skipped (--skip_retry).")
-                    
-            if cross_family and improvement <= 0.02:
-                print(
-                    "🔧 Cross-family transfer still marginal — launching a target-heavy booster pass with minimal source loss."
-                )
-                boost_args = argparse.Namespace(**vars(transfer_args))
-                boost_args.lambda_src = 0.1
-                boost_args.lambda_src_decay_patience = 1
-                boost_args.lambda_src_warmup = 0
-                boost_args.max_epoch = int(max(boost_args.max_epoch, 60) * 1.15)
-                boost_args.lr = max(1e-5, boost_args.lr * 0.7)
-                boost_dir = os.path.join(ft_dir, "target_boost")
-                os.makedirs(boost_dir, exist_ok=True)
-                model_boost, _, _, _, boost_loader = run_experiment(
-                    boost_args,
-                    boost_dir,
-                    override_data=transfer_override,
-                )
-                boost_labels, boost_preds = evaluate_model(model_boost, boost_loader)
-                b_common_new, b_out_new, b_h_new = compute_common_outlier_metrics(
-                    boost_labels, boost_preds, num_known
-                )
-                b_acc_new = _safe_accuracy(boost_labels, boost_preds)
-                boost_score = {
-                    "accuracy": b_acc_new,
-                    "common": b_common_new,
-                    "hscore": b_h_new,
-                    "overall": (b_common_new + b_out_new) / 2.0,
-                }[metric_key]
-
-                if boost_score > transfer_score:
-                    print(
-                        f"✅ Target-heavy booster improved transfer ({boost_score:.4f} vs {transfer_score:.4f}); keeping boosted model."
-                    )
-                    model_ft = model_boost
-                    tr_labels, tr_preds = boost_labels, boost_preds
-                    t_common, t_out, t_h = b_common_new, b_out_new, b_h_new
-                    transfer_acc_metric = baseline_acc_metric
-                    transfer_score = boost_score
-                    transfer_stats = getattr(boost_args, "dataset_cycle_stats", {}) or transfer_stats
-                    improvement = transfer_score - baseline_score
-                else:
-                    print(
-                        f"⚠️ Booster pass failed to clear previous transfer ({boost_score:.4f} ≤ {transfer_score:.4f}); keeping prior weights."
-                    )
                     
             if transfer_score <= baseline_score:
                 final_model_label = 'baseline'
@@ -1746,14 +1664,7 @@ def run_battery_experiments(args):
                 "note": selection_note,
             })
             
-            try:
-                del model_retry
-            except UnboundLocalError:
-                pass
-            try:
-                del model_boost
-            except UnboundLocalError:
-                pass
+            
             del model_ft
             del model_bl
             del eval_loader
@@ -2116,67 +2027,13 @@ def run_cwru_experiments(args):
             final_model_label = 'transfer'
             selection_note = ''
             
-            skip_retry = getattr(args, "skip_retry", False)
-            if transfer_score <= baseline_score and not skip_retry:
-                print(
-                    f"♻️ Transfer lagged Zhao CNN baseline for {src_str} → {tgt_str}; retrying with stronger target emphasis."
-                )
-                retry_args = argparse.Namespace(**vars(transfer_args))
-                retry_args.lr = max(1e-5, transfer_args.lr * 0.5)
-                retry_args.max_epoch = int(max(transfer_args.max_epoch, 40) * 1.25)
-                retry_args.reinit_head = False
-                retry_args.pretrained_model_path = os.path.join(ft_dir, "best_model.pth")
-                retry_args.lambda_src_warmup = 0
-                retry_args.lambda_src_decay_patience = max(1, getattr(transfer_args, 'lambda_src_decay_patience', 5) // 2)
-                retry_dir = os.path.join(ft_dir, "retry_target_focus")
-                os.makedirs(retry_dir, exist_ok=True)
-                model_retry, _, _, _, retry_loader = run_experiment(
-                    retry_args,
-                    retry_dir,
-                    override_data=transfer_override,
-                )
-                retry_labels, retry_preds = evaluate_model(model_retry, retry_loader)
-                r_common, r_out, r_h = compute_common_outlier_metrics(retry_labels, retry_preds, num_known)
-                r_acc = _safe_accuracy(retry_labels, retry_preds)
-                retry_metric = {
-                    "accuracy": r_acc,
-                    "common": r_common,
-                    "hscore": r_h,
-                    "overall": (r_common + r_out) / 2.0,
-                }[metric_key]
-
-                if retry_metric > transfer_score:
-                    print(
-                        f"✅ Retry fine-tune surpassed initial transfer ({retry_metric:.4f} vs {transfer_score:.4f})."
-                    )
-                    model_ft = model_retry
-                    tr_labels, tr_preds = retry_labels, retry_preds
-                    t_common, t_out, t_h = r_common, r_out, r_h
-                    transfer_acc_metric = _safe_accuracy(tr_labels, tr_preds)
-                    transfer_score = retry_metric
-                else:
-                    print(
-                        f"⚠️ Retry fine-tune did not exceed baseline-aligned score ({retry_metric:.4f} ≤ {transfer_score:.4f})."
-                    )
-                    
-                metric_lookup = {
-                    "accuracy": (transfer_acc_metric, baseline_acc_metric),
-                    "common": (t_common, b_common),
-                    "hscore": (t_h, b_h),
-                    "overall": ((t_common + t_out) / 2.0, (b_common + b_out) / 2.0),
-                }
-                transfer_score, baseline_score = metric_lookup[metric_key]
-                improvement = transfer_score - baseline_score
+            if transfer_score <= baseline_score:
                 
                 print(
-                    f"📊 Updated {src_str} → {tgt_str}: Zhao-baseline({metric_key})={baseline_score:.4f}, "
-                    f"transfer({metric_key})={transfer_score:.4f}, improvement={improvement:+.4f}"
+                    f"⚠️ Transfer below Zhao CNN baseline for {src_str} → {tgt_str}; "
+                    "no retries or booster passes run (fair single-shot evaluation)."
                 )
-                if transfer_score <= baseline_score:
-                    print(f"⚠️ Transfer remains below Zhao CNN baseline for {src_str} → {tgt_str} even after retry.")
-                    
-            elif transfer_score <= baseline_score and skip_retry:
-                print(f"⚠️ Transfer below Zhao CNN baseline for {src_str} → {tgt_str}; retry skipped (--skip_retry).")
+                
             
             if transfer_score <= baseline_score:
                 final_model_label = 'baseline'
@@ -2271,10 +2128,7 @@ def run_cwru_experiments(args):
                 }
             )
             
-            try:
-                del model_retry
-            except UnboundLocalError:
-                pass
+            
             del model_ft
             del model_bl
             del eval_loader
@@ -2421,6 +2275,7 @@ def main():
         cycle_ablation_cfgs = []
         coldstart_cfg = None
         chemistry_off_cfg = None
+        load_off_cfg = None
         if args.llm_ablation:
             raw_limits = (getattr(args, "ablation_cycle_limits", "") or "")
             cycle_limits: list[int] = []
@@ -2453,6 +2308,8 @@ def main():
                 lock_hyperparams=True,
                 chemistry_feedback=True,
                 compare_chemistry=True,
+                include_transfer_context=True,
+                compare_transfer_context=True,
             )
 
             for record in ablation_records:
@@ -2460,6 +2317,8 @@ def main():
                     coldstart_cfg = record.get("config")
                 if record.get("tag") == "chemistry_off":
                     chemistry_off_cfg = record.get("config")
+                if record.get("tag") == "load_off":
+                    load_off_cfg = record.get("config")
                 if record.get("cycle_limit"):
                     cycle_ablation_cfgs.append(record)
 
@@ -2479,12 +2338,7 @@ def main():
         reference_cycles = _resolve_compare_cycles(args, locals().get("num_summary"))
 
         def _configure_llm_prompting(target_args, tag: str) -> None:
-            if tag in {"llm_pick", "chemistry_on", "chemistry_off", "history_off"} or tag.startswith("cycles_"):
-                target_args.llm_per_transfer = True
-                target_args.llm_allow_history = tag != "history_off"
-                target_args.llm_chemistry_feedback = tag != "chemistry_off"
-            else:
-                target_args.llm_per_transfer = False
+            target_args.llm_per_transfer = False
 
         def _apply_non_cycle_budget(target_args) -> None:
             _apply_cycle_budget(target_args, reference_cycles)
@@ -2503,10 +2357,6 @@ def main():
         # 1) The LLM pick (already applied to args)
         candidates.append(("llm_pick", copy.deepcopy(args)))
         
-        if args.llm_cfg:
-            chem_on = _apply_llm_cfg_to_args(args.llm_cfg, copy.deepcopy(base_args))
-            chem_on.tag = (getattr(chem_on, "tag", "") + "_chemistry_on_" + args.llm_cfg_stamp).strip("_")
-            candidates.append(("chemistry_on", chem_on))
         
         
         if coldstart_cfg:
@@ -2519,43 +2369,10 @@ def main():
             chem_args.tag = (getattr(chem_args, "tag", "") + "_chemistry_off_" + args.llm_cfg_stamp).strip("_")
             candidates.append(("chemistry_off", chem_args))
 
-        for record in cycle_ablation_cfgs:
-            cyc_limit = int(record.get("cycle_limit", 0) or 0)
-            if cyc_limit <= 0:
-                continue
-            cyc_args = _apply_llm_cfg_to_args(record.get("config", {}), copy.deepcopy(base_args))
-            _apply_cycle_budget(cyc_args, cyc_limit)
-            cyc_args.tag = (getattr(cyc_args, "tag", "") + f"_cycles{cyc_limit}_" + args.llm_cfg_stamp).strip("_")
-            candidates.append((f"cycles_{cyc_limit}", cyc_args))
-
-        if args.llm_cfg.get("openmax"):
-            no_open = _apply_llm_cfg_to_args(args.llm_cfg, copy.deepcopy(base_args))
-            no_open.model_name = "cnn_features_1d_sa" if args.llm_cfg.get("self_attention") else "cnn_features_1d"
-            no_open.method = 'sngp' if args.llm_cfg.get("sngp") else base_args.method
-            no_open.tag = (getattr(no_open, "tag", "") + "_no_openmax_" + args.llm_cfg_stamp).strip("_")
-            candidates.append(("ablate_openmax_off", no_open))
-
-        if args.llm_cfg.get("self_attention"):
-            sa_off = _apply_llm_cfg_to_args(args.llm_cfg, copy.deepcopy(base_args))
-            if sa_off.model_name.endswith("_sa"):
-                sa_off.model_name = sa_off.model_name.replace("_sa", "")
-            elif sa_off.model_name.lower() == "wideresnet_sa":
-                sa_off.model_name = "WideResNet"
-            sa_off.tag = (getattr(sa_off, "tag", "") + "_no_sa_" + args.llm_cfg_stamp).strip("_")
-            candidates.append(("ablate_sa_off", sa_off))
-
-        if args.llm_cfg.get("sngp"):
-            no_sngp = _apply_llm_cfg_to_args(args.llm_cfg, copy.deepcopy(base_args))
-            no_sngp.method = "deterministic"
-            no_sngp.tag = (getattr(no_sngp, "tag", "") + "_no_sngp_" + args.llm_cfg_stamp).strip("_")
-            candidates.append(("ablate_sngp_off", no_sngp))
-            
-        if not args.llm_cfg.get("openmax", False):
-            om = _apply_llm_cfg_to_args(args.llm_cfg, copy.deepcopy(base_args))
-            om.model_name = "cnn_openmax"
-            om.method = "deterministic"
-            om.tag = (getattr(om, "tag", "") + "_cnn_openmax_" + args.llm_cfg_stamp).strip("_")
-            candidates.append(("cnn_openmax", om))
+        if load_off_cfg:
+            load_args = _apply_llm_cfg_to_args(load_off_cfg, copy.deepcopy(base_args))
+            load_args.tag = (getattr(load_args, "tag", "") + "_load_off_" + args.llm_cfg_stamp).strip("_")
+            candidates.append(("load_off", load_args))
 
         wrn_det = copy.deepcopy(base_args)
         wrn_det.model_name = "WideResNet"
@@ -2564,26 +2381,7 @@ def main():
         wrn_det.tag = (getattr(wrn_det, "tag", "") + "_wrn_base_" + args.llm_cfg_stamp).strip("_")
         candidates.append(("wideresnet", wrn_det))
 
-        if not getattr(args, "llm_cfg", {}).get("self_attention", False):
-            wrn_sa = copy.deepcopy(base_args)
-            wrn_sa.model_name = "WideResNet_sa"
-            wrn_sa.method = "deterministic"
-            wrn_sa.droprate = 0.3
-            wrn_sa.tag = (getattr(wrn_sa, "tag", "") + "_wrn_sa_det_" + args.llm_cfg_stamp).strip("_")
-            candidates.append(("wideresnet_sa", wrn_sa))
-
-        if getattr(args, "llm_cfg", None):
-            def _hp_sweep_variant(name: str, lr_scale: float, dropout_shift: float, batch_scale: float, lambda_delta: float):
-                tuned = _apply_llm_cfg_to_args(args.llm_cfg, copy.deepcopy(base_args))
-                tuned.lr = max(1e-5, min(tuned.lr * lr_scale, 1e-2))
-                tuned.droprate = min(0.6, max(0.1, tuned.droprate + dropout_shift))
-                tuned.batch_size = int(max(8, min(256, round(tuned.batch_size * batch_scale))))
-                tuned.lambda_src = max(0.1, tuned.lambda_src + lambda_delta)
-                tuned.tag = (getattr(tuned, "tag", "") + f"_{name}_" + args.llm_cfg_stamp).strip("_")
-                candidates.append((name, tuned))
-
-            _hp_sweep_variant("hp_lr_up_bs_up", lr_scale=1.5, dropout_shift=-0.05, batch_scale=1.5, lambda_delta=-0.1)
-            _hp_sweep_variant("hp_lr_down_reg_up", lr_scale=0.6, dropout_shift=0.05, batch_scale=0.75, lambda_delta=0.1)
+        
 
         # 2) Deterministic CNN baseline (no SA/OpenMax/SNGP)
         det = copy.deepcopy(base_args)
@@ -2742,6 +2540,7 @@ def main():
                 "improvement_ci95": stats.get("ci95") if stats else None,
                 "baseline_accuracy_mean": stats.get("baseline_accuracy") if stats else None,
                 "transfer_accuracy_mean": stats.get("transfer_accuracy") if stats else None,
+                "target_accuracy_mean": stats.get("transfer_accuracy") if stats else None,
                 "accuracy_delta_mean": stats.get("accuracy_delta") if stats else None,
                 "transfer_uncertainty_mean_entropy": stats.get("transfer_uncertainty_mean_entropy") if stats else None,
                 "cycle_limit": cyc_lim,
@@ -2753,6 +2552,36 @@ def main():
         _pd.DataFrame(leaderboard_rows).to_csv(_leader_csv, index=False)
         with open(_leader_json, "w") as _f:
             _json.dump(leaderboard_rows, _f, indent=2)
+            
+        _manifest_path = _os.path.join(_llm_root, "llm_compare_manifest.json")
+        tag_defs = {
+            "llm_pick": "Single-shot LLM configuration (history + transfer context enabled).",
+            "history_off": "LLM configuration without leaderboard/history context (cold-start prompt).",
+            "chemistry_off": "LLM configuration without battery chemistry hints.",
+            "load_off": "LLM configuration without CWRU load/HP/rpm transfer metadata.",
+            "deterministic_cnn": "Zhao CNN baseline (deterministic, no transfer head).",
+            "wideresnet": "Deterministic WideResNet capacity baseline (no SNGP).",
+            "sngp_wrn_sa": "WideResNet+SA with SNGP head (calibrated baseline).",
+        }
+        manifest = {
+            "baseline_definition": "Zhao et al. deterministic 1-D CNN trained on target-only (no transfer).",
+            "single_shot_evaluation": True,
+            "retries_disabled": True,
+            "parameter_definitions": {
+                "droprate": "Dropout probability applied to the classifier head.",
+                "lr": "Learning rate for optimizer.",
+                "batch_size": "Mini-batch size for training/transfer.",
+                "lambda_src": "Weight on source-domain loss during transfer.",
+                "method": "Training head style (deterministic or SNGP).",
+            },
+            "candidates": [
+                {"tag": tag, "definition": tag_defs.get(tag, "")}
+                for tag, _cfg in candidates
+            ],
+        }
+        with open(_manifest_path, "w") as _f:
+            _json.dump(manifest, _f, indent=2)
+
 
         _valid = [r for r in leaderboard_rows if not (r["avg_improvement"] != r["avg_improvement"])]
         if _valid:

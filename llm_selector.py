@@ -296,7 +296,14 @@ def _describe_battery_transfer(num_summary: dict, *, chemistry_feedback: bool = 
     return " ".join(parts)
 
 
-def _describe_transfer_context(num_summary: dict, *, chemistry_feedback: bool = True) -> str:
+def _describe_transfer_context(
+    num_summary: dict,
+    *,
+    chemistry_feedback: bool = True,
+    include_transfer_context: bool = True,
+) -> str:
+    if not include_transfer_context:
+        return ""
     dataset = str(num_summary.get("dataset") or num_summary.get("dataset_variant") or "").lower()
     transfer_task = num_summary.get("transfer_task") or num_summary.get("transfer_pair")
     src_idx = None
@@ -806,7 +813,13 @@ def _numeric_heuristic_adjust(
     return cfg, heuristic_notes
 
 
-def _autofill_rationale(cfg: dict, num_summary: dict, provider_reason: str = "", heuristic_notes: Optional[list[str]] = None) -> str:
+def _autofill_rationale(
+    cfg: dict,
+    num_summary: dict,
+    provider_reason: str = "",
+    heuristic_notes: Optional[list[str]] = None,
+    include_transfer_context: bool = True,
+) -> str:
     ch = num_summary.get("channels")
     sl = num_summary.get("seq_len")
     notes = str(num_summary.get("notes", "")).lower()
@@ -824,7 +837,10 @@ def _autofill_rationale(cfg: dict, num_summary: dict, provider_reason: str = "",
             transfer_gap = None
     parts: list[str] = []
     dataset_variant = str(num_summary.get("dataset_variant") or "").lower()
-    transfer_context = _describe_transfer_context(num_summary)
+    transfer_context = _describe_transfer_context(
+        num_summary,
+        include_transfer_context=include_transfer_context,
+    )
 
     if provider_reason:
         parts.append(provider_reason.strip().rstrip(".") + ".")
@@ -1179,6 +1195,8 @@ def run_ablation_suite(
     lock_hyperparams: bool = True,
     chemistry_feedback: bool = True,
     compare_chemistry: bool = True,
+    include_transfer_context: bool = True,
+    compare_transfer_context: bool = True,
 ) -> list[dict[str, Any]]:
     """
     Generate configs for a small ablation grid:
@@ -1188,7 +1206,14 @@ def run_ablation_suite(
     """
 
     records: list[dict[str, Any]] = []
-    transfer_ctx = _describe_transfer_context(num_summary, chemistry_feedback=chemistry_feedback)
+    dataset_name = str(num_summary.get("dataset") or num_summary.get("dataset_variant") or "").lower()
+    is_battery = "battery" in dataset_name
+    is_cwru = "cwru" in dataset_name or "bearing" in dataset_name
+    transfer_ctx = _describe_transfer_context(
+        num_summary,
+        chemistry_feedback=chemistry_feedback,
+        include_transfer_context=include_transfer_context,
+    )
 
     primary = select_config(
         text_context,
@@ -1198,6 +1223,7 @@ def run_ablation_suite(
         debug_dir=debug_dir,
         allow_history=True,
         chemistry_feedback=chemistry_feedback,
+        include_transfer_context=include_transfer_context,
     )
     base_config = base_config or primary
     records.append({
@@ -1205,6 +1231,9 @@ def run_ablation_suite(
         "config": primary,
         "cycle_limit": None,
         "chemistry_feedback": chemistry_feedback,
+        "transfer_context": include_transfer_context,
+        "history_mode": "on",
+        "definition": "History-on prompt includes leaderboard context plus transfer metadata (load/chemistry when enabled).",
         "prompt_transfer_context": transfer_ctx,
     })
 
@@ -1216,16 +1245,21 @@ def run_ablation_suite(
         debug_dir=debug_dir,
         allow_history=False,
         chemistry_feedback=chemistry_feedback,
+        include_transfer_context=include_transfer_context,
+        
     )
     records.append({
         "tag": "history_off",
         "config": cold,
         "cycle_limit": None,
         "chemistry_feedback": chemistry_feedback,
+        "transfer_context": include_transfer_context,
+        "history_mode": "off",
+        "definition": "History-off prompt excludes checkpoint/leaderboard history; all other context stays the same.",
         "prompt_transfer_context": transfer_ctx,
     })
     
-    if compare_chemistry:
+    if compare_chemistry and is_battery:
         chem_off_cfg = select_config(
             text_context,
             num_summary,
@@ -1234,13 +1268,43 @@ def run_ablation_suite(
             debug_dir=debug_dir,
             allow_history=True,
             chemistry_feedback=False,
+            include_transfer_context=include_transfer_context,
         )
         records.append({
             "tag": "chemistry_off",
             "config": chem_off_cfg,
             "cycle_limit": None,
             "chemistry_feedback": False,
-            "prompt_transfer_context": _describe_transfer_context(num_summary, chemistry_feedback=False),
+            "transfer_context": include_transfer_context,
+            "history_mode": "on",
+            "definition": "Chemistry-off prompt strips cathode chemistry hints but keeps other context.",
+            "prompt_transfer_context": _describe_transfer_context(
+                num_summary,
+                chemistry_feedback=False,
+                include_transfer_context=include_transfer_context,
+            ),
+        })
+
+    if compare_transfer_context and is_cwru:
+        load_off_cfg = select_config(
+            text_context,
+            num_summary,
+            backend=backend,
+            model=model,
+            debug_dir=debug_dir,
+            allow_history=True,
+            chemistry_feedback=chemistry_feedback,
+            include_transfer_context=False,
+        )
+        records.append({
+            "tag": "load_off",
+            "config": load_off_cfg,
+            "cycle_limit": None,
+            "chemistry_feedback": chemistry_feedback,
+            "transfer_context": False,
+            "history_mode": "on",
+            "definition": "Load/HP-off prompt omits CWRU transfer metadata (HP/rpm/load); chemistry hints unchanged.",
+            "prompt_transfer_context": "",
         })
 
     for horizon in cycle_horizons or []:
@@ -1253,6 +1317,7 @@ def run_ablation_suite(
             debug_dir=debug_dir,
             allow_history=True,
             chemistry_feedback=chemistry_feedback,
+            include_transfer_context=include_transfer_context,
         )
         if lock_hyperparams and base_config:
             locked_cfg = dict(base_config)
@@ -1269,21 +1334,36 @@ def run_ablation_suite(
             "cycle_limit": int(horizon),
             "num_summary": scoped_summary,
             "chemistry_feedback": chemistry_feedback,
-            "prompt_transfer_context": _describe_transfer_context(scoped_summary, chemistry_feedback=chemistry_feedback),
+            "transfer_context": include_transfer_context,
+            "history_mode": "on",
+            "definition": "Cycle-limit prompt caps the LLM context to early-cycle windows; hyperparameters stay locked.",
+            "prompt_transfer_context": _describe_transfer_context(
+                scoped_summary,
+                chemistry_feedback=chemistry_feedback,
+                include_transfer_context=include_transfer_context,
+            ),
         })
 
     return records
 
 
 def _build_user_prompt(
-    text_context: str, num_summary: Dict[str, Any], *, chemistry_feedback: bool = True
+    text_context: str,
+    num_summary: Dict[str, Any],
+    *,
+    chemistry_feedback: bool = True,
+    include_transfer_context: bool = True,
 ) -> str:
     summary = _summarize_numeric(num_summary)
     schema_str = json.dumps(JSON_SCHEMA, indent=2)
     arch_reference = textwrap.shorten(
         _format_architecture_reference(), width=2400, placeholder="..."
     )
-    transfer_context = _describe_transfer_context(num_summary, chemistry_feedback=chemistry_feedback)
+    transfer_context = _describe_transfer_context(
+        num_summary,
+        chemistry_feedback=chemistry_feedback,
+        include_transfer_context=include_transfer_context,
+    )
     transfer_block = ""
     if transfer_context:
         chem_note = " (chemistry feedback disabled)" if not chemistry_feedback else ""
@@ -1310,7 +1390,12 @@ REQUIRED JSON SCHEMA
 Return ONLY a JSON object that matches the schema.
 """
 
-def _validate_or_default(payload, num_summary=None, allow_history: bool = True) -> dict:
+def _validate_or_default(
+    payload,
+    num_summary=None,
+    allow_history: bool = True,
+    include_transfer_context: bool = True,
+) -> dict:
     """
     Tolerant validator: parse provider JSON (or text), normalize fields,
     honor 'architecture' if provided, and compose a specific rationale.
@@ -1414,6 +1499,7 @@ def _validate_or_default(payload, num_summary=None, allow_history: bool = True) 
         num_summary or {},
         provider_reason=prov_rat,
         heuristic_notes=heuristic_notes,
+        include_transfer_context=include_transfer_context,
     )
 
     return cfg
@@ -1427,6 +1513,7 @@ def call_openai(text_context: str,
                 debug_dir: Optional[str] = None,
                 allow_history: bool = True,
                 chemistry_feedback: bool = True,
+                include_transfer_context: bool = True,
                 max_attempts: int = 3,
                 request_timeout: int = 60,
                 retry_backoff: float = 2.0) -> Dict[str, Any]:
@@ -1442,7 +1529,12 @@ def call_openai(text_context: str,
 
     # Build prompts
     sys = SYSTEM_PROMPT
-    user = _build_user_prompt(text_context, num_summary, chemistry_feedback=chemistry_feedback)
+    user = _build_user_prompt(
+        text_context,
+        num_summary,
+        chemistry_feedback=chemistry_feedback,
+        include_transfer_context=include_transfer_context,
+    )
 
     # Init client (picks up OPENAI_API_KEY / OPENAI_PROJECT / OPENAI_ORG_ID)
     client = OpenAI(timeout=request_timeout)
@@ -1509,6 +1601,7 @@ def call_openai(text_context: str,
         obj if obj is not None else content,
         num_summary=num_summary,
         allow_history=allow_history,
+        include_transfer_context=include_transfer_context,
     )
     cfg["_provider"] = "openai"
     cfg["_raw"] = content
@@ -1537,13 +1630,19 @@ def call_ollama(text_context: str,
                 model: str = "llama3.1:8b",
                 debug_dir: Optional[str] = None,
                 allow_history: bool = True,
-                chemistry_feedback: bool = True) -> Dict[str, Any]:
+                chemistry_feedback: bool = True,
+                include_transfer_context: bool = True) -> Dict[str, Any]:
     """
     Use local Ollama with JSON-only mode. Saves raw request/response if debug_dir is given.
     """
     import json, os, requests
     sys = SYSTEM_PROMPT
-    user = _build_user_prompt(text_context, num_summary, chemistry_feedback=chemistry_feedback)
+    user = _build_user_prompt(
+        text_context,
+        num_summary,
+        chemistry_feedback=chemistry_feedback,
+        include_transfer_context=include_transfer_context,
+    )
 
     payload = {
         "model": model,
@@ -1590,6 +1689,7 @@ def call_ollama(text_context: str,
         json.dumps(obj) if obj is not None else content,
         num_summary=num_summary,
         allow_history=allow_history,
+        include_transfer_context=include_transfer_context,
     )
     parsed["_provider"] = "ollama"
     parsed["_raw"] = content
@@ -1605,7 +1705,8 @@ def select_config(text_context: str,
                   model: Optional[str] = None,
                   debug_dir: Optional[str] = None,
                   allow_history: bool = True,
-                  chemistry_feedback: bool = True) -> Dict[str, Any]:
+                  chemistry_feedback: bool = True,
+                  include_transfer_context: bool = True) -> Dict[str, Any]:
     if backend == "openai" or (backend == "auto" and os.getenv("OPENAI_API_KEY")):
         try:
             return call_openai(
@@ -1615,6 +1716,7 @@ def select_config(text_context: str,
                 debug_dir=debug_dir,
                 allow_history=allow_history,
                 chemistry_feedback=chemistry_feedback,
+                include_transfer_context=include_transfer_context,
             )
         except Exception as err:
             if backend != "auto":
@@ -1635,5 +1737,6 @@ def select_config(text_context: str,
             debug_dir=debug_dir,
             allow_history=allow_history,
             chemistry_feedback=chemistry_feedback,
+            include_transfer_context=include_transfer_context,
         )
     raise RuntimeError("No LLM backend available. Set OPENAI_API_KEY or run Ollama locally.")
