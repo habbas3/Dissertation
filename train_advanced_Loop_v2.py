@@ -209,7 +209,7 @@ def parse_args():
     parser.add_argument('--input_channels', type=int, default=7)
     parser.add_argument('--classification_label', type=str, default='eol_class')
     parser.add_argument('--sequence_length', type=int, default=32)
-    parser.add_argument('--cycles_per_file', type=int, default=15,
+    parser.add_argument('--cycles_per_file', type=int, default=30,
                         help='Number of early-life cycles to use for target-side baseline/transfer comparisons')
     parser.add_argument('--source_cycles_per_file', type=int, default=None,
                         help='Optional limit for source cathodes (defaults to all cycles when omitted)')
@@ -971,13 +971,7 @@ def _resolve_compare_cycles(args, num_summary: Optional[dict] = None) -> int:
     else:
         reference = 30
 
-    cycle_hint = None
-    if num_summary:
-        cycle_hint = (num_summary.get("cycle_stats") or {}).get("target_train_cycles")
-    if not cycle_hint:
-        cycle_hint = (getattr(args, "dataset_cycle_stats", {}) or {}).get("target_train_cycles")
-    if cycle_hint:
-        reference = min(reference, int(cycle_hint))
+   
     return max(1, int(reference))
 
 
@@ -1557,6 +1551,12 @@ def run_battery_experiments(args):
             
             
             improvement = transfer_score - baseline_score
+            raw_transfer_score = transfer_score
+            raw_transfer_acc_metric = transfer_acc_metric
+            raw_transfer_common = t_common
+            raw_transfer_outlier = t_out
+            raw_transfer_hscore = t_h
+            raw_improvement = improvement
             print(
                 f"📊 {src_name} → {tgt_name}: Zhao-baseline({metric_key})={baseline_score:.4f}, "
                 f"transfer({metric_key})={transfer_score:.4f}, improvement={improvement:+.4f}"
@@ -1651,14 +1651,20 @@ def run_battery_experiments(args):
                 "baseline_score": baseline_score,
                 "transfer_score": transfer_score,
                 "improvement": improvement,
+                "raw_transfer_score": raw_transfer_score,
+                "raw_improvement": raw_improvement,
                 "baseline_accuracy": baseline_acc,
                 "transfer_accuracy": transfer_acc,
+                "raw_transfer_accuracy": raw_transfer_acc_metric,
                 "baseline_common_acc": b_common,
                 "transfer_common_acc": t_common,
+                "raw_transfer_common_acc": raw_transfer_common,
                 "baseline_outlier_acc": b_out,
                 "transfer_outlier_acc": t_out,
+                "raw_transfer_outlier_acc": raw_transfer_outlier,
                 "baseline_hscore": b_h,
                 "transfer_hscore": t_h,
+                "raw_transfer_hscore": raw_transfer_hscore,
                 "transfer_uncertainty_mean_entropy": transfer_uncertainty,
                 "final_model": final_model_label,
                 "note": selection_note,
@@ -1696,7 +1702,12 @@ def run_battery_experiments(args):
             "comparison_metric",
             "baseline_score",
             "transfer_score",
+            "raw_transfer_score",
+            "baseline_accuracy",
+            "transfer_accuracy",
+            "raw_transfer_accuracy",
             "improvement",
+            "raw_improvement",
             "final_model",
         ]
         print(summary_df[cols_to_show])
@@ -2011,6 +2022,12 @@ def run_cwru_experiments(args):
             }
             transfer_score, baseline_score = metric_lookup[metric_key]
             improvement = transfer_score - baseline_score
+            raw_transfer_score = transfer_score
+            raw_transfer_acc_metric = transfer_acc_metric
+            raw_transfer_common = t_common
+            raw_transfer_outlier = t_out
+            raw_transfer_hscore = t_h
+            raw_improvement = improvement
             
             print(
                 f"✅ Transfer {src_str} → {tgt_str}: common={t_common:.4f}, outlier={t_out:.4f}, hscore={t_h:.4f}"
@@ -2114,14 +2131,20 @@ def run_cwru_experiments(args):
                     "baseline_score": baseline_score,
                     "transfer_score": transfer_score,
                     "improvement": improvement,
+                    "raw_transfer_score": raw_transfer_score,
+                    "raw_improvement": raw_improvement,
                     "baseline_accuracy": baseline_acc,
                     "transfer_accuracy": transfer_acc,
+                    "raw_transfer_accuracy": raw_transfer_acc_metric,
                     "baseline_common_acc": b_common,
                     "transfer_common_acc": t_common,
+                    "raw_transfer_common_acc": raw_transfer_common,
                     "baseline_outlier_acc": b_out,
                     "transfer_outlier_acc": t_out,
+                    "raw_transfer_outlier_acc": raw_transfer_outlier,
                     "baseline_hscore": b_h,
                     "transfer_hscore": t_h,
+                    "raw_transfer_hscore": raw_transfer_hscore,
                     "transfer_uncertainty_mean_entropy": transfer_uncertainty,
                     "final_model": final_model_label,
                     "note": selection_note,
@@ -2161,7 +2184,12 @@ def run_cwru_experiments(args):
             "comparison_metric",
             "baseline_score",
             "transfer_score",
+            "raw_transfer_score",
+            "baseline_accuracy",
+            "transfer_accuracy",
+            "raw_transfer_accuracy",
             "improvement",
+            "raw_improvement",
             "final_model",
         ]
         print(summary_df[cols_to_show])
@@ -2274,6 +2302,7 @@ def main():
         ablation_records = []
         cycle_ablation_cfgs = []
         coldstart_cfg = None
+        history_off_transfer_off_cfg = None
         chemistry_off_cfg = None
         load_off_cfg = None
         if args.llm_ablation:
@@ -2315,6 +2344,8 @@ def main():
             for record in ablation_records:
                 if record.get("tag") == "history_off":
                     coldstart_cfg = record.get("config")
+                if record.get("tag") == "history_off_transfer_off":
+                    history_off_transfer_off_cfg = record.get("config")
                 if record.get("tag") == "chemistry_off":
                     chemistry_off_cfg = record.get("config")
                 if record.get("tag") == "load_off":
@@ -2363,6 +2394,12 @@ def main():
             cold_args = _apply_llm_cfg_to_args(coldstart_cfg, copy.deepcopy(base_args))
             cold_args.tag = (getattr(cold_args, "tag", "") + "_history_off_" + args.llm_cfg_stamp).strip("_")
             candidates.append(("history_off", cold_args))
+            
+            
+        if history_off_transfer_off_cfg:
+            off_args = _apply_llm_cfg_to_args(history_off_transfer_off_cfg, copy.deepcopy(base_args))
+            off_args.tag = (getattr(off_args, "tag", "") + "_history_off_transfer_off_" + args.llm_cfg_stamp).strip("_")
+            candidates.append(("history_off_transfer_off", off_args))
             
         if chemistry_off_cfg:
             chem_args = _apply_llm_cfg_to_args(chemistry_off_cfg, copy.deepcopy(base_args))
@@ -2415,9 +2452,9 @@ def main():
             except Exception:
                 dst = latest
             stats: dict[str, float] = {}
+            acc_stats = {}
             try:
                 df = _pd.read_csv(dst)
-                acc_stats = {}
                 
                 def _mean_from_cols(columns, mask=None):
                     for col in columns:
@@ -2437,15 +2474,21 @@ def main():
 
                 baseline_acc = _mean_from_cols(["baseline_accuracy", "baseline_acc"], mask=acc_mask)
                 transfer_acc = _mean_from_cols(["transfer_accuracy", "transfer_acc"], mask=acc_mask)
+                raw_transfer_acc = _mean_from_cols(["raw_transfer_accuracy", "raw_transfer_acc"], mask=acc_mask)
                 if baseline_acc is None:
                     baseline_acc = _mean_from_cols(["baseline_score"], mask=acc_mask)
                 if transfer_acc is None:
                     transfer_acc = _mean_from_cols(["transfer_score"], mask=acc_mask)
+                raw_transfer_score = _mean_from_cols(["raw_transfer_score"], mask=acc_mask)
 
                 if baseline_acc is not None:
                     acc_stats["baseline_accuracy"] = baseline_acc
                 if transfer_acc is not None:
                     acc_stats["transfer_accuracy"] = transfer_acc
+                if raw_transfer_acc is not None:
+                    acc_stats["raw_transfer_accuracy"] = raw_transfer_acc
+                if raw_transfer_score is not None:
+                    acc_stats["raw_transfer_score"] = raw_transfer_score
                 if baseline_acc is not None and transfer_acc is not None:
                     acc_stats["accuracy_delta"] = transfer_acc - baseline_acc
 
@@ -2466,6 +2509,12 @@ def main():
                         stats["positive"] = float((imp > 0).sum())
                         stderr = float(imp.std(ddof=0) / max(len(imp) ** 0.5, 1e-9))
                         stats["ci95"] = float(1.96 * stderr)
+                        
+                if "raw_improvement" in df.columns:
+                    raw_imp = _pd.to_numeric(df["raw_improvement"], errors="coerce").dropna()
+                    if not raw_imp.empty:
+                        stats["raw_improvement_mean"] = float(raw_imp.mean())
+                        stats["raw_improvement_median"] = float(raw_imp.median())
                 elif {"transfer_acc","baseline_acc"}.issubset(df.columns):
                     diffs = (
                         _pd.to_numeric(df["transfer_acc"], errors="coerce")
@@ -2492,6 +2541,7 @@ def main():
                         stats["positive"] = float((diffs > 0).sum())
                         stderr = float(diffs.std(ddof=0) / max(len(diffs) ** 0.5, 1e-9))
                         stats["ci95"] = float(1.96 * stderr)
+                stats.update(acc_stats)
             except Exception:
                 stats = {}
                 stats.update(acc_stats)
@@ -2540,8 +2590,12 @@ def main():
                 "improvement_ci95": stats.get("ci95") if stats else None,
                 "baseline_accuracy_mean": stats.get("baseline_accuracy") if stats else None,
                 "transfer_accuracy_mean": stats.get("transfer_accuracy") if stats else None,
+                "raw_transfer_accuracy_mean": stats.get("raw_transfer_accuracy") if stats else None,
                 "target_accuracy_mean": stats.get("transfer_accuracy") if stats else None,
                 "accuracy_delta_mean": stats.get("accuracy_delta") if stats else None,
+                "raw_transfer_score_mean": stats.get("raw_transfer_score") if stats else None,
+                "raw_improvement_mean": stats.get("raw_improvement_mean") if stats else None,
+                "raw_improvement_median": stats.get("raw_improvement_median") if stats else None,
                 "transfer_uncertainty_mean_entropy": stats.get("transfer_uncertainty_mean_entropy") if stats else None,
                 "cycle_limit": cyc_lim,
             })
@@ -2557,6 +2611,7 @@ def main():
         tag_defs = {
             "llm_pick": "Single-shot LLM configuration (history + transfer context enabled).",
             "history_off": "LLM configuration without leaderboard/history context (cold-start prompt).",
+            "history_off_transfer_off": "LLM configuration without history and without transfer metadata (chemistry/load hints disabled).",
             "chemistry_off": "LLM configuration without battery chemistry hints.",
             "load_off": "LLM configuration without CWRU load/HP/rpm transfer metadata.",
             "deterministic_cnn": "Zhao CNN baseline (deterministic, no transfer head).",
@@ -2581,6 +2636,36 @@ def main():
         }
         with open(_manifest_path, "w") as _f:
             _json.dump(manifest, _f, indent=2)
+            
+        combined_frames = []
+        for row in leaderboard_rows:
+            summary_csv = row.get("summary_csv")
+            if not summary_csv:
+                continue
+            try:
+                df = _pd.read_csv(summary_csv)
+            except Exception:
+                continue
+            df.insert(0, "tag", row.get("tag"))
+            df.insert(1, "model_name", row.get("model_name"))
+            combined_frames.append(df)
+
+        if combined_frames:
+            combined_df = _pd.concat(combined_frames, ignore_index=True)
+            excel_path = _os.path.join(_llm_root, "llm_compare_all_models.xlsx")
+            try:
+                with _pd.ExcelWriter(excel_path) as writer:
+                    combined_df.to_excel(writer, index=False, sheet_name="all_models")
+                    _pd.DataFrame(leaderboard_rows).to_excel(
+                        writer, index=False, sheet_name="leaderboard"
+                    )
+                print(f"📊 Wrote consolidated model workbook to {excel_path}")
+            except Exception as exc:
+                fallback_csv = _os.path.join(_llm_root, "llm_compare_all_models.csv")
+                combined_df.to_csv(fallback_csv, index=False)
+                print(
+                    f"⚠️ Unable to write Excel workbook ({exc}); wrote {fallback_csv} instead."
+                )
 
 
         _valid = [r for r in leaderboard_rows if not (r["avg_improvement"] != r["avg_improvement"])]

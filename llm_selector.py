@@ -1259,6 +1259,28 @@ def run_ablation_suite(
         "prompt_transfer_context": transfer_ctx,
     })
     
+    transfer_off_cfg = select_config(
+        text_context,
+        num_summary,
+        backend=backend,
+        model=model,
+        debug_dir=debug_dir,
+        allow_history=False,
+        chemistry_feedback=False,
+        include_transfer_context=False,
+    )
+    records.append({
+        "tag": "history_off_transfer_off",
+        "config": transfer_off_cfg,
+        "cycle_limit": None,
+        "chemistry_feedback": False,
+        "transfer_context": False,
+        "history_mode": "off",
+        "definition": "History-off prompt with transfer metadata removed (chemistry/load hints disabled).",
+        "prompt_transfer_context": "",
+    })
+
+    
     if compare_chemistry and is_battery:
         chem_off_cfg = select_config(
             text_context,
