@@ -288,7 +288,7 @@ def parse_args():
     parser.add_argument(
         '--compare_cycles',
         type=int,
-        default=50,
+        default=30,
         help='Fixed cycle horizon for non-cycle LLM comparisons (used in llm_compare runs).',
     )
     parser.add_argument(

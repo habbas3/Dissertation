@@ -21,6 +21,7 @@ _GROUP_RULES = [
     ("head toggles", "head_"),
     ("regularization", "ablate_"),
     ("chemistry toggles", "chemistry_"),
+    ("load/HP toggles", "load_"),
 ]
 
 _DEFAULT_CWRU_RUN = Path(
