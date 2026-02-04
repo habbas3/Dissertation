@@ -221,6 +221,41 @@ _BATTERY_CHEMISTRY_PROFILE = {
 }
 
 
+def _battery_profile(name: str) -> dict:
+    return _BATTERY_CHEMISTRY_PROFILE.get(str(name), {})
+
+def _battery_transfer_gap(source_cathodes: list, target_cathodes: list) -> dict:
+    if not source_cathodes or not target_cathodes:
+        return {}
+    target = str(target_cathodes[0])
+    tgt_prof = _battery_profile(target)
+    if not tgt_prof:
+        return {}
+    gap_summary = {
+        "max_gap": 0,
+        "family_mismatch": False,
+        "ni_mismatch": False,
+        "voltage_mismatch": False,
+    }
+    for src in source_cathodes:
+        src_prof = _battery_profile(src)
+        if not src_prof:
+            continue
+        gap = 0
+        if src_prof.get("family") != tgt_prof.get("family"):
+            gap += 1
+            gap_summary["family_mismatch"] = True
+        if src_prof.get("ni_band") != tgt_prof.get("ni_band"):
+            gap += 1
+            gap_summary["ni_mismatch"] = True
+        if src_prof.get("voltage") != tgt_prof.get("voltage"):
+            gap += 1
+            gap_summary["voltage_mismatch"] = True
+        gap_summary["max_gap"] = max(gap_summary["max_gap"], gap)
+    return gap_summary
+
+
+
 def _describe_battery_transfer(num_summary: dict, *, chemistry_feedback: bool = True) -> str:
     source_cathodes = list(num_summary.get("source_cathodes") or [])
     target_cathodes = list(num_summary.get("target_cathodes") or [])
@@ -235,11 +270,10 @@ def _describe_battery_transfer(num_summary: dict, *, chemistry_feedback: bool = 
         name = str(name)
         return _BATTERY_CHEMISTRY_HINTS.get(name, "")
     
-    def _chem_profile(name: str) -> dict:
-        return _BATTERY_CHEMISTRY_PROFILE.get(str(name), {})
+    
 
     def _chem_distance(src: str, tgt: str) -> str:
-        src_prof, tgt_prof = _chem_profile(src), _chem_profile(tgt)
+        src_prof, tgt_prof = _battery_profile(src), _battery_profile(tgt)
         if not src_prof or not tgt_prof:
             return "unknown gap"
         gap = []
@@ -255,7 +289,7 @@ def _describe_battery_transfer(num_summary: dict, *, chemistry_feedback: bool = 
     parts = []
     if target:
         hint = _chem_hint(target) if chemistry_feedback else ""
-        profile = _chem_profile(target)
+        profile = _battery_profile(target)
         traits = []
         if profile:
             traits.append(profile.get("family"))
@@ -269,7 +303,7 @@ def _describe_battery_transfer(num_summary: dict, *, chemistry_feedback: bool = 
         annotated = []
         for src in source_cathodes:
             hint = _chem_hint(src) if chemistry_feedback else ""
-            prof = _chem_profile(src)
+            prof = _battery_profile(src)
             traits = []
             if prof and chemistry_feedback:
                 traits.append(prof.get("family"))
@@ -286,9 +320,9 @@ def _describe_battery_transfer(num_summary: dict, *, chemistry_feedback: bool = 
         if distances:
             parts.append("Chemistry deltas: " + "; ".join(distances) + ".")
 
-        if any(_chem_profile(src).get("family") != _chem_profile(target).get("family") for src in source_cathodes):
+        if any(_battery_profile(src).get("family") != _battery_profile(target).get("family") for src in source_cathodes):
             parts.append("Cross-family cathodes → expect stronger domain shift and value in calibrated heads.")
-        elif any(_chem_profile(src).get("ni_band") != _chem_profile(target).get("ni_band") for src in source_cathodes):
+        elif any(_battery_profile(src).get("ni_band") != _battery_profile(target).get("ni_band") for src in source_cathodes):
             parts.append("Same family but Ni band differs → moderate shift; adjust capacity and dropout accordingly.")
         else:
             parts.append("Source and target chemistries align closely → lighter transfer head may suffice.")
@@ -704,16 +738,35 @@ def _numeric_heuristic_adjust(
     source_cathodes = list(num_summary.get("source_cathodes") or [])
     target_cathodes = list(num_summary.get("target_cathodes") or [])
     if ("battery" in dataset_name or "battery" in dataset_variant) and target_cathodes:
-        tgt_cath = str(target_cathodes[0])
-        cross_family = any(
-            _BATTERY_CHEMISTRY_HINTS.get(str(src), "") != _BATTERY_CHEMISTRY_HINTS.get(tgt_cath, "")
-            for src in source_cathodes
-        )
-        if cross_family:
-            arch_scores["wideresnet_sa"] += 0.4
+        gap = _battery_transfer_gap(source_cathodes, target_cathodes)
+        max_gap = gap.get("max_gap", 0)
+        is_small_target = bool(tgt_cycles and tgt_cycles < 220)
+        is_short_seq = bool(seq_len and seq_len < 256)
+        is_low_channel = bool(channels and channels <= 4)
+        prefer_cnn = is_small_target or (is_short_seq and is_low_channel)
+
+        if prefer_cnn:
+            arch_scores["cnn_1d_sa"] += 0.35
+            arch_scores["wideresnet_sa"] -= 0.2
+            arch_scores["wideresnet_edited"] -= 0.2
+
+        if gap.get("family_mismatch") or max_gap >= 2:
+            arch_scores["wideresnet_edited"] += 0.35
+            arch_scores["wideresnet_sa"] += 0.15
             cfg["sngp"] = True if cfg.get("sngp") is False else cfg.get("sngp", True)
+            if not prefer_cnn:
+                cfg["warmup_epochs"] = max(cfg.get("warmup_epochs", 3), 4)
+                cfg["lambda_src"] = max(cfg.get("lambda_src", 1.0), 1.2)
             heuristic_notes.append(
-                "Cross-chemistry battery transfer detected → using WRN+SA with SNGP to handle chemistry shift."
+                "Moderate chemistry mismatch → only escalate to WRN+SA when sequence/channel scale supports it."
+            )
+        elif max_gap == 1:
+            arch_scores["cnn_1d_sa"] += 0.25
+            if not prefer_cnn:
+                cfg["sngp"] = True if cfg.get("sngp") is False else cfg.get("sngp", True)
+                cfg["warmup_epochs"] = max(cfg.get("warmup_epochs", 3), 3)
+            heuristic_notes.append(
+                "Source/target cathodes align → retain lighter CNN+SA (baseline-friendly) for stability."
             )
         else:
             arch_scores["cnn_1d_sa"] += 0.2
