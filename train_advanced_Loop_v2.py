@@ -1489,7 +1489,8 @@ def run_battery_experiments(args):
             # the warmup/epoch budget.
             cross_family = src_name != tgt_name
             hard_spinel = cross_family and "nmc" in src_name.lower() and "spinel" in tgt_name.lower()
-            if cross_family:
+            llm_active = bool(getattr(args, "llm_cfg", None))
+            if cross_family and not llm_active:
                 transfer_args.lambda_src = min(getattr(transfer_args, "lambda_src", 1.0), 0.6)
                 transfer_args.lambda_src_decay_patience = max(
                     1, getattr(transfer_args, "lambda_src_decay_patience", 5) // 2
@@ -1501,6 +1502,11 @@ def run_battery_experiments(args):
                 transfer_args.warmup_epochs = max(getattr(transfer_args, "warmup_epochs", 3), 5 if hard_spinel else 4)
                 transfer_args.droprate = max(getattr(transfer_args, "droprate", 0.3), 0.35 if hard_spinel else 0.3)
                 transfer_args.lr = min(getattr(transfer_args, "lr", args.lr), 5e-4)
+            elif cross_family and llm_active:
+                print(
+                    "🧭 LLM config active; skipping heuristic cross-family overrides to honor "
+                    "transfer-specific hyperparameters."
+                )
                 
             ft_dir = os.path.join(
                 args.checkpoint_dir,
