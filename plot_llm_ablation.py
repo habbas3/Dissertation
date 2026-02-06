@@ -64,7 +64,7 @@ def plot_leaderboard(df: pd.DataFrame, out_path: Path, title: str = "LLM compari
         "wideresnet": "wideresnet (det)",
         "ablate_sa_off": "LLM pick w/o history + chemistry/load",
         "ablate_openmax_off": "LLM pick w/o history + chemistry/load",
-        "ablate_sngp_off": "chemistry off",
+        "ablate_sngp_off": "SNGP off",
     }
     bold_tags = {"llm_pick", "llm_pick_wo_history_chemload", "ablate_sa_off", "ablate_openmax_off"}
     preferred_order = [
@@ -86,8 +86,6 @@ def plot_leaderboard(df: pd.DataFrame, out_path: Path, title: str = "LLM compari
             return "llm_pick_wo_history_chemload"
         if txt == "sngp_wrn_sa":
             return "wideresnet"
-        if txt == "ablate_sngp_off":
-            return "chemistry_off"
         return txt
     
     def _display_tag(tag: str) -> tuple[str, bool]:
