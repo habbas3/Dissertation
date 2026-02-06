@@ -56,10 +56,12 @@ def plot_leaderboard(df: pd.DataFrame, out_path: Path, title: str = "LLM compari
         "llm_pick": "LLM pick",
         "llm_pick_wo_history_chemload": "LLM pick w/o history + chemistry/load",
         "history_off": "history off",
+        "history_off_transfer_off": "history off + chemistry off",
         "chemistry_off": "chemistry off",
         "load_off": "load off",
         "deterministic_cnn": "deterministic cnn",
-        "sngp_wrn_sa": "wideresnet",
+        "sngp_wrn_sa": "wideresnet + sngp",
+        "wideresnet": "wideresnet (det)",
         "ablate_sa_off": "LLM pick w/o history + chemistry/load",
         "ablate_openmax_off": "LLM pick w/o history + chemistry/load",
         "ablate_sngp_off": "chemistry off",
@@ -322,9 +324,10 @@ def main():
     )
     parser.add_argument(
         "--dataset_tag",
-        default=None,
+        default='Battery_inconsistent',
         help="If set, auto-pick latest llm_run_* whose compare/*.csv includes this dataset tag.",
     )
+    #Battery_inconsistent or CWRU_inconsistent
     parser.add_argument(
         "--title",
         default="LLM comparison + ablation leaderboard",

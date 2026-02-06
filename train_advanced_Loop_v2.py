@@ -2416,6 +2416,15 @@ def main():
             load_args = _apply_llm_cfg_to_args(load_off_cfg, copy.deepcopy(base_args))
             load_args.tag = (getattr(load_args, "tag", "") + "_load_off_" + args.llm_cfg_stamp).strip("_")
             candidates.append(("load_off", load_args))
+            
+        for cycle_record in sorted(cycle_ablation_cfgs, key=lambda rec: int(rec.get("cycle_limit") or 10**9)):
+            cycle_limit = int(cycle_record.get("cycle_limit") or 0)
+            if cycle_limit <= 0:
+                continue
+            cycle_cfg = cycle_record.get("config") or {}
+            cyc_args = _apply_llm_cfg_to_args(cycle_cfg, copy.deepcopy(base_args))
+            cyc_args.tag = (getattr(cyc_args, "tag", "") + f"_cycles_{cycle_limit}_" + args.llm_cfg_stamp).strip("_")
+            candidates.append((f"cycles_{cycle_limit}", cyc_args))
 
         wrn_det = copy.deepcopy(base_args)
         wrn_det.model_name = "WideResNet"
