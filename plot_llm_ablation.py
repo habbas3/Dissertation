@@ -19,6 +19,21 @@ def _find_latest_llm_run(root: Path) -> Path | None:
         return None
     return runs[-1].parent
 
+def _find_latest_llm_run_for_dataset(root: Path, dataset_tag: str) -> Path | None:
+    runs = sorted(root.glob("llm_run_*"))
+    matches = []
+    dataset_tag = dataset_tag.lower()
+    for run in runs:
+        compare_dir = run / "compare"
+        if not compare_dir.exists():
+            continue
+        has_dataset = any(dataset_tag in path.name.lower() for path in compare_dir.glob("*.csv"))
+        if has_dataset:
+            matches.append(run)
+    if not matches:
+        return None
+    return matches[-1]
+
 
 def _load_ablation_json(run_dir: Path) -> list[dict]:
     path = run_dir / "llm_ablation.json"
@@ -30,17 +45,53 @@ def _load_ablation_json(run_dir: Path) -> list[dict]:
         return []
 
 
-def plot_leaderboard(df: pd.DataFrame, out_path: Path) -> None:
+def plot_leaderboard(df: pd.DataFrame, out_path: Path, title: str = "LLM comparison + ablation leaderboard") -> None:
     group_rules = [
         ("cycle limits", "cycles_"),
         ("history toggles", "history_"),
         ("head toggles", "head_"),
         ("regularization", "ablate_"),
     ]
+    pretty_labels = {
+        "llm_pick": "LLM pick",
+        "llm_pick_wo_history_chemload": "LLM pick w/o history + chemistry/load",
+        "history_off": "history off",
+        "chemistry_off": "chemistry off",
+        "load_off": "load off",
+        "deterministic_cnn": "deterministic cnn",
+        "sngp_wrn_sa": "wideresnet",
+        "ablate_sa_off": "LLM pick w/o history + chemistry/load",
+        "ablate_openmax_off": "LLM pick w/o history + chemistry/load",
+        "ablate_sngp_off": "chemistry off",
+    }
+    bold_tags = {"llm_pick", "llm_pick_wo_history_chemload", "ablate_sa_off", "ablate_openmax_off"}
+    preferred_order = [
+        "cycles_5",
+        "cycles_15",
+        "cycles_30",
+        "cycles_50",
+        "cycles_100",
+        "llm_pick",
+        "llm_pick_wo_history_chemload",
+        "wideresnet",
+        "history_off",
+        "chemistry_off",
+    ]
+
+    def _canonical_tag(tag: str) -> str:
+        txt = tag.lower().strip()
+        if txt in {"ablate_sa_off", "ablate_openmax_off"}:
+            return "llm_pick_wo_history_chemload"
+        if txt == "sngp_wrn_sa":
+            return "wideresnet"
+        if txt == "ablate_sngp_off":
+            return "chemistry_off"
+        return txt
     
     def _display_tag(tag: str) -> tuple[str, bool]:
-        highlight = "cnn_openmax" in tag.lower()
-        label = f"{tag} [LLM pick]" if highlight else tag
+        canonical = _canonical_tag(tag)
+        label = pretty_labels.get(tag, pretty_labels.get(canonical, canonical.replace("_", " ")))
+        highlight = tag in bold_tags or canonical in bold_tags
         return label, highlight
 
     def _assign_group(tag: str) -> str:
@@ -60,7 +111,10 @@ def plot_leaderboard(df: pd.DataFrame, out_path: Path) -> None:
         lambda row: row["cycle_order"] if row["group"] == "cycle limits" else -row["avg_improvement"],
         axis=1,
     )
-    ordered = grouped.sort_values(["group_order", "order_within_group"], ascending=[True, True])
+    grouped["canonical_tag"] = grouped["tag"].astype(str).map(_canonical_tag)
+    preferred_index = {tag: idx for idx, tag in enumerate(preferred_order)}
+    grouped["preferred_order"] = grouped["canonical_tag"].map(lambda t: preferred_index.get(t, 999))
+    ordered = grouped.sort_values(["preferred_order", "group_order", "order_within_group"], ascending=[True, True, True])
     plt.figure(figsize=(11, 6))
     ax = plt.gca()
     yerr = None
@@ -110,7 +164,7 @@ def plot_leaderboard(df: pd.DataFrame, out_path: Path) -> None:
         if highlight:
             tick_label.set_fontweight("bold")
     plt.ylabel("Avg. improvement vs. baseline (%)")
-    plt.title("LLM comparison + ablation leaderboard")
+    plt.title(title)
     for i, (_, row) in enumerate(ordered.iterrows()):
         v = row["avg_improvement"] * 100.0
         n = row.get("improvement_count")
@@ -266,11 +320,26 @@ def main():
         action="store_true",
         help="Skip writing ablation_summary.md next to the plots.",
     )
+    parser.add_argument(
+        "--dataset_tag",
+        default=None,
+        help="If set, auto-pick latest llm_run_* whose compare/*.csv includes this dataset tag.",
+    )
+    parser.add_argument(
+        "--title",
+        default="LLM comparison + ablation leaderboard",
+        help="Title for the leaderboard figure.",
+    )
     args = parser.parse_args()
 
     run_dir: Path
     if args.run_dir.name.startswith("llm_run_") and args.run_dir.is_dir():
         run_dir = args.run_dir
+    elif args.dataset_tag:
+        latest = _find_latest_llm_run_for_dataset(args.run_dir, args.dataset_tag)
+        if latest is None:
+            raise SystemExit(f"No llm_run_* with compare CSVs for dataset tag '{args.dataset_tag}'.")
+        run_dir = latest
     else:
         latest = _find_latest_llm_run(args.run_dir)
         if latest is None:
@@ -282,16 +351,12 @@ def main():
         raise SystemExit(f"Missing leaderboard at {leaderboard_path}")
 
     df = pd.read_csv(leaderboard_path)
-    # Ablation deltas are computed vs. the Zhao CNN baseline; drop llm_pick for readability.
-    df = df[df["tag"].astype(str) != "llm_pick"].copy()
-    if df.empty:
-        raise SystemExit("Leaderboard only contains llm_pick; no ablation rows to plot.")
     ablation_records = _load_ablation_json(run_dir)
     if ablation_records:
         print(f"Loaded {len(ablation_records)} ablation prompt variants from {run_dir}")
 
     lb_plot = run_dir / "ablation_leaderboard.png"
-    plot_leaderboard(df, lb_plot)
+    plot_leaderboard(df, lb_plot, title=args.title)
     print(f"Saved leaderboard plot to {lb_plot}")
 
     cycle_plot = run_dir / "ablation_cycles.png"
