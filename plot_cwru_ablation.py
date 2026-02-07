@@ -18,6 +18,7 @@ import pandas as pd
 _GROUP_RULES = [
     ("cycle limits", "cycles_"),
     ("history toggles", "history_"),
+    ("head toggles", "openmax_"),
     ("head toggles", "head_"),
     ("regularization", "ablate_"),
     ("chemistry toggles", "chemistry_"),

@@ -2383,6 +2383,8 @@ def main():
         def _apply_llm_cfg_to_args(cfg_obj, target_args):
             target_args.model_name = cfg_obj.get("model_name", target_args.model_name)
             target_args.method = 'sngp' if cfg_obj.get("sngp", False) else 'deterministic'
+            if cfg_obj.get("openmax", False):
+                target_args.model_name = "cnn_openmax"
             target_args.droprate = cfg_obj.get("dropout", getattr(target_args, "droprate", 0.3))
             target_args.lr = cfg_obj.get("learning_rate", getattr(target_args, "lr", 1e-3))
             target_args.batch_size = int(cfg_obj.get("batch_size", getattr(target_args, "batch_size", 64)))
@@ -2425,6 +2427,19 @@ def main():
             cyc_args = _apply_llm_cfg_to_args(cycle_cfg, copy.deepcopy(base_args))
             cyc_args.tag = (getattr(cyc_args, "tag", "") + f"_cycles_{cycle_limit}_" + args.llm_cfg_stamp).strip("_")
             candidates.append((f"cycles_{cycle_limit}", cyc_args))
+            
+        llm_openmax = bool(getattr(args, "model_name", "") == "cnn_openmax")
+        openmax_ablate_cfg = copy.deepcopy(base_args)
+        if llm_openmax:
+            openmax_ablate_cfg.model_name = "cnn_features_1d_sa"
+            openmax_ablate_cfg.method = "sngp" if bool(getattr(base_args, "method", "deterministic") == "sngp") else "deterministic"
+            openmax_ablate_cfg.tag = (getattr(openmax_ablate_cfg, "tag", "") + "_openmax_off_" + args.llm_cfg_stamp).strip("_")
+            candidates.append(("openmax_off", openmax_ablate_cfg))
+        else:
+            openmax_ablate_cfg.model_name = "cnn_openmax"
+            openmax_ablate_cfg.method = "deterministic"
+            openmax_ablate_cfg.tag = (getattr(openmax_ablate_cfg, "tag", "") + "_openmax_on_" + args.llm_cfg_stamp).strip("_")
+            candidates.append(("openmax_on", openmax_ablate_cfg))
 
         wrn_det = copy.deepcopy(base_args)
         wrn_det.model_name = "WideResNet"
@@ -2563,9 +2578,9 @@ def main():
             return (dst, stats)
         for tag, cfg in candidates:
             print(f"\n===== LLM comparison run: {tag} =====")
-            if tag.startswith("cycles_"):
+            if "cycles_" in tag:
                 try:
-                    cyc_val = int(tag.split("_", 1)[1])
+                    cyc_val = int(tag.rsplit("cycles_", 1)[1])
                     _apply_cycle_budget(cfg, cyc_val)
                 except Exception:
                     _apply_cycle_budget(cfg, reference_cycles)
@@ -2583,9 +2598,9 @@ def main():
             copied_path, stats = _collect_latest_summary(copy_prefix=tag)
             avg_imp = stats.get("mean", float("nan")) if stats else float("nan")
             cyc_lim = None
-            if tag.startswith("cycles_"):
+            if "cycles_" in tag:
                 try:
-                    cyc_lim = int(tag.split("_", 1)[1])
+                    cyc_lim = int(tag.rsplit("cycles_", 1)[1])
                 except Exception:
                     cyc_lim = None
             leaderboard_rows.append({
@@ -2629,6 +2644,8 @@ def main():
             "history_off_transfer_off": "LLM configuration without history and without transfer metadata (chemistry/load hints disabled).",
             "chemistry_off": "LLM configuration without battery chemistry hints.",
             "load_off": "LLM configuration without CWRU load/HP/rpm transfer metadata.",
+            "openmax_off": "LLM configuration with OpenMax disabled (when LLM pick used OpenMax).",
+            "openmax_on": "LLM configuration with OpenMax enabled (when LLM pick did not use OpenMax).",
             "deterministic_cnn": "Zhao CNN baseline (deterministic, no transfer head).",
             "wideresnet": "Deterministic WideResNet capacity baseline (no SNGP).",
             "sngp_wrn_sa": "WideResNet+SA with SNGP head (calibrated baseline).",

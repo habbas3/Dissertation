@@ -49,16 +49,20 @@ def plot_leaderboard(df: pd.DataFrame, out_path: Path, title: str = "LLM compari
     group_rules = [
         ("cycle limits", "cycles_"),
         ("history toggles", "history_"),
+        ("head toggles", "openmax_"),
         ("head toggles", "head_"),
         ("regularization", "ablate_"),
     ]
     pretty_labels = {
         "llm_pick": "LLM pick",
+        "history_on": "history on",
         "llm_pick_wo_history_chemload": "LLM pick w/o history + chemistry/load",
         "history_off": "history off",
         "history_off_transfer_off": "history off + chemistry off",
         "chemistry_off": "chemistry off",
         "load_off": "load off",
+        "openmax_on": "OpenMax on",
+        "openmax_off": "OpenMax off",
         "deterministic_cnn": "deterministic cnn",
         "sngp_wrn_sa": "wideresnet + sngp",
         "wideresnet": "wideresnet (det)",
