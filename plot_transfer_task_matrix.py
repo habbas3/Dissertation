@@ -5,10 +5,11 @@
 """Create transfer-task matrix heatmaps across CWRU and Battery datasets.
 
 The matrix visualizes *domain gap magnitude* per source→target transfer pair. By default,
-it uses a relative transfer drop that is more robust than raw ``1 - transfer_score`` when
+it uses a relative transfer difference that is more robust than raw ``1 - transfer_score`` when
 scores can be near-perfect:
 
-    gap = max(0, baseline_score - transfer_score) / max(baseline_score, eps)
+    gap = abs(baseline_score - transfer_score) / max(baseline_score, eps)
+
 
 By default, the script reads the ablation CSVs already generated in ``figures/`` and
 uses the baseline transfer score columns (``transfer_score_base``). You can switch to
@@ -114,7 +115,9 @@ def _build_gap_matrix(csv_path: Path, dataset: str, score_variant: str, gap_mode
     eps = 1e-8
     if gap_mode == "relative_drop":
         work = work.dropna(subset=[baseline_col])
-        work["domain_gap"] = (work[baseline_col] - work[score_col]).clip(lower=0.0) / work[baseline_col].clip(lower=eps)
+        # Use absolute relative change so domain gap reflects transfer mismatch magnitude,
+        # even when transfer outperforms baseline.
+        work["domain_gap"] = (work[baseline_col] - work[score_col]).abs() / work[baseline_col].clip(lower=eps)
     elif gap_mode == "one_minus_transfer":
         work["domain_gap"] = 1.0 - work[score_col]
     else:
@@ -173,7 +176,7 @@ def main() -> None:
         choices=["relative_drop", "one_minus_transfer"],
         default="relative_drop",
         help=(
-            "How to compute domain gap. 'relative_drop' compares transfer against source "
+            "How to compute domain gap. 'relative_drop' uses relative transfer-vs-baseline "
             "baseline score; 'one_minus_transfer' uses 1 - transfer_score."
         ),
     )
