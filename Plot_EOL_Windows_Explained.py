@@ -41,11 +41,11 @@ ax_top.text(
     bbox=dict(boxstyle="round,pad=0.2", fc="white", ec="none")
 )
 
-# Add horizontal EOL threshold at 75% SOH
-ax_top.axhline(0.75, color="red", linestyle="--", lw=1.8)
+# Add horizontal EOL threshold at 80% SOH
+ax_top.axhline(0.80, color="red", linestyle="--", lw=1.8)
 ax_top.text(
-    50, 0.755,
-    "EOL Threshold (75% SOH)",
+    50, 0.805,
+    "EOL Threshold (80% SOH)",
     color="red", fontsize=10, ha="left", va="bottom",
     bbox=dict(boxstyle="round,pad=0.2", fc="white", ec="none")
 )
@@ -53,7 +53,7 @@ ax_top.text(
 # Mark computed EOL cycle
 ax_top.axvline(eol_cycle, color="red", linestyle="--", lw=1.8)
 ax_top.text(
-    eol_cycle + 100, 0.65,
+    eol_cycle + 100, 0.70,
     "Computed EOL cycle\n(EOL class used for all\nearly-life windows)",
     color="red", fontsize=10,
     ha="left", va="center",
@@ -77,10 +77,10 @@ ax_bot.set_ylabel("SOH", fontsize=12)
 ax_bot.set_title("Early-Life Windows (all inherit the same EOL class)", fontsize=13)
 
 # Red horizontal EOL threshold for consistency
-ax_bot.axhline(0.75, color="red", linestyle="--", lw=1.5)
+ax_bot.axhline(0.80, color="red", linestyle="--", lw=1.5)
 ax_bot.text(
-    0.5, 0.755,
-    "75% SOH\n(EOL threshold)",
+    0.5, 0.805,
+    "80% SOH\n(EOL threshold)",
     color="red", fontsize=9,
     ha="left", va="bottom",
     bbox=dict(boxstyle="round,pad=0.2", fc="white", ec="none")
@@ -121,7 +121,7 @@ ax_bot.annotate(
     bbox=dict(boxstyle="round,pad=0.25", fc="white", ec="none")
 )
 
-ax_bot.set_ylim(0.7, 1.03)
+ax_bot.set_ylim(0.75, 1.03)
 ax_bot.set_xlim(0, 20)
 
 # ============================================================
