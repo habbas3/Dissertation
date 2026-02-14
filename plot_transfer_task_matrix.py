@@ -22,6 +22,7 @@ import argparse
 from pathlib import Path
 
 import matplotlib.pyplot as plt
+from matplotlib.colors import PowerNorm
 import numpy as np
 import pandas as pd
 import seaborn as sns
@@ -141,18 +142,35 @@ def _build_gap_matrix(csv_path: Path, dataset: str, score_variant: str, gap_mode
     return matrix
 
 
-def _plot_heatmap(ax: plt.Axes, matrix: pd.DataFrame, title: str, vmin: float, vmax: float) -> None:
+def _plot_heatmap(
+    ax: plt.Axes,
+    matrix: pd.DataFrame,
+    title: str,
+    vmin: float,
+    vmax: float,
+    annot_decimals: int,
+) -> None:
+    cmap = sns.color_palette("mako", as_cmap=True)
+    cmap.set_bad(color="#e0e0e0")
+
+    # Domain-gap matrices are often sparse with many exact/near-zero entries.
+    # A mild power normalization increases contrast among small non-zero values.
+    norm = None
+    if vmax > vmin:
+        norm = PowerNorm(gamma=0.6, vmin=vmin, vmax=vmax)
     sns.heatmap(
         matrix,
         ax=ax,
-        cmap="mako",
+        cmap=cmap,
         annot=True,
-        fmt=".2f",
+        fmt=f".{annot_decimals}f",
         linewidths=0.5,
         linecolor="white",
         cbar=True,
         vmin=vmin,
         vmax=vmax,
+        norm=norm,
+        mask=matrix.isna(),
     )
     ax.set_title(title, fontweight="bold")
     ax.set_xlabel("Target domain")
@@ -182,6 +200,12 @@ def main() -> None:
     )
     parser.add_argument("--out_dir", type=Path, default=Path("figures"))
     parser.add_argument("--out_name", type=str, default="transfer_task_matrix_across_datasets.png")
+    parser.add_argument(
+        "--annot_decimals",
+        type=int,
+        default=3,
+        help="Number of decimals for heatmap value annotations.",
+    )
     args = parser.parse_args()
 
     cwru_matrix = _build_gap_matrix(
@@ -214,6 +238,7 @@ def main() -> None:
         title=f"CWRU Transfer Task Matrix (Domain Gap: {args.gap_mode})",
         vmin=vmin,
         vmax=vmax,
+        annot_decimals=args.annot_decimals,
     )
     _plot_heatmap(
         axes[1],
@@ -221,6 +246,7 @@ def main() -> None:
         title=f"Battery Transfer Task Matrix (Domain Gap: {args.gap_mode})",
         vmin=vmin,
         vmax=vmax,
+        annot_decimals=args.annot_decimals,
     )
 
     out_path = args.out_dir / args.out_name
