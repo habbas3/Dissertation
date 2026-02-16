@@ -12,8 +12,7 @@ from pathlib import Path
 import matplotlib.pyplot as plt
 import pandas as pd
 
-from utils.plot_utils import find_latest_compare_csv
-
+from utils.plot_utils import find_latest_compare_csv_optional
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Plot average CWRU improvement by model.")
@@ -23,52 +22,49 @@ def main() -> None:
     parser.add_argument("--out_fig", default="A3_cwru_improvement.png")
     args = parser.parse_args()
 
-    det_path = find_latest_compare_csv(
+    summary_paths = {
+        "Deterministic CNN": find_latest_compare_csv_optional(
         args.checkpoint_root,
         "deterministic_cnn_summary",
-        args.dataset_tag,
-        run_dir=args.run_dir,
-    )
-    sngp_path = find_latest_compare_csv(
+            args.dataset_tag,
+            run_dir=args.run_dir,
+        ),
+        "WRN+SA+SNGP": find_latest_compare_csv_optional(
         args.checkpoint_root,
         "sngp_wrn_sa_summary",
-        args.dataset_tag,
-        run_dir=args.run_dir,
-    )
-    llm_path = find_latest_compare_csv(
+            args.dataset_tag,
+            run_dir=args.run_dir,
+        ),
+        "LLM-picked CNN+OpenMax+SNGP": find_latest_compare_csv_optional(
         args.checkpoint_root,
         "llm_pick_summary",
-        args.dataset_tag,
-        run_dir=args.run_dir,
-    )
+            args.dataset_tag,
+            run_dir=args.run_dir,
+        ),
+    }
 
-    # === Load ===
-    det = pd.read_csv(det_path)
-    sngp = pd.read_csv(sngp_path)
-    llm = pd.read_csv(llm_path)
+    models: list[str] = []
+    improvements: list[float] = []
+    for model_name, csv_path in summary_paths.items():
+        if csv_path is None:
+            print(f"Skipping {model_name}: no summary CSV found for {args.dataset_tag}.")
+            continue
+        summary = pd.read_csv(csv_path)
+        imp_col = next((c for c in ["improvement", "delta_common", "delta_metric"] if c in summary.columns), None)
+        if imp_col is None:
+            print(f"Skipping {model_name}: no improvement column in {csv_path.name}.")
+            continue
+        models.append(model_name)
+        improvements.append(float(pd.to_numeric(summary[imp_col], errors="coerce").dropna().mean() * 100.0))
 
-    # Infer improvement column name
-    imp_col = None
-    for c in ["improvement", "delta_common", "delta_metric"]:
-        if c in det.columns:
-            imp_col = c
-            break
-
-    if imp_col is None:
-        raise ValueError("Could not find an 'improvement' column. Adjust if needed.")
-
-    models = ["Deterministic CNN", "WRN+SA+SNGP", "LLM-picked CNN+OpenMax+SNGP"]
-    improvements = [
-        det[imp_col].mean() * 100,
-        sngp[imp_col].mean() * 100,
-        llm[imp_col].mean() * 100,
-    ]
+    if not models:
+        raise ValueError(f"No comparable CWRU summaries found for dataset tag {args.dataset_tag}.")
 
     # === Plot ===
     plt.figure(figsize=(7, 5))
     plt.bar(models, improvements)
     plt.ylabel("Average Improvement (%)", fontweight='bold')
-    plt.title("CWRU Inconsistent: Average Improvement by Model", fontweight='bold')
+    plt.title(f"{args.dataset_tag}: Average Improvement by Model", fontweight='bold')
     plt.xticks(rotation=15, ha="right")
 
     for i, v in enumerate(improvements):

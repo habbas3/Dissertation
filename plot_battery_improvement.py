@@ -12,8 +12,7 @@ from pathlib import Path
 import matplotlib.pyplot as plt
 import pandas as pd
 
-from utils.plot_utils import find_latest_compare_csv
-
+from utils.plot_utils import find_latest_compare_csv_optional
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Plot LLM improvement per battery transfer pair.")
@@ -23,38 +22,36 @@ def main() -> None:
     parser.add_argument("--out_fig", default="A4_battery_llm_improvement_per_pair.png")
     args = parser.parse_args()
 
-    llm_path = find_latest_compare_csv(
+    llm_path = find_latest_compare_csv_optional(
         args.checkpoint_root,
         "llm_pick_summary",
         args.dataset_tag,
         run_dir=args.run_dir,
     )
+    if llm_path is None:
+        raise ValueError(f"No llm_pick_summary CSV found for dataset {args.dataset_tag}.")
+
     llm_b = pd.read_csv(llm_path)
-    llm_b.improvement = llm_b.improvement * 100
-    
-    # Infer improvement col
-    imp_col = None
-    for c in ["improvement", "delta_common", "delta_metric"]:
-        if c in llm_b.columns:
-            imp_col = c
-            break
+
+    imp_col = next((c for c in ["improvement", "delta_common", "delta_metric"] if c in llm_b.columns), None)
 
 
     if imp_col is None:
         raise ValueError("Could not find an improvement column in LLM battery summary.")
 
-    # Make "source→target" label
+    llm_b[imp_col] = pd.to_numeric(llm_b[imp_col], errors="coerce") * 100.0
     if "source" not in llm_b.columns or "target" not in llm_b.columns:
         raise ValueError("Expected 'source' and 'target' columns are missing.")
-
+        
+        
+    llm_b = llm_b.dropna(subset=[imp_col]).copy()
     llm_b["pair"] = llm_b["source"].astype(str) + "→" + llm_b["target"].astype(str)
     
     
-    # === Plot ===
     plt.figure(figsize=(8, 6))
     plt.bar(llm_b["pair"], llm_b[imp_col])
     plt.ylabel("Improvement (%)", fontweight='bold')
-    plt.title("Battery Transfers: LLM-picked CNN+SA (SNGP) Improvement", fontweight='bold')
+    plt.title("Battery Transfers: LLM-picked Improvement", fontweight='bold')
     plt.xticks(rotation=45, ha="right")
 
     for i, v in enumerate(llm_b[imp_col]):

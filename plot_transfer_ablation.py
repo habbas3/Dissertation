@@ -32,7 +32,7 @@ from typing import Iterable
 import matplotlib.pyplot as plt
 import pandas as pd
 
-from utils.plot_utils import find_latest_compare_csv
+from utils.plot_utils import find_latest_compare_csv_optional
 
 _CWRU_LOADS = {
     0: {"hp": 0, "rpm": 1797},
@@ -189,19 +189,25 @@ def main() -> None:
         base_df, imp_df = _demo_transfer_frames(args.dataset)
     else:
         if baseline_path is None:
-            baseline_path = find_latest_compare_csv(
+            baseline_path = find_latest_compare_csv_optional(
                 args.checkpoint_root,
                 "deterministic_cnn_summary",
                 dataset_tag,
                 run_dir=args.run_dir,
             )
         if improved_path is None:
-            improved_path = find_latest_compare_csv(
+            improved_path = find_latest_compare_csv_optional(
                 args.checkpoint_root,
                 "llm_pick_summary",
                 dataset_tag,
                 run_dir=args.run_dir,
             )
+        if baseline_path is None or improved_path is None:
+            raise FileNotFoundError(
+                f"Missing baseline or improved summary for dataset {dataset_tag}. "
+                "Pass --baseline/--improved explicitly or wait for the run to finish."
+            )
+            
         base_df = pd.read_csv(baseline_path)
         imp_df = pd.read_csv(improved_path)
     merged = _merge_pairs(base_df, imp_df)

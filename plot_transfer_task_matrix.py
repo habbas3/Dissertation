@@ -53,13 +53,25 @@ def _format_cwru_domain(value: str | int) -> str:
     return f"Load {idx}{suffix}"
 
 
-def _detect_score_column(df: pd.DataFrame, score_variant: str) -> str:
+def _detect_score_column(df: pd.DataFrame, score_variant: str, prefer_raw_transfer: bool) -> str:
     preferred = [
+        f"raw_transfer_score_{score_variant}",
+        f"raw_transfer_common_acc_{score_variant}",
+        f"raw_transfer_accuracy_{score_variant}",
+        f"raw_transfer_hscore_{score_variant}",
         f"transfer_score_{score_variant}",
         f"transfer_common_acc_{score_variant}",
         f"transfer_accuracy_{score_variant}",
         f"transfer_hscore_{score_variant}",
     ]
+    if not prefer_raw_transfer:
+        preferred = [col for col in preferred if not col.startswith("raw_")]
+        preferred = [
+            f"transfer_score_{score_variant}",
+            f"transfer_common_acc_{score_variant}",
+            f"transfer_accuracy_{score_variant}",
+            f"transfer_hscore_{score_variant}",
+        ]
     for col in preferred:
         if col in df.columns:
             return col
@@ -92,14 +104,24 @@ def _normalize_score_series(values: pd.Series) -> pd.Series:
     return numeric.clip(lower=0.0, upper=1.0)
 
 
-def _build_gap_matrix(csv_path: Path, dataset: str, score_variant: str, gap_mode: str) -> pd.DataFrame:
+def _build_gap_matrix(
+    csv_path: Path,
+    dataset: str,
+    score_variant: str,
+    gap_mode: str,
+    prefer_raw_transfer: bool,
+    exclude_baseline_kept: bool,
+) -> pd.DataFrame:
     df = pd.read_csv(csv_path)
     if not {"source", "target"}.issubset(df.columns):
         raise ValueError(f"CSV missing required columns source/target: {csv_path}")
 
-    score_col = _detect_score_column(df, score_variant)
-    baseline_col = score_col.replace("transfer_", "baseline_")
+    score_col = _detect_score_column(df, score_variant, prefer_raw_transfer=prefer_raw_transfer)
+    baseline_col = score_col.replace("raw_transfer_", "baseline_").replace("transfer_", "baseline_")
+    note_col = f"note_{score_variant}"
     required_cols = ["source", "target", score_col]
+    if exclude_baseline_kept and note_col in df.columns:
+        required_cols.append(note_col)
     if gap_mode == "relative_drop":
         if baseline_col not in df.columns:
             raise ValueError(
@@ -108,6 +130,8 @@ def _build_gap_matrix(csv_path: Path, dataset: str, score_variant: str, gap_mode
         required_cols.append(baseline_col)
 
     work = df[required_cols].copy()
+    if exclude_baseline_kept and note_col in work.columns:
+        work = work[work[note_col].fillna("").str.strip().ne("baseline_kept")]
     work[score_col] = _normalize_score_series(work[score_col])
     if baseline_col in work.columns:
         work[baseline_col] = _normalize_score_series(work[baseline_col])
@@ -135,9 +159,10 @@ def _build_gap_matrix(csv_path: Path, dataset: str, score_variant: str, gap_mode
     observed_pairs = work[["source", "target"]].drop_duplicates().shape[0]
     possible_pairs = len(domains) * (len(domains) - 1)
     perfect_or_zero = int(np.isclose(work["domain_gap"], 0.0, atol=1e-12).sum())
+    filtered_suffix = " (excluding baseline_kept rows)" if exclude_baseline_kept and note_col in df.columns else ""
     print(
         f"[{dataset}] gap_mode={gap_mode} score_col={score_col} rows={len(work)} "
-        f"observed_pairs={observed_pairs}/{possible_pairs} zero_gap_rows={perfect_or_zero}"
+        f"observed_pairs={observed_pairs}/{possible_pairs} zero_gap_rows={perfect_or_zero}{filtered_suffix}"
     )
     return matrix
 
@@ -198,6 +223,24 @@ def main() -> None:
             "baseline score; 'one_minus_transfer' uses 1 - transfer_score."
         ),
     )
+    parser.add_argument(
+       "--prefer_raw_transfer",
+       action=argparse.BooleanOptionalAction,
+       default=True,
+       help=(
+           "Prefer raw transfer metrics (raw_transfer_*) when present so domain-gap values reflect "
+           "actual transfer performance before any baseline-kept fallback."
+       ),
+    )
+    parser.add_argument(
+       "--exclude_baseline_kept",
+       action=argparse.BooleanOptionalAction,
+       default=True,
+       help=(
+           "Drop rows marked note_<variant>=baseline_kept to avoid collapsing domain gap to ~0 when "
+           "fallback-to-baseline selection was used."
+       ),
+   )
     parser.add_argument("--out_dir", type=Path, default=Path("figures"))
     parser.add_argument("--out_name", type=str, default="transfer_task_matrix_across_datasets.png")
     parser.add_argument(
@@ -213,12 +256,16 @@ def main() -> None:
         dataset="cwru",
         score_variant=args.score_variant,
         gap_mode=args.gap_mode,
+        prefer_raw_transfer=args.prefer_raw_transfer,
+        exclude_baseline_kept=args.exclude_baseline_kept,
     )
     battery_matrix = _build_gap_matrix(
         args.battery_csv,
         dataset="battery",
         score_variant=args.score_variant,
         gap_mode=args.gap_mode,
+        prefer_raw_transfer=args.prefer_raw_transfer,
+        exclude_baseline_kept=args.exclude_baseline_kept,
     )
 
     all_values = np.concatenate([

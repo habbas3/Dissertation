@@ -1,5 +1,4 @@
-source,fcg,lirich,nmc,spinel5v
-fcg,,,0.03163444639718804,
-lirich,,,,0.0
-nmc,0.0,,,0.0
-spinel5v,,0.0,0.1427165354330708,
+source,fcg,nmc,spinel5v
+fcg,,0.03163444639718804,
+nmc,,,
+spinel5v,,0.1427165354330708,

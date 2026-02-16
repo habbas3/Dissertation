@@ -25,10 +25,6 @@ _GROUP_RULES = [
     ("load/HP toggles", "load_"),
 ]
 
-_DEFAULT_CWRU_RUN = Path(
-    "/Users/moondiab/Documents/Dissertation/UDTL_Lable_Inconsistent-main/checkpoint/"
-    "llm_run_20260126_213942"
-)
 
 def _find_latest_dataset_run(root: Path, dataset_tag: str) -> Path | None:
     runs = list(root.glob("llm_run_*/llm_leaderboard.csv"))
@@ -395,8 +391,6 @@ def main() -> None:
     run_dir: Path
     if args.run_dir:
         run_dir = args.run_dir
-    elif _DEFAULT_CWRU_RUN.exists():
-        run_dir = _DEFAULT_CWRU_RUN
     else:
         latest = _find_latest_dataset_run(args.checkpoint_root, args.dataset_tag)
         if latest is None:

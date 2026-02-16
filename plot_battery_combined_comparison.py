@@ -8,11 +8,27 @@ Created on Wed Dec  3 21:41:01 2025
 
 import argparse
 from pathlib import Path
+import numpy as np
 
 import matplotlib.pyplot as plt
 import pandas as pd
 
-from utils.plot_utils import find_latest_compare_csv
+from utils.plot_utils import find_latest_compare_csv_optional
+
+
+def _load_model_frame(csv_path: Path, label: str) -> pd.DataFrame:
+    df = pd.read_csv(csv_path)
+    imp_col = next((c for c in ["improvement", "delta_common", "delta_metric"] if c in df.columns), None)
+    if imp_col is None:
+        raise ValueError(f"Missing improvement-like column in {csv_path}.")
+    if "source" not in df.columns or "target" not in df.columns:
+        raise ValueError(f"Expected 'source' and 'target' columns in {csv_path}.")
+
+    out = df[["source", "target", imp_col]].copy()
+    out[imp_col] = pd.to_numeric(out[imp_col], errors="coerce") * 100.0
+    out = out.dropna(subset=[imp_col])
+    out["pair"] = out["source"].astype(str) + "→" + out["target"].astype(str)
+    return out[["pair", imp_col]].rename(columns={imp_col: label})
 
 
 def main() -> None:
@@ -23,74 +39,42 @@ def main() -> None:
     parser.add_argument("--out_fig", default="A5_battery_combined_comparison.png")
     args = parser.parse_args()
 
-    det_path = find_latest_compare_csv(
-        args.checkpoint_root,
-        "deterministic_cnn_summary",
-        args.dataset_tag,
-        run_dir=args.run_dir,
-    )
-    sngp_path = find_latest_compare_csv(
-        args.checkpoint_root,
-        "sngp_wrn_sa_summary",
-        args.dataset_tag,
-        run_dir=args.run_dir,
-    )
-    llm_path = find_latest_compare_csv(
-        args.checkpoint_root,
-        "llm_pick_summary",
-        args.dataset_tag,
-        run_dir=args.run_dir,
-    )
+    candidates = [
+        ("Deterministic CNN", "deterministic_cnn", "deterministic_cnn_summary"),
+        ("WRN+SA+SNGP", "wrn_sngp", "sngp_wrn_sa_summary"),
+        ("LLM-picked CNN+SA", "llm_cnn_sa", "llm_pick_summary"),
+    ]
 
-    det_b = pd.read_csv(det_path)
-    det_b.improvement = det_b.improvement * 100
-    sngp_b = pd.read_csv(sngp_path)
-    sngp_b.improvement = sngp_b.improvement * 100
-    llm_b = pd.read_csv(llm_path)
-    llm_b.improvement = llm_b.improvement * 100
+    merged: pd.DataFrame | None = None
+    plotted_models: list[tuple[str, str]] = []
+    for display, key, prefix in candidates:
+        csv_path = find_latest_compare_csv_optional(
+            args.checkpoint_root,
+            prefix,
+            args.dataset_tag,
+            run_dir=args.run_dir,
+        )
+        if csv_path is None:
+            print(f"Skipping {display}: no summary CSV found for {args.dataset_tag}.")
+            continue
+        frame = _load_model_frame(csv_path, key)
+        merged = frame if merged is None else merged.merge(frame, on="pair", how="outer")
+        plotted_models.append((display, key))
 
-    # Infer improvement columns
-    imp_det_col = None
-    for c in ["improvement", "delta_common", "delta_metric"]:
-        if c in det_b.columns:
-            imp_det_col = c
-            break
+    if merged is None or merged.empty:
+        raise ValueError(f"No battery summaries available for dataset tag {args.dataset_tag}.")
 
-    imp_llm_col = None
-    for c in ["improvement", "delta_common", "delta_metric"]:
-        if c in llm_b.columns:
-            imp_llm_col = c
-            break
-
-    if imp_det_col is None or imp_llm_col is None:
-        raise ValueError("Missing improvement column in one of the battery summary files.")
-
-    # Ensure source & target exist
-    for df in (det_b, sngp_b, llm_b):
-        if "source" not in df.columns or "target" not in df.columns:
-            raise ValueError("Expected 'source' and 'target' columns missing in one of the files.")
-        df["pair"] = df["source"].astype(str) + "→" + df["target"].astype(str)
-
-    # Merge per pair
-    merged = det_b[["pair", imp_det_col]].rename(columns={imp_det_col: "det_cnn"})
-    merged = merged.merge(
-        sngp_b[["pair", imp_det_col]].rename(columns={imp_det_col: "wrn_sngp"}),
-        on="pair", how="outer"
-    ).merge(
-        llm_b[["pair", imp_llm_col]].rename(columns={imp_llm_col: "llm_cnn_sa"}),
-        on="pair", how="outer"
-    )
-
-    x = range(len(merged))
-    width = 0.25
+    merged = merged.sort_values("pair").reset_index(drop=True)
+    x = np.arange(len(merged))
+    width = 0.8 / max(1, len(plotted_models))
 
     plt.figure(figsize=(10, 7))
-    plt.bar([i - width for i in x], merged["det_cnn"], width=width, label="Deterministic CNN")
-    plt.bar(x, merged["wrn_sngp"], width=width, label="WRN+SA+SNGP")
-    plt.bar([i + width for i in x], merged["llm_cnn_sa"], width=width, label="LLM-picked CNN+SA")
+    for idx, (display, key) in enumerate(plotted_models):
+        offset = (idx - (len(plotted_models) - 1) / 2.0) * width
+        plt.bar(x + offset, merged[key], width=width, label=display)
     plt.xticks(list(x), merged["pair"], rotation=45, ha="right")
     plt.ylabel("Improvement (%)", fontweight='bold')
-    plt.title("Battery Transfers: Improvement by Model and Transfer Pair", fontweight='bold')
+    plt.title(f"{args.dataset_tag}: Improvement by Model and Transfer Pair", fontweight='bold')
     plt.legend()
     plt.tight_layout()
     plt.savefig(args.out_fig, dpi=300)

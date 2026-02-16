@@ -53,3 +53,27 @@ def find_latest_compare_csv(
     raise FileNotFoundError(
         f"No compare CSVs found for prefix={prefix} dataset={dataset_tag} under {checkpoint_root}"
     )
+    
+def find_latest_compare_csv_optional(
+    checkpoint_root: Path,
+    prefix: str,
+    dataset_tag: str,
+    *,
+    run_dir: Path | None = None,
+) -> Path | None:
+    """Best-effort variant of :func:`find_latest_compare_csv`.
+
+    This is useful for partially complete LLM runs where not every model summary
+    has finished yet. The newest matching CSV is returned when available,
+    otherwise ``None``.
+    """
+
+    try:
+        return find_latest_compare_csv(
+            checkpoint_root,
+            prefix,
+            dataset_tag,
+            run_dir=run_dir,
+        )
+    except FileNotFoundError:
+        return None
