@@ -180,7 +180,7 @@ def plot_hscore_distribution(compare_payload: Dict[str, List[Dict[str, str]]], o
         return
 
     plt.figure(figsize=(max(10, len(tags) * 0.8), 5.5))
-    plt.boxplot(distributions, tick_labels=[_clean_tag(t) for t in tags], showmeans=True)
+    plt.boxplot(distributions, labels=[_clean_tag(t) for t in tags], showmeans=True)
     plt.xticks(rotation=35, ha="right")
     plt.ylabel("Transfer H-score")
     plt.title(f"H-score distribution across ablations ({dataset})")
