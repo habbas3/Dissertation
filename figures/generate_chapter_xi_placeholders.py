@@ -251,7 +251,8 @@ if all_unc:
         fp = np.cumsum(y_sorted == 0)
         precision = tp / np.maximum(tp + fp, 1)
         recall = tp / max(int((labels == 1).sum()), 1)
-        return float(np.trapezoid(precision, recall))
+        integrate = getattr(np, "trapezoid", np.trapz)
+        return float(integrate(precision, recall))
 
     auprc_msp = _auprc(msp, y)
     auprc_var = _auprc(var_proxy, y)

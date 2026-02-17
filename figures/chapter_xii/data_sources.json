@@ -1,0 +1,9 @@
+{
+  "cwru_run": "/Users/moondiab/Documents/Dissertation/UDTL_Lable_Inconsistent-main/checkpoint/llm_run_20251210_125835",
+  "battery_run": "/Users/moondiab/Documents/Dissertation/UDTL_Lable_Inconsistent-main/checkpoint/llm_run_20260101_113741",
+  "notes": [
+    "All values are pulled from latest checkpoint llm_run compare CSVs.",
+    "Zhao baseline is proxied by mean baseline_score from latest CWRU llm_pick summary.",
+    "Figures XII-8 and XII-9 are proxy comparisons constrained by available checkpoint metrics."
+  ]
+}
