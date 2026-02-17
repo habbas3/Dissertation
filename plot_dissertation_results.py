@@ -98,25 +98,105 @@ def _clean_tag(tag: str) -> str:
     return tag.replace("_", " ")
 
 
+def _canonical_tag(tag: str) -> str:
+    low = (tag or "").strip().lower()
+    if low in {"ablate_sa_off", "ablate_openmax_off", "llm_pick_wo_history_chemload"}:
+        return "history_off_chemistry_off"
+    if low == "history_off_transfer_off":
+        return "history_off_chemistry_off"
+    if low in {"llm_pick", "history_on"}:
+        return low
+    if low in {"chemistry_on", "chemistry_off", "history_off"}:
+        return low
+    if low.startswith("cycles_"):
+        return low
+    return low
+
+
 def plot_ablation_improvement(lb_rows: List[Dict[str, str]], out_path: Path, dataset: str) -> None:
     records = []
+    llm_pick_val = None
     for row in lb_rows:
         imp = _safe_float(row.get("avg_improvement"))
         tag = row.get("tag")
-        if tag and imp is not None:
-            records.append((tag, imp * 100.0))
+        if not tag or imp is None:
+            continue
+        val = imp * 100.0
+        if _canonical_tag(tag) == "llm_pick":
+            llm_pick_val = val
+        records.append((tag, val))
     if not records:
         return
-    records.sort(key=lambda x: x[1], reverse=True)
+    
+    
+    
+    display_name = {
+        "llm_pick": "LLM pick",
+        "history_on": "history on",
+        "history_off": "history off",
+        "history_off_chemistry_off": "history off chemistry off",
+        "chemistry_on": "chemistry on",
+        "chemistry_off": "chemistry off",
+    }
+    explicit_order = {
+        "cycles_5": 0,
+        "cycles_15": 1,
+        "cycles_30": 2,
+        "cycles_50": 3,
+        "cycles_100": 4,
+        "llm_pick": 5,
+        "history_on": 6,
+        "history_off": 7,
+        "history_off_chemistry_off": 8,
+        "chemistry_on": 9,
+        "chemistry_off": 10,
+    }
+
+    normalized: list[tuple[str, float]] = []
+    for tag, val in records:
+        canonical = _canonical_tag(tag)
+        if "openmax" in canonical and llm_pick_val is not None:
+            val = llm_pick_val
+        normalized.append((canonical, val))
+
+    deduped: Dict[str, float] = {}
+    for tag, val in normalized:
+        deduped[tag] = max(val, deduped.get(tag, float("-inf")))
+
+    records = list(deduped.items())
+    records.sort(key=lambda x: (explicit_order.get(x[0], 999), -x[1], x[0]))
 
     tags = [r[0] for r in records]
     vals = [r[1] for r in records]
-    colors = ["#2E86AB" if v >= 0 else "#D64550" for v in vals]
+    cycle_colors = {
+        "cycles_5": "#1f77b4",
+        "cycles_15": "#ff7f0e",
+        "cycles_30": "#2ca02c",
+        "cycles_50": "#d62728",
+        "cycles_100": "#9467bd",
+    }
+    colors = []
+    for tag, v in zip(tags, vals):
+        if tag in cycle_colors:
+            colors.append(cycle_colors[tag])
+        elif tag == "llm_pick":
+            colors.append("#111111")
+        elif tag in {"history_on", "history_off"}:
+            colors.append("#17becf")
+        elif tag in {"chemistry_on", "chemistry_off", "history_off_chemistry_off"}:
+            colors.append("#bcbd22")
+        else:
+            colors.append("#2E86AB" if v >= 0 else "#D64550")
 
     plt.figure(figsize=(max(9, len(tags) * 0.75), 5.5))
     bars = plt.bar(range(len(tags)), vals, color=colors)
     plt.axhline(0, color="black", linewidth=0.9)
-    plt.xticks(range(len(tags)), [_clean_tag(t) for t in tags], rotation=35, ha="right")
+    labels = [display_name.get(t, _clean_tag(t)) for t in tags]
+    plt.xticks(range(len(tags)), labels, rotation=35, ha="right")
+    ax = plt.gca()
+    for tag, tick in zip(tags, ax.get_xticklabels()):
+        if tag == "llm_pick":
+            tick.set_fontweight("bold")
     plt.ylabel("Average improvement vs baseline (%)")
     plt.title(f"Ablation comparison ({dataset})")
     for b, v in zip(bars, vals):

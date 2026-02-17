@@ -158,7 +158,7 @@ def reset_seed(seed=SEED):
 
 def parse_args():
     parser = argparse.ArgumentParser(description='Train')
-    parser.add_argument('--data_name', type=str, default='CWRU_inconsistent',
+    parser.add_argument('--data_name', type=str, default='Battery_inconsistent',
                         choices=['Battery_inconsistent', 'CWRU_inconsistent'])
     parser.add_argument('--data_dir', type=str, default='./my_datasets/Battery',
                         help='Root directory for datasets')
@@ -196,9 +196,9 @@ def parse_args():
     parser.add_argument('--lr_scheduler', type=str, default='step')
     parser.add_argument('--gamma', type=float, default=0.1)
     parser.add_argument('--steps', type=str, default='150, 250')
-    parser.add_argument('--middle_epoch', type=int, default=15) #30
-    parser.add_argument('--max_epoch', type=int, default=50) #100
-    parser.add_argument('--print_step', type=int, default=25) #50
+    parser.add_argument('--middle_epoch', type=int, default=5) #30
+    parser.add_argument('--max_epoch', type=int, default=10) #100
+    parser.add_argument('--print_step', type=int, default=3) #50
     parser.add_argument('--no_confmat', action='store_true',
                         help='Skip confusion-matrix generation to reduce post-training memory usage')
     parser.add_argument('--confmat_dir', type=str, default='',
