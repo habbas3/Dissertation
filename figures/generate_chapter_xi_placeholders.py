@@ -15,8 +15,9 @@ import numpy as np
 import pandas as pd
 
 
-CHECKPOINT_ROOT = Path("checkpoint")
-OUT_DIR = Path("figures/chapter_xii")
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+CHECKPOINT_ROOT = PROJECT_ROOT / "checkpoint"
+OUT_DIR = PROJECT_ROOT / "figures/chapter_xii"
 OUT_DIR.mkdir(parents=True, exist_ok=True)
 plt.style.use("seaborn-v0_8-whitegrid")
 
