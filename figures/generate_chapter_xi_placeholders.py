@@ -28,18 +28,23 @@ def _save(fig: plt.Figure, filename: str) -> None:
     plt.close(fig)
 
 
-def _latest_run_for_dataset(dataset_token: str) -> Path:
-    runs = sorted(CHECKPOINT_ROOT.glob("llm_run_*"))
-    chosen: Path | None = None
+def _latest_run_for_dataset(dataset_token: str, required_prefixes: list[str]) -> Path:
+    """Return latest run that includes this dataset and all required summary prefixes."""
+
+    runs = sorted(CHECKPOINT_ROOT.glob("llm_run_*"), reverse=True)
     for run in runs:
         compare = run / "compare"
         if not compare.exists():
             continue
-        if any(dataset_token.lower() in p.name.lower() for p in compare.glob("*.csv")):
-            chosen = run
-    if chosen is None:
-        raise FileNotFoundError(f"No llm_run_* with dataset token '{dataset_token}' found.")
-    return chosen
+        csv_files = list(compare.glob("*.csv"))
+        if not any(dataset_token.lower() in p.name.lower() for p in csv_files):
+            continue
+        if all(any(p.name.startswith(f"{prefix}_summary_") for p in csv_files) for prefix in required_prefixes):
+            return run
+
+    raise FileNotFoundError(
+        f"No llm_run_* with dataset token '{dataset_token}' containing all prefixes {required_prefixes} found."
+    )
 
 
 def _load_compare(run_dir: Path, prefix: str) -> pd.DataFrame:
@@ -73,8 +78,11 @@ def _load_uncertainty_for_row(row: pd.Series) -> pd.DataFrame | None:
     return pd.read_csv(candidates[-1])
 
 
-cwru_run = _latest_run_for_dataset("CWRU")
-battery_run = _latest_run_for_dataset("Battery")
+cwru_required = ["llm_pick", "deterministic_cnn", "ablate_openmax_off", "sngp_wrn_sa", "ablate_sngp_off"]
+battery_required = ["llm_pick", "deterministic_cnn", "ablate_sa_off", "ablate_sngp_off"]
+
+cwru_run = _latest_run_for_dataset("CWRU", cwru_required)
+battery_run = _latest_run_for_dataset("Battery", battery_required)
 
 cwru_llm = _load_compare(cwru_run, "llm_pick")
 cwru_det = _load_compare(cwru_run, "deterministic_cnn")
