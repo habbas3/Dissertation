@@ -1008,6 +1008,8 @@ def _llm_pick_for_transfer(
         chemistry_feedback = getattr(args, "llm_chemistry_feedback", True)
     if compare_chemistry is None:
         compare_chemistry = chemistry_feedback
+    include_transfer_context = bool(getattr(args, "llm_include_transfer_context", True))
+    compare_transfer_context = bool(getattr(args, "llm_compare_transfer_context", include_transfer_context))
 
     llm_cfg = select_config(
         text_context=text_ctx,
@@ -1017,6 +1019,7 @@ def _llm_pick_for_transfer(
         debug_dir=debug_dir,
         allow_history=allow_history,
         chemistry_feedback=chemistry_feedback,
+        include_transfer_context=include_transfer_context,
     )
 
     cycle_limits = _parse_cycle_limits(
@@ -1037,6 +1040,8 @@ def _llm_pick_for_transfer(
             lock_hyperparams=True,
             chemistry_feedback=chemistry_feedback,
             compare_chemistry=compare_chemistry,
+            include_transfer_context=include_transfer_context,
+            compare_transfer_context=compare_transfer_context,
         )
 
     return llm_cfg, num_summary, text_ctx, ablation_records
@@ -2376,6 +2381,35 @@ def main():
 
         def _configure_llm_prompting(target_args, tag: str) -> None:
             target_args.llm_per_transfer = False
+            target_args.llm_allow_history = True
+            target_args.llm_chemistry_feedback = True
+            target_args.llm_include_transfer_context = True
+            target_args.llm_compare_transfer_context = True
+            target_args.llm_prompt_variant = tag
+
+            llm_prompt_tags = {
+                "llm_pick",
+                "history_on",
+                "history_off",
+                "history_off_transfer_off",
+                "chemistry_off",
+                "load_off",
+            }
+            if tag in llm_prompt_tags:
+                target_args.llm_per_transfer = True
+
+            if tag == "history_off":
+                target_args.llm_allow_history = False
+            elif tag == "history_off_transfer_off":
+                target_args.llm_allow_history = False
+                target_args.llm_chemistry_feedback = False
+                target_args.llm_include_transfer_context = False
+                target_args.llm_compare_transfer_context = False
+            elif tag == "chemistry_off":
+                target_args.llm_chemistry_feedback = False
+            elif tag == "load_off":
+                target_args.llm_include_transfer_context = False
+                target_args.llm_compare_transfer_context = False
 
         def _apply_non_cycle_budget(target_args) -> None:
             _apply_cycle_budget(target_args, reference_cycles)
@@ -2391,7 +2425,15 @@ def main():
             target_args.lambda_src = float(cfg_obj.get("lambda_src", getattr(target_args, "lambda_src", 1.0)))
             if hasattr(target_args, "bottleneck_num"):
                 target_args.bottleneck_num = int(cfg_obj.get("bottleneck", getattr(target_args, "bottleneck_num", 256)))
+            target_args.llm_cfg = dict(cfg_obj)
+            target_args.llm_cfg_inputs = {
+                "variant": getattr(target_args, "llm_prompt_variant", "unknown"),
+                "allow_history": bool(getattr(target_args, "llm_allow_history", True)),
+                "chemistry_feedback": bool(getattr(target_args, "llm_chemistry_feedback", True)),
+                "include_transfer_context": bool(getattr(target_args, "llm_include_transfer_context", True)),
+            }
             return target_args
+        
 
         # 1) The LLM pick (already applied to args)
         candidates.append(("llm_pick", copy.deepcopy(args)))
@@ -2588,6 +2630,12 @@ def main():
                 _apply_non_cycle_budget(cfg)
 
             _configure_llm_prompting(cfg, tag)
+            cfg.llm_cfg_inputs = {
+                "variant": tag,
+                "allow_history": bool(getattr(cfg, "llm_allow_history", True)),
+                "chemistry_feedback": bool(getattr(cfg, "llm_chemistry_feedback", True)),
+                "include_transfer_context": bool(getattr(cfg, "llm_include_transfer_context", True)),
+            }
             if cfg.data_name == 'Battery_inconsistent':
                 run_battery_experiments(cfg)
             else:
