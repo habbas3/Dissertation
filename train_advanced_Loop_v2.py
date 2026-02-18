@@ -1835,30 +1835,43 @@ def run_cwru_experiments(args):
             shared_tgt_val_dataset,
             num_classes,
         ) = cwru_dataset.data_split(transfer_learning=True)
+        
+        cwru_num_workers = int(getattr(args, 'num_workers', 0) or 0)
+        if cwru_num_workers > 0:
+            print(f"⚠️ CWRU loader forcing num_workers=0 (requested {cwru_num_workers}) to avoid MAT reader worker crashes.")
+            cwru_num_workers = 0
 
         shared_src_train_loader = DataLoader(
             shared_src_train_dataset,
             batch_size=args.batch_size,
             shuffle=True,
             drop_last=True,
+            num_workers=cwru_num_workers,
+            pin_memory=torch.cuda.is_available(),
         )
         shared_src_val_loader = DataLoader(
             shared_src_val_dataset,
             batch_size=args.batch_size,
             shuffle=False,
             drop_last=False,
+            num_workers=cwru_num_workers,
+            pin_memory=torch.cuda.is_available(),
         )
         shared_tgt_train_loader = DataLoader(
             shared_tgt_train_dataset,
             batch_size=args.batch_size,
             shuffle=True,
             drop_last=True,
+            num_workers=cwru_num_workers,
+            pin_memory=torch.cuda.is_available(),
         )
         shared_tgt_val_loader = DataLoader(
             shared_tgt_val_dataset,
             batch_size=args.batch_size,
             shuffle=False,
             drop_last=False,
+            num_workers=cwru_num_workers,
+            pin_memory=torch.cuda.is_available(),
         )
 
         shared_stats = _cwru_shared_stats(

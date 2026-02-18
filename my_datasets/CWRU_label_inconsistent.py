@@ -3,6 +3,7 @@ from scipy.io import loadmat
 import numpy as np
 import pandas as pd
 import torch
+from collections import OrderedDict
 from sklearn.model_selection import train_test_split
 from my_datasets.SequenceDatasets import dataset
 from my_datasets.sequence_aug import *
@@ -183,13 +184,14 @@ def build_window_index(root, N, name, label):
 class CWRUWindowDataset(torch.utils.data.Dataset):
     """Lazy-loading dataset that reads CWRU windows on demand."""
 
-    def __init__(self, window_index, transform=None, sequence_length=1):
+    def __init__(self, window_index, transform=None, sequence_length=1, cache_size=4):
         self.window_index = window_index
         self.sequence_length = sequence_length
         self.transforms = transform if transform else Compose([Reshape()])
         self._labels = np.asarray([entry[3] for entry in window_index], dtype=int)
-        self._cache_key = None
-        self._cache_data = None
+        # A tiny LRU cache avoids repeated MAT parsing churn and keeps memory bounded.
+        self.cache_size = max(1, int(cache_size))
+        self._cache = OrderedDict()
 
     @property
     def labels(self):
@@ -204,12 +206,16 @@ class CWRUWindowDataset(torch.utils.data.Dataset):
 
     def _load_signal(self, path, axisname):
         cache_key = (path, axisname)
-        if self._cache_key == cache_key and self._cache_data is not None:
-            return self._cache_data
+        cached = self._cache.get(cache_key)
+        if cached is not None:
+            self._cache.move_to_end(cache_key)
+            return cached
         realaxis = _resolve_axis_key(axisname)
-        data = loadmat(path)[realaxis]
-        self._cache_key = cache_key
-        self._cache_data = data
+        data = np.asarray(loadmat(path)[realaxis], dtype=np.float32).reshape(-1)
+        self._cache[cache_key] = data
+        self._cache.move_to_end(cache_key)
+        if len(self._cache) > self.cache_size:
+            self._cache.popitem(last=False)
         return data
 
     def __len__(self):
@@ -226,7 +232,13 @@ class CWRUWindowDataset(torch.utils.data.Dataset):
         seq = self.transforms(seq)
         if not isinstance(seq, torch.Tensor):
             seq = torch.tensor(seq, dtype=torch.float32)
-        label = self.labels[item] if self.labels.size else -1
+        if self._labels.size == 0:
+            label = -1
+        elif self.sequence_length <= 1:
+            label = int(self._labels[item])
+        else:
+            idx = min(item + self.sequence_length - 1, len(self._labels) - 1)
+            label = int(self._labels[idx])
         return seq, int(label)
 
 
