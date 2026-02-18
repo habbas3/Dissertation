@@ -1335,6 +1335,30 @@ def run_ablation_suite(
 
     
     if compare_chemistry and is_battery:
+        chem_on_cfg = select_config(
+            text_context,
+            num_summary,
+            backend=backend,
+            model=model,
+            debug_dir=debug_dir,
+            allow_history=True,
+            chemistry_feedback=True,
+            include_transfer_context=include_transfer_context,
+        )
+        records.append({
+            "tag": "chemistry_on",
+            "config": chem_on_cfg,
+            "cycle_limit": None,
+            "chemistry_feedback": True,
+            "transfer_context": include_transfer_context,
+            "history_mode": "on",
+            "definition": "Chemistry-on prompt explicitly keeps cathode chemistry hints enabled.",
+            "prompt_transfer_context": _describe_transfer_context(
+                num_summary,
+                chemistry_feedback=True,
+                include_transfer_context=include_transfer_context,
+            ),
+        })
         chem_off_cfg = select_config(
             text_context,
             num_summary,

@@ -2405,6 +2405,8 @@ def main():
                 target_args.llm_chemistry_feedback = False
                 target_args.llm_include_transfer_context = False
                 target_args.llm_compare_transfer_context = False
+            elif tag == "chemistry_on":
+                target_args.llm_chemistry_feedback = True
             elif tag == "chemistry_off":
                 target_args.llm_chemistry_feedback = False
             elif tag == "load_off":
@@ -2436,7 +2438,26 @@ def main():
         
 
         # 1) The LLM pick (already applied to args)
-        candidates.append(("llm_pick", copy.deepcopy(args)))
+        llm_pick_args = copy.deepcopy(args)
+        llm_pick_args.tag = (getattr(llm_pick_args, "tag", "") + "_llm_pick_" + args.llm_cfg_stamp).strip("_")
+        candidates.append(("llm_pick", llm_pick_args))
+
+        history_on_cfg = llm_cfg
+        chemistry_on_cfg = llm_cfg
+        for record in ablation_records:
+            if record.get("tag") == "history_on" and record.get("config"):
+                history_on_cfg = record.get("config")
+            if record.get("tag") == "chemistry_on" and record.get("config"):
+                chemistry_on_cfg = record.get("config")
+
+        hist_on_args = _apply_llm_cfg_to_args(history_on_cfg, copy.deepcopy(base_args))
+        hist_on_args.tag = (getattr(hist_on_args, "tag", "") + "_history_on_" + args.llm_cfg_stamp).strip("_")
+        candidates.append(("history_on", hist_on_args))
+
+        if str(args.data_name).lower().startswith("battery"):
+            chem_on_args = _apply_llm_cfg_to_args(chemistry_on_cfg, copy.deepcopy(base_args))
+            chem_on_args.tag = (getattr(chem_on_args, "tag", "") + "_chemistry_on_" + args.llm_cfg_stamp).strip("_")
+            candidates.append(("chemistry_on", chem_on_args))
         
         
         
@@ -2509,12 +2530,16 @@ def main():
         candidates.append(("sngp_wrn_sa", sngp))
 
         _cmp_dir = _os.path.join("checkpoint", f"llm_run_{args.llm_cfg_stamp}", "compare")
+        _shared_results_dir = _os.path.join(_cmp_dir, "all_runs")
         _os.makedirs(_cmp_dir, exist_ok=True)
+        _os.makedirs(_shared_results_dir, exist_ok=True)
 
         leaderboard_rows = []
 
         def _collect_latest_summary(copy_prefix: str) -> tuple[str, dict]:
-            summaries = sorted(glob.glob(_os.path.join("checkpoint", "summary_*.csv")), key=os.path.getmtime)
+            summaries = sorted(glob.glob(_os.path.join(_shared_results_dir, "summary_*.csv")), key=os.path.getmtime)
+            if not summaries:
+                summaries = sorted(glob.glob(_os.path.join("checkpoint", "summary_*.csv")), key=os.path.getmtime)
             if not summaries:
                 return ("", {})
             latest = summaries[-1]
@@ -2630,6 +2655,9 @@ def main():
                 _apply_non_cycle_budget(cfg)
 
             _configure_llm_prompting(cfg, tag)
+            cfg.checkpoint_dir = _shared_results_dir
+            if hasattr(cfg, "confusion_matrix_dir"):
+                cfg.confusion_matrix_dir = _shared_results_dir
             cfg.llm_cfg_inputs = {
                 "variant": tag,
                 "allow_history": bool(getattr(cfg, "llm_allow_history", True)),
@@ -2688,9 +2716,11 @@ def main():
         _manifest_path = _os.path.join(_llm_root, "llm_compare_manifest.json")
         tag_defs = {
             "llm_pick": "Single-shot LLM configuration (history + transfer context enabled).",
+            "history_on": "Explicit history-on ablation row (full leaderboard and transfer context).",
             "history_off": "LLM configuration without leaderboard/history context (cold-start prompt).",
             "history_off_transfer_off": "LLM configuration without history and without transfer metadata (chemistry/load hints disabled).",
             "chemistry_off": "LLM configuration without battery chemistry hints.",
+            "chemistry_on": "Explicit chemistry-on ablation row (battery chemistry hints retained).",
             "load_off": "LLM configuration without CWRU load/HP/rpm transfer metadata.",
             "openmax_off": "LLM configuration with OpenMax disabled (when LLM pick used OpenMax).",
             "openmax_on": "LLM configuration with OpenMax enabled (when LLM pick did not use OpenMax).",
