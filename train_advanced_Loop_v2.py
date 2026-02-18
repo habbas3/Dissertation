@@ -39,6 +39,7 @@ from llm_selector import select_config, run_ablation_suite
 from utils.experiment_runner import _cm_with_min_labels
 import os as _os
 from scipy.spatial.distance import jensenshannon
+import math
 
 
 def _cleanup_memory(tag: str = ""):
@@ -2553,6 +2554,15 @@ def main():
             try:
                 df = _pd.read_csv(dst)
                 
+                def _best_row_by_improvement(frame):
+                    if "improvement" not in frame.columns:
+                        return None
+                    imp = _pd.to_numeric(frame["improvement"], errors="coerce")
+                    if imp.dropna().empty:
+                        return None
+                    best_idx = imp.idxmax()
+                    return frame.loc[best_idx]
+                
                 def _mean_from_cols(columns, mask=None):
                     for col in columns:
                         if col not in df.columns:
@@ -2595,6 +2605,40 @@ def main():
                     ).dropna()
                     if not entropy_vals.empty:
                         acc_stats["transfer_uncertainty_mean_entropy"] = float(entropy_vals.mean())
+                        
+                best_row = _best_row_by_improvement(df)
+                if best_row is not None:
+                    if "source" in best_row.index:
+                        acc_stats["best_source"] = str(best_row.get("source"))
+                    if "target" in best_row.index:
+                        acc_stats["best_target"] = str(best_row.get("target"))
+                    best_improvement = _pd.to_numeric(
+                        _pd.Series([best_row.get("improvement")]), errors="coerce"
+                    ).dropna()
+                    if not best_improvement.empty:
+                        acc_stats["best_improvement"] = float(best_improvement.iloc[0])
+
+                    best_hscore = _pd.to_numeric(
+                        _pd.Series([best_row.get("transfer_hscore")]), errors="coerce"
+                    ).dropna()
+                    if not best_hscore.empty:
+                        acc_stats["best_transfer_hscore"] = float(best_hscore.iloc[0])
+
+                    best_outlier_acc = _pd.to_numeric(
+                        _pd.Series([best_row.get("transfer_outlier_acc")]), errors="coerce"
+                    ).dropna()
+                    if not best_outlier_acc.empty:
+                        acc_stats["best_transfer_outlier_acc"] = float(best_outlier_acc.iloc[0])
+
+                    best_entropy = _pd.to_numeric(
+                        _pd.Series([best_row.get("transfer_uncertainty_mean_entropy")]), errors="coerce"
+                    ).dropna()
+                    if not best_entropy.empty:
+                        entropy_value = float(best_entropy.iloc[0])
+                        # Convert entropy to confidence on [0, 1] via exp(-H).
+                        acc_stats["best_transfer_uncertainty_mean_entropy"] = entropy_value
+                        acc_stats["best_sngp_confidence"] = float(math.exp(-max(entropy_value, 0.0)))
+                        
                 if "improvement" in df.columns:
                     imp = _pd.to_numeric(df["improvement"], errors="coerce").dropna()
                     if not imp.empty:
@@ -2703,6 +2747,13 @@ def main():
                 "raw_improvement_mean": stats.get("raw_improvement_mean") if stats else None,
                 "raw_improvement_median": stats.get("raw_improvement_median") if stats else None,
                 "transfer_uncertainty_mean_entropy": stats.get("transfer_uncertainty_mean_entropy") if stats else None,
+                "best_source": stats.get("best_source") if stats else None,
+                "best_target": stats.get("best_target") if stats else None,
+                "best_improvement": stats.get("best_improvement") if stats else None,
+                "best_transfer_hscore": stats.get("best_transfer_hscore") if stats else None,
+                "best_transfer_outlier_acc": stats.get("best_transfer_outlier_acc") if stats else None,
+                "best_transfer_uncertainty_mean_entropy": stats.get("best_transfer_uncertainty_mean_entropy") if stats else None,
+                "best_sngp_confidence": stats.get("best_sngp_confidence") if stats else None,
                 "cycle_limit": cyc_lim,
             })
 
