@@ -33,7 +33,6 @@ import numpy
 import optuna
 from my_datasets.Battery_label_inconsistent import load_battery_dataset
 import global_habbas3
-from itertools import cycle
 import traceback
 from sklearn.utils.class_weight import compute_class_weight
 import torch
@@ -139,6 +138,12 @@ def _clear_runtime_cache(tag: str | None = None):
     gc.collect()
     if tag:
         print(f"🧹 Memory cleanup: {tag}")
+        
+def _snapshot_state_dict_cpu(model: nn.Module):
+    """Clone model weights onto CPU to avoid persistent GPU memory pressure."""
+    return {k: v.detach().cpu().clone() for k, v in model.state_dict().items()}
+
+
 
 
 
@@ -1339,7 +1344,7 @@ class train_utils_open_univ(object):
 
     def train(self):
         best_eval_acc = 0.0
-        best_model_wts = copy.deepcopy(self.model.state_dict())
+        best_model_wts = _snapshot_state_dict_cpu(self.model)
         best_hscore = 0.0
         best_common_acc = 0.0
         best_balanced_acc = 0.0
@@ -1356,9 +1361,7 @@ class train_utils_open_univ(object):
         self._lambda_plateau_epochs = 0
     
         for epoch in range(self.args.max_epoch):
-            source_iter = None
-            if self.transfer_mode and self.dataloaders.get('source_train') is not None:
-                source_iter = cycle(self.dataloaders['source_train'])
+            
             print(f"{datetime.now().strftime('%m-%d %H:%M:%S')} ----- Epoch {epoch + 1}/{self.args.max_epoch} -----")
             print(f"{datetime.now().strftime('%m-%d %H:%M:%S')} Current LR: {self.optimizer.param_groups[0]['lr']:.6f}")
             
@@ -1651,7 +1654,7 @@ class train_utils_open_univ(object):
 
                 if phase in ['source_val', 'target_val'] and metric_for_selection > best_eval_acc:
                     best_eval_acc = metric_for_selection
-                    best_model_wts = copy.deepcopy(self.model.state_dict())
+                    best_model_wts = _snapshot_state_dict_cpu(self.model)
                     print("✓ Best model updated based on validation metric.")
                     val_improved = True
                     self._best_epoch = epoch
@@ -1707,7 +1710,7 @@ class train_utils_open_univ(object):
                     if improved_balanced:
                         best_balanced_acc = balanced_acc_value
                     if improved_h or improved_common or improved_balanced:
-                        best_model_wts = copy.deepcopy(self.model.state_dict())
+                        best_model_wts = _snapshot_state_dict_cpu(self.model)
                         val_improved = True
                         print("✓ Best target model updated based on target metrics (hscore/common/balanced).")
                         self._best_epoch = epoch
