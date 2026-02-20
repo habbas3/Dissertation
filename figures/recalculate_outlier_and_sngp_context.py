@@ -21,7 +21,15 @@ def _find_latest_compare_csv(checkpoint_root: Path, prefix: str, dataset_tag: st
         key=lambda p: (p.parts[-3], p.name),
     )
     if not candidates:
-        raise FileNotFoundError(f"No compare CSV found for {prefix} and {dataset_tag}.")
+        # Fallback for copied/archived checkpoints where compare files are flattened.
+        candidates = sorted(
+            checkpoint_root.rglob(f"{prefix}_*_{dataset_tag}.csv"),
+            key=lambda p: (str(p.parent), p.name),
+        )
+    if not candidates:
+        raise FileNotFoundError(
+            f"No compare CSV found for {prefix} and {dataset_tag} under: {checkpoint_root.resolve()}"
+        )
     return candidates[-1]
 
 
@@ -192,9 +200,10 @@ def summarize_sngp_and_context(checkpoint_root: Path, out_dir: Path) -> Path:
 
 
 def main() -> None:
+    script_root = Path(__file__).resolve().parents[1]
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--checkpoint_root", type=Path, default=Path("checkpoint"))
-    parser.add_argument("--output_dir", type=Path, default=Path("figures/dissertation_plots"))
+    parser.add_argument("--checkpoint_root", type=Path, default=script_root / "checkpoint")
+    parser.add_argument("--output_dir", type=Path, default=script_root / "figures/dissertation_plots")
     parser.add_argument(
         "--outlier_class",
         type=int,

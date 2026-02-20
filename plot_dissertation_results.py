@@ -25,6 +25,11 @@ import matplotlib.pyplot as plt
 
 KNOWN_DATASETS = ("Battery_inconsistent", "CWRU_inconsistent")
 
+DATASET_TITLES = {
+    "Battery_inconsistent": "Argonne Battery Dataset",
+    "CWRU_inconsistent": "CWRU Dataset",
+}
+
 def _synthetic_cwru_payload() -> Tuple[List[Dict[str, str]], Dict[str, List[Dict[str, str]]]]:
     """Return a logical synthetic CWRU payload with llm_pick as the top performer.
 
@@ -107,6 +112,10 @@ def _dataset_from_text(text: str) -> str | None:
         if ds.lower() in low:
             return ds
     return None
+
+def _dataset_title(dataset: str) -> str:
+    return DATASET_TITLES.get(dataset, dataset)
+
 
 
 def _load_csv(path: Path) -> List[Dict[str, str]]:
@@ -310,7 +319,7 @@ def plot_ablation_improvement(lb_rows: List[Dict[str, str]], out_path: Path, dat
         if tag == "llm_pick":
             tick.set_fontweight("bold")
     plt.ylabel("Average improvement vs baseline (%)")
-    plt.title(f"Ablation comparison ({dataset})")
+    plt.title(f"Ablation comparison ({_dataset_title(dataset)})")
     top_val = max(vals)
     bottom_val = min(vals)
     top_pad = max(0.45, abs(top_val) * 0.08)
@@ -401,7 +410,7 @@ def plot_accuracy_aspects(compare_payload: Dict[str, List[Dict[str, str]]], out_
     plt.axhline(0, color="black", linewidth=0.9)
     plt.xticks(x, [_clean_tag(t) for t in tags], rotation=35, ha="right")
     plt.ylabel("Transfer - baseline (percentage points)")
-    plt.title(f"Ablation impact by metric aspect ({dataset})")
+    plt.title(f"Ablation impact by metric aspect ({_dataset_title(dataset)})")
     plt.legend(ncol=2)
     plt.tight_layout()
     plt.savefig(out_path, dpi=300)
@@ -425,7 +434,7 @@ def plot_hscore_distribution(compare_payload: Dict[str, List[Dict[str, str]]], o
     plt.boxplot(distributions, labels=[_clean_tag(t) for t in tags], showmeans=True)
     plt.xticks(rotation=35, ha="right")
     plt.ylabel("Transfer H-score")
-    plt.title(f"H-score distribution across ablations ({dataset})")
+    plt.title(f"H-score distribution across ablations ({_dataset_title(dataset)})")
     plt.tight_layout()
     plt.savefig(out_path, dpi=300)
     plt.close()
@@ -462,7 +471,7 @@ def plot_sngp_vs_det(lb_rows: List[Dict[str, str]], out_path: Path, dataset: str
     bars = plt.bar(labels, means, yerr=errs, capsize=6, color=["#3D9970", "#FF851B"])
     plt.axhline(0, color="black", linewidth=0.9)
     plt.ylabel("Average improvement (%)")
-    plt.title(f"SNGP improvement advantage ({dataset})")
+    plt.title(f"SNGP improvement advantage ({_dataset_title(dataset)})")
     for b, v in zip(bars, means):
         plt.text(b.get_x() + b.get_width() / 2, v + 0.2, f"{v:+.2f}%", ha="center", va="bottom")
     plt.tight_layout()
@@ -486,7 +495,7 @@ def plot_sngp_confidence(compare_payload: Dict[str, List[Dict[str, str]]], out_p
     plt.violinplot(dists, showmeans=True, showmedians=True)
     plt.xticks(range(1, len(tags) + 1), [_clean_tag(t) for t in tags], rotation=35, ha="right")
     plt.ylabel("Mean predictive entropy (lower is more confident)")
-    plt.title(f"SNGP confidence profile by ablation ({dataset})")
+    plt.title(f"SNGP confidence profile by ablation ({_dataset_title(dataset)})")
     plt.tight_layout()
     plt.savefig(out_path, dpi=300)
     plt.close()
@@ -514,7 +523,7 @@ def plot_confidence_vs_hscore(compare_payload: Dict[str, List[Dict[str, str]]], 
 
     plt.xlabel("Mean predictive entropy")
     plt.ylabel("Transfer H-score")
-    plt.title(f"Confidence vs H-score ({dataset})")
+    plt.title(f"Confidence vs H-score ({_dataset_title(dataset)})")
     plt.legend(fontsize=8, loc="best")
     plt.tight_layout()
     plt.savefig(out_path, dpi=300)
