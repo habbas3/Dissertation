@@ -112,7 +112,15 @@ def _synthesize_leaderboard_rows(run_dir: Path) -> List[Dict[str, str]]:
 
 
 def _load_run_payload(run_dir: Path) -> Tuple[List[Dict[str, str]], Dict[str, List[Dict[str, str]]]]:
-    lb_rows = _load_csv(run_dir / "llm_leaderboard.csv")
+    leaderboard_path = run_dir / "llm_leaderboard.csv"
+    if leaderboard_path.exists():
+        lb_rows = _load_csv(leaderboard_path)
+    else:
+        lb_rows = []
+
+    if not lb_rows:
+        lb_rows = _synthesize_leaderboard_rows(run_dir)
+
     compare_payload: Dict[str, List[Dict[str, str]]] = {}
     for row in lb_rows:
         tag = row.get("tag", "")
@@ -134,8 +142,10 @@ def _clean_tag(tag: str) -> str:
 
 def _canonical_tag(tag: str) -> str:
     low = (tag or "").strip().lower()
-    if low in {"ablate_sa_off", "ablate_openmax_off", "llm_pick_wo_history_chemload"}:
+    if low in {"ablate_sa_off", "llm_pick_wo_history_chemload"}:
         return "history_off_chemistry_off"
+    if low == "ablate_openmax_off":
+        return "openmax_off"
     if low == "history_off_transfer_off":
         return "history_off_chemistry_off"
     if low in {"llm_pick", "history_on"}:
@@ -149,15 +159,12 @@ def _canonical_tag(tag: str) -> str:
 
 def plot_ablation_improvement(lb_rows: List[Dict[str, str]], out_path: Path, dataset: str) -> None:
     records = []
-    llm_pick_val = None
     for row in lb_rows:
         imp = _safe_float(row.get("avg_improvement"))
         tag = row.get("tag")
         if not tag or imp is None:
             continue
         val = imp * 100.0
-        if _canonical_tag(tag) == "llm_pick":
-            llm_pick_val = val
         records.append((tag, val))
     if not records:
         return
@@ -169,6 +176,7 @@ def plot_ablation_improvement(lb_rows: List[Dict[str, str]], out_path: Path, dat
         "history_on": "history on",
         "history_off": "history off",
         "history_off_chemistry_off": "history off chemistry off",
+        "openmax_off": "openmax off",
         "chemistry_on": "chemistry on",
         "chemistry_off": "chemistry off",
     }
@@ -182,15 +190,14 @@ def plot_ablation_improvement(lb_rows: List[Dict[str, str]], out_path: Path, dat
         "history_on": 6,
         "history_off": 7,
         "history_off_chemistry_off": 8,
-        "chemistry_on": 9,
-        "chemistry_off": 10,
+        "openmax_off": 9,
+        "chemistry_on": 10,
+        "chemistry_off": 11,
     }
 
     normalized: list[tuple[str, float]] = []
     for tag, val in records:
         canonical = _canonical_tag(tag)
-        if "openmax" in canonical and llm_pick_val is not None:
-            val = llm_pick_val
         normalized.append((canonical, val))
 
     deduped: Dict[str, float] = {}
@@ -250,6 +257,30 @@ def _mean_delta(compare_rows: List[Dict[str, str]], metric: str) -> float | None
     return mean(deltas) if deltas else None
 
 
+def _is_closed_set_rows(rows: List[Dict[str, str]], prefix: str) -> bool:
+    """Heuristic: treat rows as closed-set if all outlier accuracies are zero."""
+
+    outliers = [_safe_float(r.get(f"{prefix}_outlier_acc")) for r in rows]
+    outliers = [v for v in outliers if v is not None]
+    if not outliers:
+        return False
+    return all(abs(v) <= 1e-12 for v in outliers)
+
+
+def _effective_hscore(row: Dict[str, str], prefix: str, closed_set: bool) -> float | None:
+    h = _safe_float(row.get(f"{prefix}_hscore"))
+    if h is not None and (abs(h) > 1e-12 or not closed_set):
+        return h
+    if closed_set:
+        # Backward compatibility for historical CSVs produced before
+        # closed-set H-score handling was fixed in training.
+        common = _safe_float(row.get(f"{prefix}_common_acc"))
+        if common is not None:
+            return common
+    return h
+
+
+
 def plot_accuracy_aspects(compare_payload: Dict[str, List[Dict[str, str]]], out_path: Path, dataset: str) -> None:
     aspects = ["accuracy", "common_acc", "outlier_acc", "hscore"]
     aspect_labels = ["Accuracy", "Common acc", "Outlier acc", "H-score"]
@@ -266,7 +297,19 @@ def plot_accuracy_aspects(compare_payload: Dict[str, List[Dict[str, str]]], out_
     for idx, (aspect, label) in enumerate(zip(aspects, aspect_labels)):
         vals = []
         for tag in tags:
-            m = _mean_delta(compare_payload[tag], aspect)
+            if aspect != "hscore":
+                m = _mean_delta(compare_payload[tag], aspect)
+            else:
+                rows = compare_payload[tag]
+                closed_transfer = _is_closed_set_rows(rows, "transfer")
+                closed_baseline = _is_closed_set_rows(rows, "baseline")
+                deltas = []
+                for row in rows:
+                    b = _effective_hscore(row, "baseline", closed_baseline)
+                    t = _effective_hscore(row, "transfer", closed_transfer)
+                    if b is not None and t is not None:
+                        deltas.append((t - b) * 100.0)
+                m = mean(deltas) if deltas else None
             vals.append(m if m is not None else 0.0)
         shift = (idx - 1.5) * width
         plt.bar([v + shift for v in x], vals, width=width, label=label)
@@ -285,7 +328,8 @@ def plot_hscore_distribution(compare_payload: Dict[str, List[Dict[str, str]]], o
     tags = []
     distributions = []
     for tag, rows in sorted(compare_payload.items()):
-        vals = [_safe_float(r.get("transfer_hscore")) for r in rows]
+        closed_transfer = _is_closed_set_rows(rows, "transfer")
+        vals = [_effective_hscore(r, "transfer", closed_transfer) for r in rows]
         vals = [v for v in vals if v is not None]
         if vals:
             tags.append(tag)
@@ -368,11 +412,12 @@ def plot_confidence_vs_hscore(compare_payload: Dict[str, List[Dict[str, str]]], 
     plt.figure(figsize=(6.5, 5.2))
     any_points = False
     for tag, rows in sorted(compare_payload.items()):
+        closed_transfer = _is_closed_set_rows(rows, "transfer")
         xs = []
         ys = []
         for r in rows:
             x = _safe_float(r.get("transfer_uncertainty_mean_entropy"))
-            y = _safe_float(r.get("transfer_hscore"))
+            y = _effective_hscore(r, "transfer", closed_transfer)
             if x is not None and y is not None:
                 xs.append(x)
                 ys.append(y)

@@ -1253,7 +1253,15 @@ def compute_common_outlier_metrics(labels, preds, num_known):
     else:
         outlier_acc = 0.0
 
-    h = (2 * common_acc * outlier_acc) / (common_acc + outlier_acc) if (common_acc + outlier_acc) > 0 else 0.0
+    # Closed-set datasets can legitimately contain no outlier samples in the
+    # evaluation split. In that case, define H-score as common accuracy so the
+    # metric remains informative instead of collapsing to zero.
+    if not outlier_mask.any():
+        h = common_acc
+    elif not common_mask.any():
+        h = outlier_acc
+    else:
+        h = (2 * common_acc * outlier_acc) / (common_acc + outlier_acc) if (common_acc + outlier_acc) > 0 else 0.0
     return common_acc, outlier_acc, h
 
 
