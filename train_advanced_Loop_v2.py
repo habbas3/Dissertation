@@ -1265,6 +1265,30 @@ def compute_common_outlier_metrics(labels, preds, num_known):
     return common_acc, outlier_acc, h
 
 
+def resolve_open_set_num_known(labels, default_num_known, data_name="", inconsistent=""):
+    """Choose a robust known-class cutoff for open-set metric reporting.
+
+    In CWRU UAN/OSBP runs, target outliers are encoded as label ``9``. Some
+    experiment configs still carry ``num_classes=10`` from legacy defaults,
+    which would incorrectly classify all labels as *known* and force
+    outlier-accuracy to zero. When that explicit outlier label is present,
+    use 9 as the cutoff for metric computation.
+    """
+
+    labels_np = np.asarray(labels)
+    if labels_np.size == 0:
+        return int(default_num_known)
+
+    data_low = (data_name or "").lower()
+    incons_low = (inconsistent or "").lower()
+    if "cwru" in data_low and incons_low in {"uan", "osbp"}:
+        if (labels_np == 9).any() and int(default_num_known) > 9:
+            return 9
+
+    return int(default_num_known)
+
+
+
 def _safe_accuracy(labels, preds):
     if labels is None or preds is None:
         return 0.0
@@ -1551,7 +1575,13 @@ def run_battery_experiments(args):
             baseline_labels_np = np.array(bl_labels)
             baseline_preds_np = np.array(bl_preds)
             
-            num_known = transfer_args.num_classes
+            
+            num_known = resolve_open_set_num_known(
+                tr_labels,
+                transfer_args.num_classes,
+                data_name=getattr(transfer_args, "data_name", ""),
+                inconsistent=getattr(transfer_args, "inconsistent", ""),
+            )
             
             t_common, t_out, t_h = compute_common_outlier_metrics(tr_labels, tr_preds, num_known)
             b_common, b_out, b_h = compute_common_outlier_metrics(baseline_labels_np, baseline_preds_np, num_known)
@@ -2038,7 +2068,12 @@ def run_cwru_experiments(args):
             baseline_labels_np = np.array(bl_labels)
             baseline_preds_np = np.array(bl_preds)
             
-            num_known = transfer_args.num_classes
+            num_known = resolve_open_set_num_known(
+                tr_labels,
+                transfer_args.num_classes,
+                data_name=getattr(transfer_args, "data_name", ""),
+                inconsistent=getattr(transfer_args, "inconsistent", ""),
+            )
             
             t_common, t_out, t_h = compute_common_outlier_metrics(tr_labels, tr_preds, num_known)
             b_common, b_out, b_h = compute_common_outlier_metrics(baseline_labels_np, baseline_preds_np, num_known)
