@@ -51,12 +51,10 @@ def _load_csv(path: Path) -> List[Dict[str, str]]:
 def _find_latest_runs_by_dataset(checkpoint_root: Path) -> Dict[str, Path]:
     chosen: Dict[str, Path] = {}
     for run in sorted(checkpoint_root.glob("llm_run_*")):
+        rows: List[Dict[str, str]] = []
         lb_path = run / "llm_leaderboard.csv"
-        if not lb_path.exists():
-            continue
-        rows = _load_csv(lb_path)
-        if not rows:
-            continue
+        if lb_path.exists():
+            rows = _load_csv(lb_path)
 
         found_dataset = None
         for row in rows:
@@ -75,6 +73,42 @@ def _find_latest_runs_by_dataset(checkpoint_root: Path) -> Dict[str, Path]:
         if found_dataset:
             chosen[found_dataset] = run
     return chosen
+
+
+def _guess_method(tag: str) -> str:
+    low = (tag or "").lower()
+    if "sngp" in low:
+        return "sngp"
+    if "deterministic" in low:
+        return "deterministic"
+    return "other"
+
+
+def _synthesize_leaderboard_rows(run_dir: Path) -> List[Dict[str, str]]:
+    rows: List[Dict[str, str]] = []
+    compare_dir = run_dir / "compare"
+    if not compare_dir.exists():
+        return rows
+
+    for path in sorted(compare_dir.glob("*.csv")):
+        compare_rows = _load_csv(path)
+        improvements = [_safe_float(r.get("improvement")) for r in compare_rows]
+        improvements = [v for v in improvements if v is not None]
+        if not improvements:
+            continue
+
+        stem = path.stem
+        tag = stem.split("_summary_")[0] if "_summary_" in stem else stem
+        rows.append(
+            {
+                "tag": tag,
+                "method": _guess_method(tag),
+                "summary_csv": str(path),
+                "avg_improvement": str(mean(improvements)),
+            }
+        )
+    return rows
+
 
 
 def _load_run_payload(run_dir: Path) -> Tuple[List[Dict[str, str]], Dict[str, List[Dict[str, str]]]]:
