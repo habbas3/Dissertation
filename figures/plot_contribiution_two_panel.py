@@ -90,9 +90,10 @@ def make_figure(battery_csv: Path, cwru_csv: Path, out_fig: Path, title: str) ->
         0.02,
         0.97,
         (
-            f"mean score Δ: {mean_score:+.2f} pp\n"
-            f"mean entropy Δ: {mean_entropy:+.3f}\n"
-            "(SNGP contribution: higher uncertainty with safer transfer behavior)"
+            f"mean score Δ: {mean_score:+.2f} pp (closed-set accuracy proxy)\n"
+            f"mean entropy Δ: {mean_entropy:+.3f} (uncertainty proxy)\n"
+            "Interpretation: SNGP is acting as calibration/safety regularization,\n"
+            "not an across-the-board raw accuracy booster."
         ),
         transform=ax.transAxes,
         va="top",
@@ -107,7 +108,8 @@ def make_figure(battery_csv: Path, cwru_csv: Path, out_fig: Path, title: str) ->
     ax.legend(
         lines1 + lines2,
         labels1 + labels2,
-        loc="upper right",
+        loc="upper left",
+        bbox_to_anchor=(0.0, 1.0),
         fontsize=8,
         framealpha=0.95,
     )
@@ -116,21 +118,35 @@ def make_figure(battery_csv: Path, cwru_csv: Path, out_fig: Path, title: str) ->
     ax = axes[1]
     x = list(range(len(c_labels)))
     width = 0.42
-    ax.bar([i - width / 2 for i in x], c_outlier_gain_pp, width=width, color="#55A868", label="Outlier acc gain (pp)")
+    ax.bar(
+        [i - width / 2 for i in x],
+        c_outlier_gain_pp,
+        width=width,
+        color="#55A868",
+        label="Outlier acc gain (pp)",
+    )
     ax.bar([i + width / 2 for i in x], c_hscore_gain_pp, width=width, color="#C44E52", label="H-score gain (pp)")
     ax.axhline(0.0, color="black", linewidth=0.8)
     ax.set_xticks(x)
     ax.set_xticklabels(c_labels, rotation=35, ha="right")
     ax.set_ylabel("Transfer - baseline gain (pp)")
-    ax.set_title("B) CWRU: outlier-driven gains")
+    ax.set_title("B) CWRU: H-score-driven gains (outlier gains mostly flat)")
     ax.legend(loc="upper right", fontsize=8, framealpha=0.95)
 
     mean_out = mean(c_outlier_gain_pp) if c_outlier_gain_pp else 0.0
     mean_h = mean(c_hscore_gain_pp) if c_hscore_gain_pp else 0.0
+    max_out = max(c_outlier_gain_pp) if c_outlier_gain_pp else 0.0
+    zero_outlier = all(abs(v) < 1e-9 for v in c_outlier_gain_pp)
+    outlier_note = "all transfers" if zero_outlier else f"max: {max_out:+.2f} pp"
     ax.text(
         0.02,
         0.97,
-        f"mean outlier Δ: {mean_out:+.2f} pp\nmean H-score Δ: {mean_h:+.2f} pp",
+        (
+            f"mean outlier Δ: {mean_out:+.2f} pp ({outlier_note})\n"
+            f"mean H-score Δ: {mean_h:+.2f} pp\n"
+            "Takeaway: improvements are concentrated in H-score,\n"
+            "so robustness gains are not coming from outlier-accuracy uplift here."
+        ),
         transform=ax.transAxes,
         va="top",
         ha="left",
