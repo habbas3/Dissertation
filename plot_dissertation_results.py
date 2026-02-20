@@ -311,8 +311,21 @@ def plot_ablation_improvement(lb_rows: List[Dict[str, str]], out_path: Path, dat
             tick.set_fontweight("bold")
     plt.ylabel("Average improvement vs baseline (%)")
     plt.title(f"Ablation comparison ({dataset})")
+    top_val = max(vals)
+    bottom_val = min(vals)
+    top_pad = max(0.45, abs(top_val) * 0.08)
+    bottom_pad = max(0.45, abs(bottom_val) * 0.08)
+    plt.ylim(bottom_val - bottom_pad, top_val + top_pad)
+
     for b, v in zip(bars, vals):
-        plt.text(b.get_x() + b.get_width() / 2, v + (0.2 if v >= 0 else -0.6), f"{v:+.2f}%", ha="center", va="bottom", fontsize=8)
+        plt.text(
+            b.get_x() + b.get_width() / 2,
+            v + (0.15 if v >= 0 else -0.45),
+            f"{v:+.2f}%",
+            ha="center",
+            va="bottom",
+            fontsize=8,
+        )
     plt.tight_layout()
     plt.savefig(out_path, dpi=300)
     plt.close()
