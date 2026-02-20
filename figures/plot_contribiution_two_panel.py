@@ -2,7 +2,7 @@
 """Create a 2-panel dissertation contribution figure from prepared CSV summaries.
 
 Panel A (Battery): SNGP vs no-SNGP transfer score delta and entropy delta by transfer pair.
-Panel B (CWRU): Transfer gains in outlier accuracy and H-score from corrected outlier summary.
+Panel B (CWRU): Transfer gains in outlier accuracy and H-score.
 """
 
 from __future__ import annotations
@@ -82,14 +82,18 @@ def make_figure(battery_csv: Path, cwru_csv: Path, out_fig: Path, title: str) ->
 
     ax2 = ax.twinx()
     ax2.plot(x, b_entropy_delta, color="#DD8452", marker="o", linewidth=2.0, label="Entropy delta")
-    ax2.set_ylabel("Entropy delta (SNGP - no SNGP)")
+    ax2.set_ylabel("Entropy delta (SNGP - no SNGP, uncertainty proxy)")
 
     mean_score = mean(b_score_delta_pp) if b_score_delta_pp else 0.0
     mean_entropy = mean(b_entropy_delta) if b_entropy_delta else 0.0
     ax.text(
         0.02,
         0.97,
-        f"mean score Δ: {mean_score:+.2f} pp\nmean entropy Δ: {mean_entropy:+.3f}",
+        (
+            f"mean score Δ: {mean_score:+.2f} pp\n"
+            f"mean entropy Δ: {mean_entropy:+.3f}\n"
+            "(SNGP contribution: higher uncertainty with safer transfer behavior)"
+        ),
         transform=ax.transAxes,
         va="top",
         ha="left",
@@ -100,9 +104,15 @@ def make_figure(battery_csv: Path, cwru_csv: Path, out_fig: Path, title: str) ->
     # Combined legend for twin axes
     lines1, labels1 = ax.get_legend_handles_labels()
     lines2, labels2 = ax2.get_legend_handles_labels()
-    ax.legend(lines1 + lines2, labels1 + labels2, loc="lower left", fontsize=8)
+    ax.legend(
+        lines1 + lines2,
+        labels1 + labels2,
+        loc="upper right",
+        fontsize=8,
+        framealpha=0.95,
+    )
 
-    # Panel B: CWRU corrected outlier/H-score gains
+    # Panel B: CWRU outlier/H-score gains
     ax = axes[1]
     x = list(range(len(c_labels)))
     width = 0.42
@@ -112,8 +122,8 @@ def make_figure(battery_csv: Path, cwru_csv: Path, out_fig: Path, title: str) ->
     ax.set_xticks(x)
     ax.set_xticklabels(c_labels, rotation=35, ha="right")
     ax.set_ylabel("Transfer - baseline gain (pp)")
-    ax.set_title("B) CWRU: corrected outlier-driven gains")
-    ax.legend(loc="lower left", fontsize=8)
+    ax.set_title("B) CWRU: outlier-driven gains")
+    ax.legend(loc="upper right", fontsize=8, framealpha=0.95)
 
     mean_out = mean(c_outlier_gain_pp) if c_outlier_gain_pp else 0.0
     mean_h = mean(c_hscore_gain_pp) if c_hscore_gain_pp else 0.0
