@@ -530,6 +530,76 @@ def plot_confidence_vs_hscore(compare_payload: Dict[str, List[Dict[str, str]]], 
     plt.close()
 
 
+def plot_llm_pick_vs_baseline_transfers(
+    lb_rows: List[Dict[str, str]],
+    compare_payload: Dict[str, List[Dict[str, str]]],
+    out_path: Path,
+    dataset: str,
+) -> None:
+    """Plot per-transfer baseline vs LLM-pick accuracy for a dataset."""
+
+    llm_rows = compare_payload.get("llm_pick")
+    if not llm_rows:
+        return
+
+    baseline_vals: List[float] = []
+    llm_vals: List[float] = []
+    for row in llm_rows:
+        b = _safe_float(row.get("baseline_accuracy"))
+        t = _safe_float(row.get("transfer_accuracy"))
+        if b is None or t is None:
+            continue
+        baseline_vals.append(b * 100.0)
+        llm_vals.append(t * 100.0)
+
+    if not baseline_vals:
+        return
+
+    avg_imp = None
+    for row in lb_rows:
+        if _canonical_tag(row.get("tag", "")) == "llm_pick":
+            avg_imp = _safe_float(row.get("avg_improvement"))
+            if avg_imp is not None:
+                avg_imp *= 100.0
+            break
+
+    x = list(range(len(baseline_vals)))
+    width = 0.38
+    plt.figure(figsize=(max(9, len(x) * 0.9), 5.5))
+    plt.bar([i - width / 2 for i in x], baseline_vals, width=width, label="Baseline", color="#999999")
+    plt.bar([i + width / 2 for i in x], llm_vals, width=width, label="LLM pick", color="#111111")
+
+    for idx, (b, t) in enumerate(zip(baseline_vals, llm_vals)):
+        color = "#2ca02c" if t >= b else "#d62728"
+        plt.plot([idx - width / 2, idx + width / 2], [b, t], color=color, linewidth=1.2, alpha=0.8)
+
+    if avg_imp is not None:
+        better_count = sum(1 for b, t in zip(baseline_vals, llm_vals) if t >= b)
+        text = (
+            f"Avg improvement: {avg_imp:+.2f} pp\\n"
+            f"Transfers where LLM pick >= baseline: {better_count}/{len(baseline_vals)}"
+        )
+        plt.text(
+            0.01,
+            0.99,
+            text,
+            transform=plt.gca().transAxes,
+            ha="left",
+            va="top",
+            fontsize=9,
+            bbox={"facecolor": "white", "edgecolor": "#cccccc", "alpha": 0.9},
+        )
+
+    plt.xticks(x, [f"Transfer {i + 1}" for i in x])
+    plt.ylabel("Accuracy (%)")
+    plt.title(f"LLM pick vs baseline per transfer ({_dataset_title(dataset)})")
+    plt.legend(loc="best")
+    plt.tight_layout()
+    plt.savefig(out_path, dpi=300)
+    plt.close()
+
+
+
 def write_dataset_summary(lb_rows: List[Dict[str, str]], out_path: Path, dataset: str) -> None:
     entries = []
     for r in lb_rows:
@@ -580,6 +650,12 @@ def main() -> None:
         plot_sngp_vs_det(lb_rows, args.output_dir / f"sngp-vs-deterministic-{slug}.png", dataset)
         plot_sngp_confidence(compare_payload, args.output_dir / f"sngp-confidence-{slug}.png", dataset)
         plot_confidence_vs_hscore(compare_payload, args.output_dir / f"confidence-vs-hscore-{slug}.png", dataset)
+        plot_llm_pick_vs_baseline_transfers(
+            lb_rows,
+            compare_payload,
+            args.output_dir / f"llm-pick-vs-baseline-transfers-{slug}.png",
+            dataset,
+        )
         write_dataset_summary(lb_rows, args.output_dir / f"summary-{slug}.md", dataset)
 
         print(f"Generated dissertation plots for {dataset} using {run_dir}")

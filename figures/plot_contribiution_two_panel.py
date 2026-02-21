@@ -96,7 +96,7 @@ def make_figure(battery_csv: Path, cwru_csv: Path, out_fig: Path, title: str) ->
     mean_score = mean(b_score_delta_pp) if b_score_delta_pp else 0.0
     mean_entropy = mean(b_entropy_delta) if b_entropy_delta else 0.0
     ax.text(
-        0.00,
+        0.50,
         -0.40,
         (
             f"mean score Δ: {mean_score:+.2f} pp (closed-set accuracy proxy)\n"
@@ -106,7 +106,7 @@ def make_figure(battery_csv: Path, cwru_csv: Path, out_fig: Path, title: str) ->
         ),
         transform=ax.transAxes,
         va="top",
-        ha="right",
+        ha="center",
         fontsize=9,
         bbox={"facecolor": "white", "alpha": 0.8, "edgecolor": "#cccccc"},
     )
@@ -140,7 +140,7 @@ def make_figure(battery_csv: Path, cwru_csv: Path, out_fig: Path, title: str) ->
     ax.set_xticklabels(c_labels, rotation=35, ha="right")
     ax.set_ylabel("Transfer - baseline gain (pp)")
     ax.set_title("B) CWRU: H-score-driven gains (outlier gains mostly flat)")
-    ax.legend(loc="upper center", bbox_to_anchor=(0.5, -0.32), ncol=2, fontsize=8, framealpha=0.95)
+    ax.legend(loc="upper right", fontsize=8, framealpha=0.95)
 
     mean_out = mean(c_outlier_gain_pp) if c_outlier_gain_pp else 0.0
     mean_h = mean(c_hscore_gain_pp) if c_hscore_gain_pp else 0.0
@@ -148,7 +148,7 @@ def make_figure(battery_csv: Path, cwru_csv: Path, out_fig: Path, title: str) ->
     zero_outlier = all(abs(v) < 1e-9 for v in c_outlier_gain_pp)
     outlier_note = "all transfers" if zero_outlier else f"max: {max_out:+.2f} pp"
     ax.text(
-        0.00,
+        0.50,
         -0.40,
         (
             f"mean outlier Δ: {mean_out:+.2f} pp ({outlier_note})\n"
@@ -158,7 +158,7 @@ def make_figure(battery_csv: Path, cwru_csv: Path, out_fig: Path, title: str) ->
         ),
         transform=ax.transAxes,
         va="top",
-        ha="left",
+        ha="center",
         fontsize=9,
         bbox={"facecolor": "white", "alpha": 0.8, "edgecolor": "#cccccc"},
     )
