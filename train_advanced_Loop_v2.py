@@ -159,7 +159,7 @@ def reset_seed(seed=SEED):
 
 def parse_args():
     parser = argparse.ArgumentParser(description='Train')
-    parser.add_argument('--data_name', type=str, default='CWRU_inconsistent',
+    parser.add_argument('--data_name', type=str, default='Battery_inconsistent',
                         choices=['Battery_inconsistent', 'CWRU_inconsistent'])
     parser.add_argument('--data_dir', type=str, default='./my_datasets/Battery',
                         help='Root directory for datasets')
@@ -2592,14 +2592,23 @@ def main():
         _os.makedirs(_shared_results_dir, exist_ok=True)
 
         leaderboard_rows = []
+        consumed_summary_paths: set[str] = set()
 
         def _collect_latest_summary(copy_prefix: str) -> tuple[str, dict]:
-            summaries = sorted(glob.glob(_os.path.join(_shared_results_dir, "summary_*.csv")), key=os.path.getmtime)
-            if not summaries:
-                summaries = sorted(glob.glob(_os.path.join("checkpoint", "summary_*.csv")), key=os.path.getmtime)
-            if not summaries:
+            def _pick_unconsumed(paths: list[str]) -> str:
+                available = [p for p in paths if p not in consumed_summary_paths]
+                if not available:
+                    return ""
+                return sorted(available, key=os.path.getmtime)[-1]
+
+            shared_summaries = glob.glob(_os.path.join(_shared_results_dir, "summary_*.csv"))
+            latest = _pick_unconsumed(shared_summaries)
+            if not latest:
+                root_summaries = glob.glob(_os.path.join("checkpoint", "summary_*.csv"))
+                latest = _pick_unconsumed(root_summaries)
+            if not latest:
                 return ("", {})
-            latest = summaries[-1]
+            consumed_summary_paths.add(latest)
             dst = os.path.join(_cmp_dir, f"{copy_prefix}_{os.path.basename(latest)}")
             try:
                 shutil.copy2(latest, dst)
