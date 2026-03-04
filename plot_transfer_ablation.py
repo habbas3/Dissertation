@@ -167,7 +167,7 @@ def main() -> None:
     parser.add_argument(
         "--dataset",
         choices=["cwru", "battery"],
-        default="cwru",
+        default="battery",
         help="Dataset name for labelling outputs.",
     )
     parser.add_argument("--checkpoint_root", type=Path, default=Path("checkpoint"))

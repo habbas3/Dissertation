@@ -1,0 +1,75 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1400" height="860" viewBox="0 0 1400 860" role="img" aria-labelledby="title desc">
+  <title id="title">Figure: SNGP head internals and mean-field calibration (with experiment values)</title>
+  <desc id="desc">Conceptual diagram of SNGP pipeline with concrete d, m, K, and lambda values from latest CWRU and Battery runs.</desc>
+
+  <defs>
+    <marker id="arrow" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto" markerUnits="strokeWidth">
+      <path d="M0,0 L10,4 L0,8 Z" fill="#334155" />
+    </marker>
+    <style>
+      .title { font: 700 32px 'Arial', sans-serif; fill: #0f172a; }
+      .subtitle { font: 500 19px 'Arial', sans-serif; fill: #334155; }
+      .label { font: 600 19px 'Arial', sans-serif; fill: #0f172a; }
+      .text { font: 500 17px 'Arial', sans-serif; fill: #1e293b; }
+      .small { font: 500 15px 'Arial', sans-serif; fill: #334155; }
+      .tiny { font: 500 13px 'Arial', sans-serif; fill: #334155; }
+      .box { rx: 16; ry: 16; stroke-width: 2.5; }
+      .arrow { stroke: #334155; stroke-width: 3.2; fill: none; marker-end: url(#arrow); }
+      .dash { stroke-dasharray: 9 8; }
+    </style>
+  </defs>
+
+  <rect x="0" y="0" width="1400" height="860" fill="#f8fafc" />
+
+  <text x="700" y="56" text-anchor="middle" class="title">SNGP Head Internals and Mean-Field Calibration</text>
+  <text x="700" y="88" text-anchor="middle" class="subtitle">Concrete values inserted from latest experiments (CWRU + Battery)</text>
+
+  <rect class="box" x="70" y="170" width="240" height="130" fill="#dbeafe" stroke="#2563eb"/>
+  <text class="label" x="190" y="214" text-anchor="middle">Backbone Features</text>
+  <text class="text" x="190" y="244" text-anchor="middle">h(x) ∈ R^d</text>
+  <text class="small" x="190" y="272" text-anchor="middle">d = 128 (CWRU), 256 (Battery)</text>
+
+  <rect class="box" x="380" y="170" width="270" height="130" fill="#dcfce7" stroke="#16a34a"/>
+  <text class="label" x="515" y="214" text-anchor="middle">Spectral-Normalized Head</text>
+  <text class="text" x="515" y="244" text-anchor="middle">z = SN(W)h + b</text>
+  <text class="small" x="515" y="272" text-anchor="middle">Lipschitz bound = 0.95</text>
+
+  <rect class="box" x="720" y="170" width="260" height="130" fill="#fef3c7" stroke="#d97706"/>
+  <text class="label" x="850" y="214" text-anchor="middle">Random Features GP</text>
+  <text class="text" x="850" y="244" text-anchor="middle">f(x), Σ(x)</text>
+  <text class="small" x="850" y="272" text-anchor="middle">m = 2048 inducing features</text>
+
+  <rect class="box" x="1050" y="170" width="280" height="130" fill="#ede9fe" stroke="#7c3aed"/>
+  <text class="label" x="1190" y="214" text-anchor="middle">Mean-Field Logit Scaling</text>
+  <text class="text" x="1190" y="244" text-anchor="middle">f̃ = f / √(1 + Var[f] + 1e−3)</text>
+  <text class="small" x="1190" y="272" text-anchor="middle">mean-field factor ≈ 1.0</text>
+
+  <path class="arrow" d="M310 235 L370 235"/>
+  <path class="arrow" d="M650 235 L710 235"/>
+  <path class="arrow" d="M980 235 L1040 235"/>
+
+  <rect class="box" x="760" y="380" width="390" height="160" fill="#fee2e2" stroke="#dc2626"/>
+  <text class="label" x="955" y="424" text-anchor="middle">Uncertainty Signals</text>
+  <text class="text" x="955" y="454" text-anchor="middle">Predictive variance: diag(Σ(x))</text>
+  <text class="text" x="955" y="482" text-anchor="middle">Entropy / confidence from softmax(f̃)</text>
+  <text class="small" x="955" y="514" text-anchor="middle">Used for OOD flagging + calibration analysis</text>
+
+  <path class="arrow dash" d="M900 300 L900 370"/>
+  <path class="arrow dash" d="M1130 300 L1030 370"/>
+
+  <rect class="box" x="80" y="360" width="620" height="360" fill="#ffffff" stroke="#64748b"/>
+  <text class="label" x="110" y="402">Experiment values used in this dissertation context</text>
+
+  <text class="text" x="110" y="438">CWRU run (llm_run_20251210_125835)</text>
+  <text class="text" x="130" y="468">• d = 128, m = 2048, K = 9, λ_src = 1.0</text>
+
+  <text class="text" x="110" y="508">Battery run (llm_run_20251212_131825)</text>
+  <text class="text" x="130" y="538">• d = 256, m = 2048, K = 5, λ_src = 0.6</text>
+
+  <text class="text" x="110" y="578">Shared SNGP calibration constants</text>
+  <text class="text" x="130" y="608">• mean-field factor = 1.0, ridge term = 1e−3</text>
+  <text class="tiny" x="110" y="646">Note: λ_src is source/target loss mixing weight (training), distinct from mean-field scaling.</text>
+
+  <rect x="80" y="748" width="1250" height="66" rx="14" ry="14" fill="#e2e8f0" stroke="#94a3b8" stroke-width="2"/>
+  <text class="small" x="705" y="788" text-anchor="middle">Caption: SNGP head with inserted empirical dimensions (d,m,K) and per-run λ_src for CWRU and Battery experiments.</text>
+</svg>

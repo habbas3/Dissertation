@@ -326,7 +326,7 @@ def main():
     )
     parser.add_argument(
         "--dataset_tag",
-        default='Battery_inconsistent',
+        default='CWRU_inconsistent',
         help="If set, auto-pick latest llm_run_* whose compare/*.csv includes this dataset tag.",
     )
     #Battery_inconsistent or CWRU_inconsistent

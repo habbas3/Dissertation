@@ -1,0 +1,55 @@
+{
+  "example_id": "Battery_LLM_Output_ChemistryOn_HistoryOn_UPDATED_SA",
+  "dataset": "Battery_inconsistent",
+  "source_cathodes": ["HE5050", "NMC111", "NMC532", "NMC622", "NMC811"],
+  "target_cathodes": ["5Vspinel"],
+  "llm_input_flags": {
+    "chemistry_context": "on",
+    "history_access": "on",
+    "cycle_budget_ablation": "off",
+    "notes": "label_inconsistent"
+  },
+  "numeric_summary_excerpt": {
+    "sequence_length_requested": 32,
+    "channels": 21,
+    "batch_size_seen": 64,
+    "feature_range": [-10.0714, 26.9622],
+    "source_train_class_distribution_example": { "0": 23, "1": 22, "2": 41, "3": 37, "4": 18 },
+    "target_train_class_distribution_example": { "0": 19, "1": 18, "2": 2, "3": 1, "4": 1 },
+    "cycle_stats_excerpt": {
+      "source_cycles_per_file_hint": 165,
+      "target_cycles_per_file_hint": 41
+    }
+  },
+  "llm_output_config": {
+    "architecture": "cnn_1d_sa",
+    "model_name": "cnn_features_1d_sa",
+    "self_attention": true,
+    "sngp": true,
+    "openmax": false,
+    "use_unknown_head": false,
+    "bottleneck": 256,
+    "dropout": 0.3,
+    "learning_rate": 0.001,
+    "batch_size": 64,
+    "lambda_src": 0.0,
+    "warmup_epochs": 10
+  },
+  "rationale": [
+    "Battery EOL transfer is performed under label-inconsistent settings.",
+    "There is a pronounced chemistry-driven domain shift: multi-family NMC/HE5050 sources → high-voltage 5Vspinel target.",
+    "",
+    "Input evidence indicates short early-life windows (32 steps) with multi-channel electrochemical features.",
+    "A compact 1-D CNN is appropriate for local degradation signatures, while self-attention is enabled to capture cross-cycle and cross-channel interactions that may not be well modeled by strictly local convolutions.",
+    "",
+    "Target class distribution is highly skewed (few samples in higher-lifetime classes), which increases risk of brittle decision boundaries.",
+    "SNGP is enabled to improve calibration and uncertainty awareness under shift, reducing overconfident extrapolation when target support is sparse.",
+    "",
+    "OpenMax and explicit unknown heads are disabled to avoid unstable tail-fitting behavior when target data are limited and class support is uneven; uncertainty is handled primarily through SNGP in this configuration.",
+    "",
+    "Moderate bottleneck (256) preserves transfer capacity while limiting over-parameterization for early-life data.",
+    "Dropout (0.30) and warmup (10 epochs) are selected to stabilize adaptation under chemistry mismatch and prevent early overfitting.",
+    "",
+    "History access indicates SNGP-based heads and conservative optimization settings are more reliable in prior cross-chemistry comparisons, motivating the above guarded configuration."
+  ]
+}

@@ -1,6 +1,6 @@
 # Plot summary for Battery_inconsistent
 
-- Best configuration: **llm_pick** with **+17.72%** average improvement.
+- Best configuration: **cycles_15** with **+15.39%** average improvement.
 - Number of evaluated ablations/configurations: **15**.
-- Mean SNGP improvement: **+8.40%**.
-- Mean deterministic/other improvement: **+7.23%**.
+- Mean SNGP improvement: **+8.53%**.
+- Mean deterministic/other improvement: **+0.14%**.

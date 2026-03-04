@@ -9,6 +9,7 @@ import matplotlib.pyplot as plt
 import pickle
 import shutil
 import os
+import re
 import gc
 from typing import Optional
 from datetime import datetime
@@ -57,12 +58,14 @@ def _cleanup_memory(tag: str = ""):
 
 def _save_highres_confusion(cm, labels, path, title, normalize=True):
     labels = list(labels)
+    cm = np.asarray(cm)
     fig, ax = plt.subplots(
         figsize=(4 + 0.45 * len(labels), 4 + 0.45 * len(labels)), dpi=320
     )
     cmap = plt.cm.Blues
     im = ax.imshow(cm, interpolation='nearest', cmap=cmap)
-    fig.colorbar(im, ax=ax, fraction=0.046, pad=0.04)
+    cbar = fig.colorbar(im, ax=ax, fraction=0.046, pad=0.04)
+    cbar.ax.tick_params(labelsize=8)
 
     ax.set(
         title=title,
@@ -73,6 +76,8 @@ def _save_highres_confusion(cm, labels, path, title, normalize=True):
     )
     ax.set_xticklabels(labels)
     ax.set_yticklabels(labels)
+    ax.tick_params(axis='both', labelsize=9)
+    ax.set_aspect('equal')
 
     if normalize:
         row_sums = cm.sum(axis=1, keepdims=True)
@@ -82,9 +87,15 @@ def _save_highres_confusion(cm, labels, path, title, normalize=True):
     annot = [[str(int(cm[i, j])) for j in range(cm.shape[1])] for i in range(cm.shape[0])]
 
     thresh = cm.max() / 2.0 if cm.size else 0
-    ax.grid(False)
+    ax.set_xticks(np.arange(-.5, len(labels), 1), minor=True)
+    ax.set_yticks(np.arange(-.5, len(labels), 1), minor=True)
+    ax.grid(which="minor", color="white", linestyle='-', linewidth=0.8, alpha=0.95)
+    ax.tick_params(which="minor", bottom=False, left=False)
     for spine in ax.spines.values():
-        spine.set_visible(False)
+        spine.set_visible(True)
+        spine.set_linewidth(0.8)
+        spine.set_color("#555555")
+
     for i in range(cm.shape[0]):
         for j in range(cm.shape[1]):
             ax.text(
@@ -93,8 +104,8 @@ def _save_highres_confusion(cm, labels, path, title, normalize=True):
                 annot[i][j],
                 ha="center",
                 va="center",
-                fontsize=8,
-                color="white" if cm[i, j] > thresh else "black",
+                fontsize=9,
+                color="white" if cm[i, j] > thresh else "#1f3a73",
             )
 
     fig.tight_layout()
@@ -102,6 +113,11 @@ def _save_highres_confusion(cm, labels, path, title, normalize=True):
     fig.savefig(path)
     plt.close(fig)
 
+
+def _safe_name_token(value: str) -> str:
+    token = str(value or "").strip().lower()
+    token = re.sub(r"[^a-z0-9]+", "_", token)
+    return token.strip("_") or "na"
 
 
 try:
@@ -1676,10 +1692,18 @@ def run_battery_experiments(args):
 
             if not args.no_confmat:
                 confmat_dir = args.confmat_dir or ft_dir
+                model_token = _safe_name_token(model_name)
+                method_token = _safe_name_token(getattr(transfer_args, "method", "deterministic"))
+                src_token = _safe_name_token(src_name)
+                tgt_token = _safe_name_token(tgt_name)
                 transfer_cm_path = os.path.join(
-                    confmat_dir, f"cm_transfer_{src_name}_to_{tgt_name}.png"
+                    confmat_dir,
+                    f"cm_transfer_{model_token}_{method_token}_{src_token}_to_{tgt_token}.png",
                 )
-                baseline_cm_path = os.path.join(confmat_dir, f"cm_baseline_{tgt_name}.png")
+                baseline_cm_path = os.path.join(
+                    confmat_dir,
+                    f"cm_baseline_{model_token}_{method_token}_{tgt_token}.png",
+                )
                 _save_highres_confusion(
                     cm_transfer,
                     labels,
@@ -2172,10 +2196,18 @@ def run_cwru_experiments(args):
 
             if not args.no_confmat:
                 confmat_dir = args.confmat_dir or ft_dir
+                model_token = _safe_name_token(model_name)
+                method_token = _safe_name_token(getattr(transfer_args, "method", "deterministic"))
+                src_token = _safe_name_token(src_str)
+                tgt_token = _safe_name_token(tgt_str)
                 transfer_cm_path = os.path.join(
-                    confmat_dir, f"cm_transfer_{src_str}_to_{tgt_str}.png"
+                    confmat_dir,
+                    f"cm_transfer_{model_token}_{method_token}_{src_token}_to_{tgt_token}.png",
                 )
-                baseline_cm_path = os.path.join(confmat_dir, f"cm_baseline_{tgt_str}.png")
+                baseline_cm_path = os.path.join(
+                    confmat_dir,
+                    f"cm_baseline_{model_token}_{method_token}_{tgt_token}.png",
+                )
                 _save_highres_confusion(
                     cm_transfer,
                     labels,
@@ -2594,9 +2626,11 @@ def main():
         leaderboard_rows = []
         consumed_summary_paths: set[str] = set()
 
-        def _collect_latest_summary(copy_prefix: str) -> tuple[str, dict]:
+        def _collect_latest_summary(copy_prefix: str, known_paths: Optional[set[str]] = None) -> tuple[str, dict]:
             def _pick_unconsumed(paths: list[str]) -> str:
                 available = [p for p in paths if p not in consumed_summary_paths]
+                if known_paths is not None:
+                    available = [p for p in available if p not in known_paths]
                 if not available:
                     return ""
                 return sorted(available, key=os.path.getmtime)[-1]
@@ -2606,6 +2640,17 @@ def main():
             if not latest:
                 root_summaries = glob.glob(_os.path.join("checkpoint", "summary_*.csv"))
                 latest = _pick_unconsumed(root_summaries)
+            if not latest and known_paths is not None:
+                print(
+                    f"⚠️ No new summary detected for '{copy_prefix}'. Falling back to latest unconsumed summary file."
+                )
+                fallback_shared = [p for p in shared_summaries if p not in consumed_summary_paths]
+                if fallback_shared:
+                    latest = sorted(fallback_shared, key=os.path.getmtime)[-1]
+                else:
+                    fallback_root = [p for p in root_summaries if p not in consumed_summary_paths]
+                    if fallback_root:
+                        latest = sorted(fallback_root, key=os.path.getmtime)[-1]
             if not latest:
                 return ("", {})
             consumed_summary_paths.add(latest)
@@ -2773,6 +2818,11 @@ def main():
                 "chemistry_feedback": bool(getattr(cfg, "llm_chemistry_feedback", True)),
                 "include_transfer_context": bool(getattr(cfg, "llm_include_transfer_context", True)),
             }
+            
+            pre_shared_summaries = set(glob.glob(_os.path.join(_shared_results_dir, "summary_*.csv")))
+            pre_root_summaries = set(glob.glob(_os.path.join("checkpoint", "summary_*.csv")))
+            known_summaries = pre_shared_summaries | pre_root_summaries
+            
             if cfg.data_name == 'Battery_inconsistent':
                 run_battery_experiments(cfg)
             else:
@@ -2780,7 +2830,7 @@ def main():
 
             time.sleep(0.5)
 
-            copied_path, stats = _collect_latest_summary(copy_prefix=tag)
+            copied_path, stats = _collect_latest_summary(copy_prefix=tag, known_paths=known_summaries)
             avg_imp = stats.get("mean", float("nan")) if stats else float("nan")
             cyc_lim = None
             if "cycles_" in tag:
