@@ -139,7 +139,7 @@ def make_figure(battery_csv: Path, cwru_csv: Path, out_fig: Path, title: str) ->
     ax.set_xticks(x)
     ax.set_xticklabels(c_labels, rotation=35, ha="right")
     ax.set_ylabel("Transfer - baseline gain (pp)")
-    ax.set_title("B) CWRU: H-score-driven gains (outlier gains mostly flat)")
+    ax.set_title("B) CWRU: H-score-driven gains")
     ax.legend(loc="upper right", fontsize=8, framealpha=0.95)
 
     mean_out = mean(c_outlier_gain_pp) if c_outlier_gain_pp else 0.0
