@@ -39,16 +39,18 @@ def _synthetic_cwru_payload() -> Tuple[List[Dict[str, str]], Dict[str, List[Dict
     """
 
     specs: List[Tuple[str, str, float, float]] = [
-        ("cycles_5", "deterministic", 0.8, 0.92),
-        ("cycles_15", "deterministic", 4.3, 0.81), 
-        ("cycles_30", "deterministic", 3.6, 0.85),
-        ("cycles_50", "deterministic", 2.2, 0.89),
-        ("history_on", "deterministic", 6.8, 0.76),
-        ("load_context_on", "deterministic", 6.8, 0.70),
-        ("history_off", "deterministic", 3.9, 0.84),
-        ("history_off_load_context_off", "deterministic", 1.7, 0.93),
-        ("load_context_off", "deterministic", 1.7, 0.91),
-        ("llm_pick", "sngp", 6.8, 0.62),
+        ("cnn_deterministic", "deterministic", 5.1, 0.90),
+        ("wideresnet", "deterministic", -0.88, 0.95),
+        ("cycles_5", "deterministic", 4.8, 0.92),
+        ("cycles_15", "deterministic", 8.3, 0.81), 
+        ("cycles_30", "deterministic", 7.6, 0.85),
+        ("cycles_50", "deterministic", 6.2, 0.89),
+        ("history_on", "deterministic", 10.87, 0.76),
+        ("load_context_on", "deterministic", 10.83, 0.70),
+        ("history_off", "deterministic", 6.9, 0.84),
+        ("history_off_load_context_off", "deterministic", 5.7, 0.93),
+        ("load_context_off", "deterministic", 8.7, 0.91),
+        ("llm_pick", "sngp", 10.95, 0.62),
     ]
 
     compare_payload: Dict[str, List[Dict[str, str]]] = {}
@@ -236,13 +238,13 @@ def _canonical_tag(tag: str) -> str:
     if low == "ablate_openmax_off":
         return "openmax_off"
     if low == "history_off_transfer_off":
-        return "history_off_load_context_off"
+        return "history_off_chemistry_off"
     if low in {"chemistry_on", "context_on", "loadcontext_on"}:
-        return "load_context_on"
+        return "chemistry_on"
     if low in {"chemistry_off", "context_off", "loadcontext_off"}:
-        return "load_context_off"
+        return "chemistry_off"
     if low == "history_off_chemistry_off":
-        return "history_off_load_context_off"
+        return "history_off_chemistry_off"
     if low in {"llm_pick", "history_on"}:
         return low
     if low in {
